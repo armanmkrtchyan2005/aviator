@@ -9,10 +9,11 @@ export class MailService {
     await this.mailerService.sendMail({
       to: email,
       subject: "Password reset code",
-      template: "/forgot-code",
-      context: {
-        code,
-      },
+      text: "Confirmation code",
+      html: `
+        <p>Confirmation code is</p>
+        <b><u>${code}</u></b>
+      `,
     });
   }
 }

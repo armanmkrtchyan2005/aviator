@@ -7,9 +7,15 @@ import { User } from "src/user/schemas/user.schema";
 import { signUpDto } from "./dto/sign-up.dto";
 import { SignInDto } from "./dto/sign-in.dto";
 import { MailService } from "src/mail/mail.service";
+import { SendCodeDto } from "./dto/send-code.dto";
+import { ConfirmCodeDto } from "./dto/confirm-code.dto";
 
 const saltRounds = 10;
 const salt = bcrypt.genSaltSync(saltRounds);
+
+const generateCode = () => {
+  return Math.floor(100000 + Math.random() * 900000);
+};
 
 @Injectable()
 export class AuthService {
@@ -69,5 +75,45 @@ export class AuthService {
     return { token };
   }
 
-  async forgotPassword() {}
+  async sendCode(dto: SendCodeDto, session: Record<string, any>) {
+    session.codeToken = "";
+
+    const user = await this.userModel.findOne({
+      email: dto.email,
+    });
+
+    if (!user) {
+      throw new BadRequestException("User from this email not founded");
+    }
+
+    const code = generateCode();
+
+    const token = this.jwtService.sign({ id: user._id, code }, { expiresIn: 60 * 60 * 2 });
+
+    session.codeToken = token;
+
+    await this.mailService.sendUserForgotCode(dto.email, code);
+
+    return { message: "Code sended to your email" };
+  }
+
+  async confirmCode(dto: ConfirmCodeDto, session: Record<string, any>) {
+    if (!session.codeToken) {
+      throw new BadRequestException("Wrong code");
+    }
+
+    try {
+      const payload = await this.jwtService.verifyAsync(session.codeToken);
+
+      if (payload?.code !== dto.code) {
+        throw new BadRequestException("Wrong code");
+      }
+
+      const token = this.jwtService.sign({ id: payload.id }, { expiresIn: "1d" });
+
+      return { token };
+    } catch (error) {
+      throw new BadRequestException("Wrong code");
+    }
+  }
 }
