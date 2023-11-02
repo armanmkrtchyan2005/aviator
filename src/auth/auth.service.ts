@@ -9,6 +9,12 @@ import { SignInDto } from "./dto/sign-in.dto";
 import { MailService } from "src/mail/mail.service";
 import { SendCodeDto } from "./dto/send-code.dto";
 import { ConfirmCodeDto } from "./dto/confirm-code.dto";
+import { SignUpCreatedResponse } from "./responses/sign-up.response";
+import { SignInOkResponse } from "./responses/sign-in.response";
+import { SendCodeOkResponse } from "./responses/send-code.response";
+import { ConfirmCodeOkResponse } from "./responses/confirm-code.response";
+import { ChangePasswordDto } from "./dto/change-password.dto";
+import { ChangePasswordOkResponse } from "./responses/change-password.response";
 
 const saltRounds = 10;
 const salt = bcrypt.genSaltSync(saltRounds);
@@ -21,7 +27,7 @@ const generateCode = () => {
 export class AuthService {
   constructor(private jwtService: JwtService, @InjectModel(User.name) private userModel: Model<User>, private mailService: MailService) {}
 
-  async signUp(dto: signUpDto) {
+  async signUp(dto: signUpDto): Promise<SignUpCreatedResponse> {
     const userEmail = await this.userModel.findOne({
       email: dto.email,
     });
@@ -33,11 +39,11 @@ export class AuthService {
     const errors = [];
 
     if (userEmail) {
-      errors.push("email is already used");
+      errors.push("Данный email уже зарегистрирован");
     }
 
     if (userLogin) {
-      errors.push("login is already used");
+      errors.push("Данный логин уже зарегистрирован");
     }
 
     if (errors.length > 0) {
@@ -55,19 +61,19 @@ export class AuthService {
     };
   }
 
-  async signIn(dto: SignInDto) {
+  async signIn(dto: SignInDto): Promise<SignInOkResponse> {
     const user = await this.userModel.findOne({
       login: dto.login,
     });
 
     if (!user) {
-      throw new BadRequestException("Login or password is wrong");
+      throw new BadRequestException("Неверный логин или пароль!");
     }
 
     const isPasswordRight = bcrypt.compareSync(dto.password, user.password);
 
     if (!isPasswordRight) {
-      throw new BadRequestException("Login or password is wrong");
+      throw new BadRequestException("Неверный логин или пароль!");
     }
 
     const token = this.jwtService.sign({ id: user._id }, {});
@@ -75,7 +81,7 @@ export class AuthService {
     return { token };
   }
 
-  async sendCode(dto: SendCodeDto, session: Record<string, any>) {
+  async sendCode(dto: SendCodeDto, session: Record<string, any>): Promise<SendCodeOkResponse> {
     session.codeToken = "";
 
     const user = await this.userModel.findOne({
@@ -83,7 +89,7 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new BadRequestException("User from this email not founded");
+      throw new BadRequestException("Такой пользователь не найден");
     }
 
     const code = generateCode();
@@ -94,26 +100,50 @@ export class AuthService {
 
     await this.mailService.sendUserForgotCode(dto.email, code);
 
-    return { message: "Code sended to your email" };
+    return { message: "На ваш Email отправлен код для подтверждения" };
   }
 
-  async confirmCode(dto: ConfirmCodeDto, session: Record<string, any>) {
+  async confirmCode(dto: ConfirmCodeDto, session: Record<string, any>): Promise<ConfirmCodeOkResponse> {
     if (!session.codeToken) {
-      throw new BadRequestException("Wrong code");
+      throw new BadRequestException("Неверный код");
     }
 
     try {
       const payload = await this.jwtService.verifyAsync(session.codeToken);
 
       if (payload?.code !== dto.code) {
-        throw new BadRequestException("Wrong code");
+        throw new BadRequestException("Неверный код");
       }
 
-      const token = this.jwtService.sign({ id: payload.id }, { expiresIn: "1d" });
+      session.codeToken = "";
+
+      const token = await this.jwtService.signAsync({ id: payload.id }, { expiresIn: 60 * 60 * 10 });
 
       return { token };
     } catch (error) {
-      throw new BadRequestException("Wrong code");
+      throw new BadRequestException("Неверный код");
+    }
+  }
+
+  async changePassword(dto: ChangePasswordDto, token: string): Promise<ChangePasswordOkResponse> {
+    try {
+      const payload = await this.jwtService.verifyAsync(token);
+
+      const user = await this.userModel.findById(payload.id);
+
+      if (!user) {
+        throw new BadRequestException("Неправильные данные");
+      }
+
+      const hashedPassword = bcrypt.hashSync(dto.password, salt);
+
+      user.password = hashedPassword;
+
+      return {
+        message: "Ваш пароль успешно изменен",
+      };
+    } catch (error) {
+      throw new BadRequestException("Неправильные данные");
     }
   }
 }
