@@ -5,7 +5,7 @@ import { Match } from "../decorators/match.decorator";
 export const PASSWORD_MIN_LENGTH = 8;
 export const PASSWORD_MAX_LENGTH = 30;
 
-export class signUpDto {
+export class SignUpDto {
   @ApiProperty({
     example: "RUB",
   })

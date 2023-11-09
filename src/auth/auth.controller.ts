@@ -1,5 +1,5 @@
 import { Body, Controller, HttpCode, HttpStatus, Param, Post, Put, Req, Session } from "@nestjs/common";
-import { signUpDto } from "./dto/sign-up.dto";
+import { SignUpDto } from "./dto/sign-up.dto";
 import { AuthService } from "./auth.service";
 import { SignInDto } from "./dto/sign-in.dto";
 import { SendCodeDto } from "./dto/send-code.dto";
@@ -21,7 +21,7 @@ export class AuthController {
   @ApiBadRequestResponse({ description: "User validation errors", type: SignUpBadResponse })
   @HttpCode(HttpStatus.CREATED)
   @Post("registration")
-  signUp(@Body() dto: signUpDto): Promise<SignUpCreatedResponse> {
+  signUp(@Body() dto: SignUpDto): Promise<SignUpCreatedResponse> {
     return this.authService.signUp(dto);
   }
 

@@ -1,10 +1,11 @@
+import { ConvertService } from "./../convert/convert.service";
 import * as bcrypt from "bcrypt";
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { User } from "src/user/schemas/user.schema";
-import { signUpDto } from "./dto/sign-up.dto";
+import { SignUpDto } from "./dto/sign-up.dto";
 import { SignInDto } from "./dto/sign-in.dto";
 import { MailService } from "src/mail/mail.service";
 import { SendCodeDto } from "./dto/send-code.dto";
@@ -25,9 +26,9 @@ const generateCode = () => {
 
 @Injectable()
 export class AuthService {
-  constructor(private jwtService: JwtService, @InjectModel(User.name) private userModel: Model<User>, private mailService: MailService) {}
+  constructor(private jwtService: JwtService, @InjectModel(User.name) private userModel: Model<User>, private mailService: MailService, private convertService: ConvertService) {}
 
-  async signUp(dto: signUpDto): Promise<SignUpCreatedResponse> {
+  async signUp(dto: SignUpDto): Promise<SignUpCreatedResponse> {
     const userEmail = await this.userModel.findOne({
       email: dto.email,
     });
@@ -50,9 +51,11 @@ export class AuthService {
       throw new BadRequestException(errors);
     }
 
+    const balance = await this.convertService.convert("USD", dto.currency, 1);
+
     const hashedPassword = bcrypt.hashSync(dto.password, salt);
 
-    const newUser = await this.userModel.create({ ...dto, password: hashedPassword });
+    const newUser = await this.userModel.create({ ...dto, balance, password: hashedPassword });
 
     const token = this.jwtService.sign({ id: newUser._id }, {});
 

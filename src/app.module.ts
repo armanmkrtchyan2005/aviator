@@ -5,7 +5,9 @@ import { ConfigModule } from "@nestjs/config";
 import { AuthModule } from "./auth/auth.module";
 import { MongooseModule } from "@nestjs/mongoose";
 import { UserModule } from "./user/user.module";
-import { MailModule } from './mail/mail.module';
+import { MailModule } from "./mail/mail.module";
+import { ConvertModule } from "./convert/convert.module";
+import { SocketModule } from "./socket/socket.module";
 
 @Module({
   imports: [
@@ -17,6 +19,8 @@ import { MailModule } from './mail/mail.module';
     AuthModule,
     UserModule,
     MailModule,
+    ConvertModule,
+    SocketModule,
   ],
   controllers: [AppController],
   providers: [AppService],
