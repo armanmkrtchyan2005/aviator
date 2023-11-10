@@ -7,6 +7,11 @@ import { IAuthPayload } from "src/auth/auth.guard";
 import { ConvertService } from "src/convert/convert.service";
 import { User } from "src/user/schemas/user.schema";
 import { BetDto } from "./dto/bet.dto";
+import { Bet, IBet } from "src/user/schemas/bet.schema";
+import { CashOutDto } from "./dto/cashOut.dto";
+
+const STOP_DISABLE_MS = 2000;
+const LOADING_MS = 5000;
 
 function sleep(ms: number = 0) {
   return new Promise(res => setTimeout(res, ms));
@@ -14,8 +19,8 @@ function sleep(ms: number = 0) {
 
 @Injectable()
 export class SocketService {
-  constructor(@InjectModel(User.name) private userModel: Model<User>, private convertService: ConvertService) {}
-  private currentPlayers = [];
+  constructor(@InjectModel(User.name) private userModel: Model<User>, @InjectModel(Bet.name) private betModel: Model<Bet>, private convertService: ConvertService) {}
+  private currentPlayers: IBet[] = [];
   public socket: Socket = null;
 
   private x = 1;
@@ -52,31 +57,63 @@ export class SocketService {
 
     this.socket.emit("disableStop");
 
-    await sleep(2000);
+    await this.betModel.create(this.currentPlayers);
+
+    this.currentPlayers = [];
+
+    await sleep(STOP_DISABLE_MS);
+
     this.isBetWait = false;
 
     this.socket.emit("loading");
 
-    await sleep(5000);
+    await sleep(LOADING_MS);
 
     this.interval = setInterval(() => this.game(), 100);
   }
 
   async handleBet(userPayload: IAuthPayload, dto: BetDto) {
     if (this.isBetWait) {
-      throw new WsException("Ставки сейчас не применяются");
+      return new WsException("Ставки сейчас не применяются");
     }
 
     const user = await this.userModel.findById(userPayload.id);
 
-    const currency = await this.convertService.convert(user.currency, dto.currency, dto.bet);
-
-    if (currency > user.balance) {
-      throw new WsException("Недостаточный баланс");
+    if (!user) {
+      return new WsException("Пользователь не авторизован");
     }
 
-    const player = {};
+    const bet = await this.convertService.convert(user.currency, dto.currency, dto.bet);
 
-    return user.balance;
+    if (bet > user.balance) {
+      return new WsException("Недостаточный баланс");
+    }
+    user.balance -= bet;
+
+    await user.save();
+
+    this.currentPlayers.push({ player: userPayload.id, currency: user.currency, bet, time: new Date() });
+
+    return { message: "Ставка сделана" };
+  }
+
+  async handleCashOut(userPayload: IAuthPayload, dto: CashOutDto) {
+    const user = await this.userModel.findById(userPayload.id);
+    const betIndex = this.currentPlayers.findIndex((b, i) => {
+      return b.player == userPayload.id && i + 1 == dto.betNumber && !b.win;
+    });
+
+    const betData = this.currentPlayers[betIndex];
+
+    const win = this.x * betData.bet;
+
+    this.currentPlayers[betIndex] = {
+      ...betData,
+      win,
+      coeff: this.x,
+    };
+
+    user.balance += win;
+    await user.save();
   }
 }

@@ -8,12 +8,14 @@ import {
   OnGatewayDisconnect,
   WsException,
   ConnectedSocket,
+  WsResponse,
 } from "@nestjs/websockets";
 import { Server, Socket } from "socket.io";
 import { SocketService } from "./socket.service";
 import { UseGuards, UsePipes, ValidationPipe } from "@nestjs/common";
 import { SocketAuthGuard } from "./socketAuth.guard";
 import { BetDto } from "./dto/bet.dto";
+import { CashOutDto } from "./dto/cashOut.dto";
 
 @UsePipes(
   new ValidationPipe({
@@ -49,5 +51,11 @@ export class SocketGateway implements OnGatewayInit, OnGatewayConnection, OnGate
   @SubscribeMessage("bet")
   handleBet(@MessageBody() dto: BetDto, @ConnectedSocket() client: Socket) {
     return this.socketService.handleBet(client["user"], dto);
+  }
+
+  @UseGuards(SocketAuthGuard)
+  @SubscribeMessage("cash-out")
+  handleCashOut(@ConnectedSocket() client: Socket, @MessageBody() dto: CashOutDto) {
+    return this.socketService.handleCashOut(client["user"], dto);
   }
 }
