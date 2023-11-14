@@ -8,7 +8,6 @@ import {
   OnGatewayDisconnect,
   WsException,
   ConnectedSocket,
-  WsResponse,
 } from "@nestjs/websockets";
 import { Server, Socket } from "socket.io";
 import { SocketService } from "./socket.service";
@@ -17,6 +16,7 @@ import { SocketAuthGuard } from "./socketAuth.guard";
 import { BetDto } from "./dto/bet.dto";
 import { CashOutDto } from "./dto/cashOut.dto";
 
+@WebSocketGateway({ cors: true })
 @UsePipes(
   new ValidationPipe({
     stopAtFirstError: true,
@@ -30,7 +30,6 @@ import { CashOutDto } from "./dto/cashOut.dto";
     },
   }),
 )
-@WebSocketGateway({ cors: true })
 export class SocketGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() public server: Server;
 

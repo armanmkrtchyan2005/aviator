@@ -4,6 +4,7 @@ import { MongooseModule } from "@nestjs/mongoose";
 import { User, UserSchema } from "src/user/schemas/user.schema";
 import { ConvertModule } from "src/convert/convert.module";
 import { Bet, BetSchema } from "src/user/schemas/bet.schema";
+import { SocketGateway } from "./socket.gateway";
 
 @Module({
   imports: [
@@ -13,6 +14,6 @@ import { Bet, BetSchema } from "src/user/schemas/bet.schema";
     ]),
     ConvertModule,
   ],
-  providers: [SocketService],
+  providers: [SocketGateway, SocketService],
 })
 export class SocketModule {}

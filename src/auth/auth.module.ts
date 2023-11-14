@@ -15,7 +15,7 @@ import { ConvertModule } from "src/convert/convert.module";
         return {
           secret: process.env.JWT_SECRET,
           signOptions: {
-            expiresIn: "1d",
+            expiresIn: "1w",
           },
         };
       },
