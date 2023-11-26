@@ -1,5 +1,5 @@
-import { ConvertService } from "./../convert/convert.service";
 import * as bcrypt from "bcrypt";
+import { ConvertService } from "./../convert/convert.service";
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { InjectModel } from "@nestjs/mongoose";
@@ -19,6 +19,10 @@ import { ChangePasswordOkResponse } from "./responses/change-password.response";
 
 const saltRounds = 10;
 const salt = bcrypt.genSaltSync(saltRounds);
+
+const generateReferralCode = () => {
+  return (Math.floor(Math.random() * Date.now()) + Date.now()).toString(36);
+};
 
 const generateCode = () => {
   return Math.floor(100000 + Math.random() * 900000);
@@ -55,7 +59,15 @@ export class AuthService {
 
     const hashedPassword = bcrypt.hashSync(dto.password, salt);
 
-    const newUser = await this.userModel.create({ ...dto, balance, password: hashedPassword });
+    const leader = await this.userModel.findOne({ login: dto.from });
+
+    const newUser = await this.userModel.create({ ...dto, balance, password: hashedPassword, leader });
+
+    if (leader) {
+      leader.descendants.push({ _id: newUser._id.toString(), createdAt: new Date(), earnings: 0 });
+
+      await leader.save();
+    }
 
     const token = this.jwtService.sign({ id: newUser._id }, {});
 

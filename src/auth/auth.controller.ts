@@ -1,10 +1,10 @@
-import { Body, Controller, HttpCode, HttpStatus, Param, Post, Put, Req, Session } from "@nestjs/common";
+import { Body, Controller, HttpCode, HttpStatus, Param, Post, Put, Query, Req, Session } from "@nestjs/common";
 import { SignUpDto } from "./dto/sign-up.dto";
 import { AuthService } from "./auth.service";
 import { SignInDto } from "./dto/sign-in.dto";
 import { SendCodeDto } from "./dto/send-code.dto";
 import { ConfirmCodeDto } from "./dto/confirm-code.dto";
-import { ApiBadRequestResponse, ApiCreatedResponse, ApiOkResponse, ApiParam, ApiTags } from "@nestjs/swagger";
+import { ApiBadRequestResponse, ApiCreatedResponse, ApiOkResponse, ApiParam, ApiQuery, ApiTags } from "@nestjs/swagger";
 import { SignUpBadResponse, SignUpCreatedResponse } from "./responses/sign-up.response";
 import { SignInBadResponse, SignInOkResponse } from "./responses/sign-in.response";
 import { SendCodeBadResponse, SendCodeOkResponse } from "./responses/send-code.response";

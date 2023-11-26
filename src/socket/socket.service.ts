@@ -131,6 +131,22 @@ export class SocketService {
     user.balance += win;
     await user.save();
 
+    const leader = await this.userModel.findById(user.leader);
+
+    if (leader) {
+      const converted = await this.convertService.convert(user.currency, leader.currency, (user.balance * 40) / 100);
+
+      leader.balance += converted;
+      leader.referralBalance += converted;
+
+      const findIndex = leader.descendants.findIndex(i => i._id === user._id.toString());
+      const descendant = leader.descendants[findIndex];
+
+      leader.descendants[findIndex] = { ...descendant, earnings: descendant.earnings + converted };
+
+      await leader.save();
+    }
+
     //1. 3 player algorithm in Cash Out
     if (true) {
       this.threePlayers = this.threePlayers.filter(u => u.player !== userPayload?.id);

@@ -1,5 +1,5 @@
+import mongoose, { HydratedDocument } from "mongoose";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { HydratedDocument, SchemaTypes } from "mongoose";
 import { User } from "./user.schema";
 
 export type BetDocument = HydratedDocument<Bet>;
@@ -15,13 +15,6 @@ export interface IBet {
 
 @Schema()
 export class Bet {
-  @Prop({
-    required: true,
-    type: SchemaTypes.ObjectId,
-    ref: User.name,
-  })
-  player: User;
-
   @Prop({ required: true })
   bet: number;
 
@@ -36,6 +29,13 @@ export class Bet {
 
   @Prop()
   win: number;
+
+  @Prop({
+    required: true,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: User.name,
+  })
+  player: User;
 }
 
 export const BetSchema = SchemaFactory.createForClass(Bet);

@@ -1,35 +1,14 @@
-import {
-  WebSocketGateway,
-  SubscribeMessage,
-  MessageBody,
-  OnGatewayConnection,
-  WebSocketServer,
-  OnGatewayInit,
-  OnGatewayDisconnect,
-  WsException,
-  ConnectedSocket,
-} from "@nestjs/websockets";
+import { WebSocketGateway, SubscribeMessage, MessageBody, OnGatewayConnection, WebSocketServer, OnGatewayInit, OnGatewayDisconnect, ConnectedSocket } from "@nestjs/websockets";
 import { Server, Socket } from "socket.io";
 import { SocketService } from "./socket.service";
-import { UseGuards, UsePipes, ValidationPipe } from "@nestjs/common";
+import { UseFilters, UseGuards, UsePipes, ValidationPipe } from "@nestjs/common";
 import { SocketAuthGuard } from "./socketAuth.guard";
 import { BetDto } from "./dto/bet.dto";
 import { CashOutDto } from "./dto/cashOut.dto";
+import { SocketExceptionsFilter } from "./socket.exception";
 
 @WebSocketGateway({ cors: true })
-@UsePipes(
-  new ValidationPipe({
-    stopAtFirstError: true,
-    exceptionFactory(validationErrors = []) {
-      if (this.isDetailedOutputDisabled) {
-        return new WsException("Bad request");
-      }
-      const errors = this.flattenValidationErrors(validationErrors);
-
-      return new WsException(errors);
-    },
-  }),
-)
+@UseFilters(SocketExceptionsFilter)
 export class SocketGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() public server: Server;
 

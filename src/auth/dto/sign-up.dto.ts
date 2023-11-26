@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsISO4217CurrencyCode, IsAlphanumeric, IsEmail, MinLength, MaxLength, IsNotEmpty } from "class-validator";
+import { IsISO4217CurrencyCode, IsAlphanumeric, IsEmail, MinLength, MaxLength, IsNotEmpty, IsNumber, IsString } from "class-validator";
 import { Match } from "../decorators/match.decorator";
 
 export const PASSWORD_MIN_LENGTH = 8;
@@ -42,7 +42,7 @@ export class SignUpDto {
     example: "12345678",
   })
   @IsNotEmpty({
-    message: "Поле обзательно для заполнения",
+    message: "passwordConfirm обязательно для заполнения",
   })
   @Match("password", { message: "Пароли должны совпадать" })
   passwordConfirm: string;
@@ -51,7 +51,7 @@ export class SignUpDto {
     example: "test@gmail.com",
   })
   @IsNotEmpty({
-    message: "Поле обзательно для заполнения",
+    message: "email обязательно для заполнения",
   })
   @IsEmail(
     {},
@@ -60,4 +60,20 @@ export class SignUpDto {
     },
   )
   email: string;
+
+  @ApiProperty({
+    example: 123456,
+  })
+  @IsNotEmpty({
+    message: "Поле обзательно для заполнения",
+  })
+  @IsNumber({}, { message: "telegramId должно бить числом" })
+  telegramId: number;
+
+  @ApiProperty({
+    example: "test123",
+    required: false,
+  })
+  @IsString({ message: "from должно быть текстовое" })
+  from: string;
 }
