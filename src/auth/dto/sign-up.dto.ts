@@ -50,9 +50,6 @@ export class SignUpDto {
   @ApiProperty({
     example: "test@gmail.com",
   })
-  @IsNotEmpty({
-    message: "email обязательно для заполнения",
-  })
   @IsEmail(
     {},
     {

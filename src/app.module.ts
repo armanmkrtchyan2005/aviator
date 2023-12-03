@@ -8,6 +8,8 @@ import { UserModule } from "./user/user.module";
 import { MailModule } from "./mail/mail.module";
 import { ConvertModule } from "./convert/convert.module";
 import { SocketModule } from "./socket/socket.module";
+import { BetsModule } from './bets/bets.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -21,6 +23,8 @@ import { SocketModule } from "./socket/socket.module";
     MailModule,
     ConvertModule,
     SocketModule,
+    BetsModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [AppService],

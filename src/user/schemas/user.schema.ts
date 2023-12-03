@@ -1,6 +1,7 @@
 import mongoose, { HydratedDocument } from "mongoose";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Type } from "class-transformer";
+import { Bonus, BonusDocument } from "./bonus.schema";
 
 export type UserDocument = HydratedDocument<User>;
 
@@ -24,7 +25,7 @@ export class User {
   @Prop({ required: true })
   password: string;
 
-  @Prop({ required: true })
+  @Prop()
   email: string;
 
   @Prop({ required: true, default: 0 })
@@ -32,9 +33,6 @@ export class User {
 
   @Prop({ required: true, default: 0 })
   referralBalance: number;
-
-  @Prop({ required: false })
-  promoCode: string;
 
   @Prop({
     type: mongoose.Schema.Types.ObjectId,
@@ -45,8 +43,9 @@ export class User {
 
   @Prop({ required: true, type: [{ type: Object }] })
   descendants: IDescendants[];
+
+  @Prop({ required: true, type: [{ type: mongoose.Schema.Types.ObjectId, ref: Bonus.name, unique: true }] })
+  bonuses: BonusDocument[];
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
-
-const a = new User();

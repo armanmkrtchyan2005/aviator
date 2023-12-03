@@ -27,7 +27,7 @@ export class SocketGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
   @UseGuards(SocketAuthGuard)
   @SubscribeMessage("bet")
-  handleBet(@MessageBody() dto: BetDto, @ConnectedSocket() client: Socket) {
+  handleBet(@ConnectedSocket() client: Socket, @MessageBody() dto: BetDto) {
     return this.socketService.handleBet(client["user"], dto);
   }
 

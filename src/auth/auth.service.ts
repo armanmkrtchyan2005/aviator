@@ -18,13 +18,9 @@ import { ChangePasswordDto } from "./dto/change-password.dto";
 import { ChangePasswordOkResponse } from "./responses/change-password.response";
 
 const saltRounds = 10;
-const salt = bcrypt.genSaltSync(saltRounds);
+export const salt = bcrypt.genSaltSync(saltRounds);
 
-const generateReferralCode = () => {
-  return (Math.floor(Math.random() * Date.now()) + Date.now()).toString(36);
-};
-
-const generateCode = () => {
+export const generateCode = () => {
   return Math.floor(100000 + Math.random() * 900000);
 };
 

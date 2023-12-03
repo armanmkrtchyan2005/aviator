@@ -1,6 +1,6 @@
-import mongoose, { HydratedDocument } from "mongoose";
+import mongoose, { HydratedDocument, Types } from "mongoose";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { User } from "./user.schema";
+import { User } from "../../user/schemas/user.schema";
 
 export type BetDocument = HydratedDocument<Bet>;
 
@@ -11,6 +11,8 @@ export interface IBet {
   time: Date;
   coeff?: number;
   win?: number;
+  bonusId?: Types.ObjectId;
+  bonusCoeff?: number;
 }
 
 @Schema()
