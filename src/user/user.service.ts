@@ -14,12 +14,16 @@ import { ChangePasswordDto } from "src/auth/dto/change-password.dto";
 import { Bonus } from "./schemas/bonus.schema";
 import { AddBonusDto } from "./dto/add-bonus.dto";
 import { ConvertService } from "src/convert/convert.service";
+import { Requisite, RequisiteStatusEnum } from "src/admin/schemas/requisite.schema";
+import { Admin } from "src/admin/schemas/admin.schema";
 
 @Injectable()
 export class UserService {
   constructor(
     @InjectModel(User.name) private userModel: Model<User>,
     @InjectModel(Bonus.name) private bonusModel: Model<Bonus>,
+    @InjectModel(Requisite.name) private requisiteModel: Model<Requisite>,
+    @InjectModel(Admin.name) private adminModel: Model<Admin>,
     private jwtService: JwtService,
     private mailService: MailService,
     private convertService: ConvertService,
@@ -209,5 +213,46 @@ export class UserService {
     bonus.currency = user.currency;
 
     return bonus;
+  }
+
+  async findRecommendedRequisites(userPayload: IAuthPayload) {
+    const user = await this.userModel.findById(userPayload.id);
+
+    const recommendedRequisites = await this.requisiteModel.find({
+      currency: user.currency,
+      status: RequisiteStatusEnum.ACTIVE,
+    });
+
+    return recommendedRequisites;
+  }
+
+  async findRequisites() {
+    const requisites = await this.requisiteModel.aggregate([
+      {
+        $match: {
+          status: "Активный",
+        },
+      },
+      {
+        $group: {
+          _id: "$currency",
+          requisites: {
+            $push: "$$CURRENT",
+          },
+        },
+      },
+      {
+        $addFields: {
+          currency: "$_id",
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+        },
+      },
+    ]);
+
+    return requisites;
   }
 }

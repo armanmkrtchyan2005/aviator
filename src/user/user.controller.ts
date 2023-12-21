@@ -70,4 +70,16 @@ export class UserController {
   changePassword(@Body() dto: ChangePasswordDto, @Param("token") token: string) {
     return this.userService.changePassword(dto, token);
   }
+
+  @HttpCode(HttpStatus.OK)
+  @Get("/requisites")
+  findRequisites() {
+    return this.userService.findRequisites();
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Get("/requisites/recommended")
+  findRecommendedRequisites(@Req() req: Request) {
+    return this.userService.findRecommendedRequisites(req["user"]);
+  }
 }

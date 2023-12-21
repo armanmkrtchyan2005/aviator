@@ -13,6 +13,9 @@ interface IDescendants {
 
 @Schema()
 export class User {
+  @Prop({ type: mongoose.Schema.Types.ObjectId, default: () => new mongoose.Types.ObjectId() })
+  _id: mongoose.Types.ObjectId;
+
   @Prop({ required: true })
   telegramId: number;
 

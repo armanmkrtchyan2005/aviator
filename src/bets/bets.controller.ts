@@ -2,7 +2,9 @@ import { Controller, Get, Query, Req } from "@nestjs/common";
 import { BetsService } from "./bets.service";
 import { MyBetsQueryDto } from "./dto/my-bets-query.dto";
 import { Auth } from "src/auth/decorators/auth.decorator";
+import { ApiTags } from "@nestjs/swagger";
 
+@ApiTags("Bets")
 @Controller("bets")
 export class BetsController {
   constructor(private betsService: BetsService) {}
