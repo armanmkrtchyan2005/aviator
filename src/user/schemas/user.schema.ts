@@ -2,6 +2,7 @@ import mongoose, { HydratedDocument } from "mongoose";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Type } from "class-transformer";
 import { Bonus, BonusDocument } from "./bonus.schema";
+import { ApiProperty } from "@nestjs/swagger";
 
 export type UserDocument = HydratedDocument<User>;
 
@@ -13,30 +14,37 @@ interface IDescendants {
 
 @Schema()
 export class User {
-  @Prop({ type: mongoose.Schema.Types.ObjectId, default: () => new mongoose.Types.ObjectId() })
+  @ApiProperty({ type: String })
   _id: mongoose.Types.ObjectId;
 
+  @ApiProperty()
   @Prop({ required: true })
   telegramId: number;
 
+  @ApiProperty()
   @Prop({ required: true })
   currency: string;
 
+  @ApiProperty()
   @Prop({ required: true })
   login: string;
 
   @Prop({ required: true })
   password: string;
 
+  @ApiProperty()
   @Prop()
   email: string;
 
+  @ApiProperty()
   @Prop({ required: true, default: 0 })
   balance: number;
 
+  @ApiProperty()
   @Prop({ required: true, default: 0 })
   referralBalance: number;
 
+  @ApiProperty()
   @Prop({
     type: mongoose.Schema.Types.ObjectId,
     ref: User.name,
@@ -44,9 +52,11 @@ export class User {
   @Type(() => User)
   leader: User;
 
+  @ApiProperty()
   @Prop({ required: true, type: [{ type: Object }] })
   descendants: IDescendants[];
 
+  @ApiProperty()
   @Prop({ required: true, type: [{ type: mongoose.Schema.Types.ObjectId, ref: Bonus.name, unique: true }] })
   bonuses: BonusDocument[];
 }

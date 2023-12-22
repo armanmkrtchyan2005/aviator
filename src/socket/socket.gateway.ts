@@ -6,6 +6,7 @@ import { SocketAuthGuard } from "./socketAuth.guard";
 import { BetDto } from "./dto/bet.dto";
 import { CashOutDto } from "./dto/cashOut.dto";
 import { SocketExceptionsFilter } from "./socket.exception";
+import { ApiTags } from "@nestjs/swagger";
 
 @WebSocketGateway({ cors: true })
 @UseFilters(SocketExceptionsFilter)

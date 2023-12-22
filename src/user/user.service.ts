@@ -124,7 +124,7 @@ export class UserService {
 
       await user.save();
 
-      return { message: "ваш email успешно изменен" };
+      return { message: "Ваш email успешно изменен" };
     } catch (error) {
       throw new BadRequestException("Неверный код");
     }

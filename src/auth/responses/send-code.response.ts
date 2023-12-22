@@ -3,7 +3,7 @@ import { ApiProperty } from "@nestjs/swagger";
 
 export class SendCodeOkResponse {
   @ApiProperty({
-    example: "Code sended to your email",
+    example: "Код отправлен на ваш email",
   })
   message: string;
 }
@@ -12,6 +12,6 @@ export class SendCodeBadResponse {
   @ApiProperty({ example: HttpStatus.BAD_REQUEST })
   status: number;
 
-  @ApiProperty({ example: "User from this email not founded" })
+  @ApiProperty({ example: "Пользователь с таким email не найден" })
   message: string;
 }

@@ -90,6 +90,6 @@ export class ReplenishmentService {
 
     this.schedulerRegistry.deleteCronJob(dto.id);
 
-    return replenishment;
+    return { message: "Оплата подтверждена" };
   }
 }

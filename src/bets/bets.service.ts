@@ -10,7 +10,11 @@ import { Bet } from "./schemas/bet.schema";
 export class BetsService {
   constructor(@InjectModel(User.name) private userModel: Model<User>, @InjectModel(Bet.name) private betModel: Model<Bet>) {}
 
-  async topBets() {}
+  async topBets(query: MyBetsQueryDto) {
+    const bets = await this.betModel.find().sort({ win: -1, time: -1 }).skip(query.skip).limit(query.limit);
+
+    return bets;
+  }
 
   async myBets(auth: IAuthPayload, query: MyBetsQueryDto) {
     const bets = await this.betModel.find({ player: auth.id }).skip(query.skip).limit(query.limit).sort({ time: -1 });

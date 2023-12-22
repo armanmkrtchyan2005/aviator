@@ -12,6 +12,6 @@ export class ChangePasswordBadResponse {
   @ApiProperty({ example: HttpStatus.BAD_REQUEST })
   status: number;
 
-  @ApiProperty({ example: "Wrong code" })
+  @ApiProperty({ example: "Неверный код" })
   message: string;
 }

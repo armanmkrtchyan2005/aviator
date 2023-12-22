@@ -11,6 +11,9 @@ export enum RequisiteStatusEnum {
 
 @Schema({ timestamps: true })
 export class Requisite {
+  @ApiProperty({ type: String })
+  _id: mongoose.Types.ObjectId;
+
   @ApiProperty()
   @Prop({ required: true })
   requisite: string;
