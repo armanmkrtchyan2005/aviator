@@ -21,7 +21,6 @@ interface IReplenishmentLimit {
 
 @Schema()
 export class Admin {
-  @Prop({ type: mongoose.Schema.Types.ObjectId })
   _id: mongoose.Types.ObjectId;
 
   @Prop({

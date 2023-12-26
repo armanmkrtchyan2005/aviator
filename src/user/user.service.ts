@@ -1,4 +1,5 @@
 import * as bcrypt from "bcrypt";
+import * as fs from "fs";
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { User } from "./schemas/user.schema";
@@ -254,5 +255,19 @@ export class UserService {
     ]);
 
     return requisites;
+  }
+
+  async updateProfileImage(userPayload: IAuthPayload, imagePath: string) {
+    const user = await this.userModel.findById(userPayload.id);
+
+    if (fs.existsSync(user.profileImage)) {
+      fs.rmSync(user.profileImage);
+    }
+
+    user.profileImage = imagePath;
+
+    await user.save();
+
+    return user;
   }
 }

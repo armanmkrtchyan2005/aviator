@@ -8,6 +8,10 @@ import { SignInOkResponse } from "src/auth/responses/sign-in.response";
 import { ConfirmReplenishmentBadResponse, ConfirmReplenishmentResponse, CreateRequisiteBadResponse } from "./responses/requisite.response";
 import { Requisite } from "./schemas/requisite.schema";
 import { Replenishment } from "src/replenishment/schemas/replenishment.schema";
+import { CancelReplenishmentDto } from "./dto/cancelReplenishment.dto";
+import { Withdrawal } from "src/withdrawal/schemas/withdrawal.schema";
+import { CancelReplenishmentBadResponse, CancelReplenishmentResponse } from "src/replenishment/responses/replenishment.response";
+import { CancelWithdrawalBadResponse, CancelWithdrawalOkResponse } from "src/withdrawal/responses/cancelWithdrawal.response";
 
 @ApiTags("Admin")
 @Controller("admin")
@@ -49,5 +53,36 @@ export class AdminController {
   @Put("/replenishments/:id")
   confirmReplenishment(@Param("id") id: string) {
     return this.adminService.confirmReplenishment(id);
+  }
+
+  @AdminAuth()
+  @ApiOkResponse({ type: CancelReplenishmentResponse })
+  @ApiBadRequestResponse({ type: CancelReplenishmentBadResponse })
+  @Put("/replenishments/:id/cancel")
+  cancelReplenishment(@Param("id") id: string, @Body() dto: CancelReplenishmentDto) {
+    return this.adminService.cancelReplenishment(id, dto);
+  }
+
+  @AdminAuth()
+  @ApiOkResponse({ type: Withdrawal })
+  @Get("/withdrawals")
+  getWithdrawals() {
+    return this.adminService.getWithdrawals();
+  }
+
+  @AdminAuth()
+  @ApiOkResponse({ type: ConfirmReplenishmentResponse })
+  @ApiBadRequestResponse({ type: ConfirmReplenishmentBadResponse })
+  @Put("/withdrawals/:id")
+  confirmWithdrawal(@Param("id") id: string) {
+    return this.adminService.confirmWithdrawal(id);
+  }
+
+  @AdminAuth()
+  @ApiOkResponse({ type: CancelWithdrawalOkResponse })
+  @ApiBadRequestResponse({ type: CancelWithdrawalBadResponse })
+  @Put("/withdrawals/:id/cancel")
+  cancelWithdrawal(@Param("id") id: string, @Body() dto: CancelReplenishmentDto) {
+    return this.adminService.cancelWithdrawal(id, dto);
   }
 }

@@ -1,8 +1,24 @@
 import { UserService } from "./user.service";
-import { Body, Controller, Get, HttpStatus, Post, Query, Req, Session, HttpCode, Put, Param } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  HttpStatus,
+  Post,
+  Query,
+  Req,
+  Session,
+  HttpCode,
+  Put,
+  Param,
+  UseInterceptors,
+  UploadedFile,
+  ParseFilePipe,
+  FileTypeValidator,
+} from "@nestjs/common";
 import { Request } from "express";
 import { Auth } from "src/auth/decorators/auth.decorator";
-import { ApiBadRequestResponse, ApiOkResponse, ApiTags } from "@nestjs/swagger";
+import { ApiBadRequestResponse, ApiBody, ApiConsumes, ApiOkResponse, ApiTags } from "@nestjs/swagger";
 import { SendCodeDto } from "src/auth/dto/send-code.dto";
 import { ConfirmCodeDto } from "src/auth/dto/confirm-code.dto";
 import { OldPasswordConfirmDto } from "./dto/old-password-confirm.dto";
@@ -24,6 +40,9 @@ import {
 import { SignInOkResponse } from "src/auth/responses/sign-in.response";
 import { FindRequisitesResponse } from "./responses/requisite.response";
 import { Requisite } from "src/admin/schemas/requisite.schema";
+import { FileInterceptor } from "@nestjs/platform-express";
+import { diskStorage } from "multer";
+import { extname } from "path";
 
 @ApiTags("User")
 @Auth()
@@ -114,5 +133,47 @@ export class UserController {
   @Get("/requisites/recommended")
   findRecommendedRequisites(@Req() req: Request) {
     return this.userService.findRecommendedRequisites(req["user"]);
+  }
+
+  @ApiOkResponse({ type: User })
+  @ApiConsumes("multipart/form-data")
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: {
+        file: {
+          type: "string",
+          format: "binary",
+        },
+      },
+    },
+  })
+  @Put("/profile-image")
+  @UseInterceptors(
+    FileInterceptor("file", {
+      storage: diskStorage({
+        destination: "./uploads/profile-images",
+        filename: (req, file, callback) => {
+          const randomName = Array(32)
+            .fill(null)
+            .map(() => Math.round(Math.random() * 16).toString(16))
+            .join("");
+          return callback(null, `${randomName}${extname(file.originalname)}`);
+        },
+      }),
+    }),
+  )
+  async uploadProfileImage(
+    @Req() req: Request,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [new FileTypeValidator({ fileType: /(jpg|jpeg|png|webp)$/ })],
+        fileIsRequired: true,
+      }),
+    )
+    file: Express.Multer.File,
+  ) {
+    const imagePath = file.path;
+    return this.userService.updateProfileImage(req["user"], imagePath);
   }
 }

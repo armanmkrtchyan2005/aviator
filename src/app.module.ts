@@ -11,6 +11,7 @@ import { SocketModule } from "./socket/socket.module";
 import { BetsModule } from "./bets/bets.module";
 import { AdminModule } from "./admin/admin.module";
 import { ReplenishmentModule } from './replenishment/replenishment.module';
+import { WithdrawalModule } from './withdrawal/withdrawal.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { ReplenishmentModule } from './replenishment/replenishment.module';
     BetsModule,
     AdminModule,
     ReplenishmentModule,
+    WithdrawalModule,
   ],
   controllers: [AppController],
   providers: [AppService],

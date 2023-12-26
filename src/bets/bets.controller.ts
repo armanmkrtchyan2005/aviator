@@ -10,13 +10,13 @@ import { Bet } from "./schemas/bet.schema";
 export class BetsController {
   constructor(private betsService: BetsService) {}
 
-  @ApiOkResponse({ type: Bet })
+  @ApiOkResponse({ type: [Bet] })
   @Get("/tops")
   topBets(@Query() query: MyBetsQueryDto) {
     return this.betsService.topBets(query);
   }
 
-  @ApiOkResponse({ type: Bet })
+  @ApiOkResponse({ type: [Bet] })
   @Get("/my")
   @Auth()
   myBets(@Req() req: Request, @Query() query: MyBetsQueryDto) {

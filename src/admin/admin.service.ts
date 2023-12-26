@@ -7,6 +7,9 @@ import { JwtService } from "@nestjs/jwt";
 import { Requisite } from "./schemas/requisite.schema";
 import { CreateRequisiteDto } from "./dto/createRequisite.dto";
 import { Replenishment, ReplenishmentStatusEnum } from "src/replenishment/schemas/replenishment.schema";
+import { ConvertService } from "src/convert/convert.service";
+import { Withdrawal, WithdrawalStatusEnum } from "src/withdrawal/schemas/withdrawal.schema";
+import { CancelReplenishmentDto } from "./dto/cancelReplenishment.dto";
 
 @Injectable()
 export class AdminService {
@@ -14,7 +17,9 @@ export class AdminService {
     @InjectModel(Admin.name) private adminModel: Model<Admin>,
     @InjectModel(Replenishment.name) private replenishmentModel: Model<Replenishment>,
     @InjectModel(Requisite.name) private requisiteModel: Model<Requisite>,
+    @InjectModel(Withdrawal.name) private withdrawalModel: Model<Withdrawal>,
     private jwtService: JwtService,
+    private convertService: ConvertService,
   ) {}
 
   async login(dto: AdminLoginDto) {
@@ -71,7 +76,7 @@ export class AdminService {
       throw new BadRequestException("Вы не можете менять подтвержденную заявку");
     }
 
-    replenishment.user.balance += replenishment.amount;
+    replenishment.user.balance += await this.convertService.convert(replenishment.currency, replenishment.user.currency, replenishment.amount);
 
     await replenishment.user.save();
 
@@ -80,5 +85,73 @@ export class AdminService {
     await replenishment.save();
 
     return { message: "Заявка подтверждена" };
+  }
+
+  async cancelReplenishment(id: string, dto: CancelReplenishmentDto) {
+    const replenishment = await this.replenishmentModel.findById(id).populate("user");
+
+    if (!replenishment) {
+      throw new NotFoundException("Нет такой заявки");
+    }
+
+    if (replenishment.status == ReplenishmentStatusEnum.COMPLETED || replenishment.status == ReplenishmentStatusEnum.CANCELED) {
+      throw new BadRequestException("Вы не можете менять заявку");
+    }
+
+    replenishment.status = ReplenishmentStatusEnum.CANCELED;
+
+    replenishment.statusMessage = dto.statusMessage;
+
+    await replenishment.save();
+
+    return { message: "Заявка отменена" };
+  }
+
+  async getWithdrawals() {
+    const withdrawals = await this.withdrawalModel.find().sort({ createdAt: -1 });
+
+    return withdrawals;
+  }
+
+  async confirmWithdrawal(id: string) {
+    const withdrawal = await this.withdrawalModel.findById(id);
+
+    if (!withdrawal) {
+      throw new NotFoundException("Нет такой заявки");
+    }
+
+    if (withdrawal.status == WithdrawalStatusEnum.COMPLETED) {
+      throw new BadRequestException("Вы не можете менять подтвержденную заявку");
+    }
+
+    withdrawal.user.balance += await this.convertService.convert(withdrawal.currency, withdrawal.user.currency, withdrawal.amount);
+
+    await withdrawal.user.save();
+
+    withdrawal.status = WithdrawalStatusEnum.COMPLETED;
+
+    await withdrawal.save();
+
+    return { message: "Заявка подтверждена" };
+  }
+
+  async cancelWithdrawal(id: string, dto: CancelReplenishmentDto) {
+    const withdrawal = await this.withdrawalModel.findById(id);
+
+    if (!withdrawal) {
+      throw new NotFoundException("Нет такой заявки");
+    }
+
+    if (withdrawal.status == WithdrawalStatusEnum.COMPLETED || withdrawal.status == WithdrawalStatusEnum.CANCELED) {
+      throw new BadRequestException("Вы не можете менять заявку");
+    }
+
+    withdrawal.status = WithdrawalStatusEnum.CANCELED;
+
+    withdrawal.statusMessage = dto.statusMessage;
+
+    await withdrawal.save();
+
+    return { message: "Заявка отменена" };
   }
 }

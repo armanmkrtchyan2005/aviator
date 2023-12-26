@@ -59,6 +59,10 @@ export class User {
   @ApiProperty()
   @Prop({ required: true, type: [{ type: mongoose.Schema.Types.ObjectId, ref: Bonus.name, unique: true }] })
   bonuses: BonusDocument[];
+
+  @ApiProperty({ example: "/image.jpg" })
+  @Prop({ default: "" })
+  profileImage: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

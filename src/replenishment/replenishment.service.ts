@@ -25,9 +25,11 @@ export class ReplenishmentService {
   ) {}
 
   async findAll(userPayload: IAuthPayload) {
-    const replenishments = await this.replenishmentModel.find({
-      user: userPayload.id,
-    });
+    const replenishments = await this.replenishmentModel
+      .find({
+        user: userPayload.id,
+      })
+      .populate("requisite");
 
     return replenishments;
   }
