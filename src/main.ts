@@ -1,6 +1,6 @@
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
-import { ValidationPipe } from "@nestjs/common";
+import { BadRequestException, ValidationPipe } from "@nestjs/common";
 import * as session from "express-session";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import * as fs from "fs";
@@ -17,6 +17,14 @@ async function bootstrap() {
     new ValidationPipe({
       transform: true,
       transformOptions: { enableImplicitConversion: true },
+      stopAtFirstError: true,
+      // exceptionFactory: (errors) => {
+      //   const result = errors.map((error) => ({
+      //     property: error.property,
+      //     message: error.constraints[Object.keys(error.constraints)[0]],
+      //   }));
+      //   return new BadRequestException(result);
+      // },
     }),
   );
 

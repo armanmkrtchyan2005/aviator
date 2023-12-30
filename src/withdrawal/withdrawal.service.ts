@@ -17,7 +17,7 @@ export class WithdrawalService {
     @InjectModel(Requisite.name) private requisiteModel: Model<Requisite>,
     @InjectModel(Withdrawal.name) private withdrawalModel: Model<Withdrawal>,
     private convertService: ConvertService,
-  ) {}
+  ) { }
 
   async findAll(userPayload: IAuthPayload) {
     const withdrawals = await this.withdrawalModel

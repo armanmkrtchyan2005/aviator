@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsISO4217CurrencyCode, IsMongoId, IsNotEmpty, IsNumber, IsString } from "class-validator";
+import { IsCreditCard, IsISO4217CurrencyCode, IsMongoId, IsNotEmpty, IsNumber } from "class-validator";
 
 export class CreateWithdrawalDto {
   @ApiProperty({ example: "UZS" })
@@ -14,4 +14,9 @@ export class CreateWithdrawalDto {
   @IsNotEmpty()
   @IsMongoId()
   requisite: string;
+
+  @ApiProperty()
+  @IsNotEmpty()
+  @IsCreditCard()
+  userRequisite: string
 }

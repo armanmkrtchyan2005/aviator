@@ -30,7 +30,7 @@ export class SocketService {
     @InjectModel(Bet.name) private betModel: Model<Bet>,
     @InjectModel(Admin.name) private adminModel: Model<Admin>,
     private convertService: ConvertService,
-  ) {}
+  ) { }
 
   private currentPlayers: IBet[] = [];
   private algorithms: IAlgorithms[] = [];
@@ -61,9 +61,9 @@ export class SocketService {
   private totalBets: number = 0;
   private partOfProfit: number = 0;
 
-  handleConnection(client: Socket) {}
+  handleConnection(client: Socket) { }
 
-  handleDisconnect(socket: Socket): void {}
+  handleDisconnect(socket: Socket): void { }
 
   private randomOneHourAlgorithm() {
     const daley = _.random(HOUR_IN_MS, 2 * HOUR_IN_MS);
@@ -96,8 +96,7 @@ export class SocketService {
       await this.loading();
     }
 
-    this.socket.emit("game", this.x);
-    this.socket.emit("players", this.currentPlayers);
+    this.socket.emit("game", { x: this.x, currentPlayers: this.currentPlayers.map(({ playerId, bonusCoeff, bonusId, ...bet }) => bet) });
   }
 
   async handleBet(userPayload: IAuthPayload, dto: BetDto) {
@@ -128,7 +127,7 @@ export class SocketService {
       bet = await this.convertService.convert(bonus?.currency, user.currency, bonus.bonus);
     }
 
-    this.currentPlayers.push({ player: userPayload.id, currency: user.currency, bet, time: new Date(), bonusId: bonus?._id, bonusCoeff: bonus.bonusCoeff });
+    this.currentPlayers.push({ playerId: userPayload.id, playerLogin: user.login, currency: user.currency, bet, time: new Date(), bonusId: bonus?._id, bonusCoeff: bonus.bonusCoeff });
 
     return { message: "Ставка сделана" };
   }
@@ -137,7 +136,7 @@ export class SocketService {
     const user = await this.userModel.findById(userPayload.id);
 
     const betIndex = this.currentPlayers.findIndex((b, i) => {
-      return b.player == userPayload?.id && i + 1 == dto.betNumber && !b.win;
+      return b.playerId == userPayload?.id && i + 1 == dto.betNumber && !b.win;
     });
 
     if (betIndex == -1) {
@@ -185,7 +184,7 @@ export class SocketService {
 
     //1. 3 player algorithm in Cash Out
     if (this.algorithms[0]?.active) {
-      this.threePlayers = this.threePlayers.filter(u => u.player !== userPayload?.id);
+      this.threePlayers = this.threePlayers.filter(u => u.playerId !== userPayload?.id);
       if (!this.threePlayers.length) {
         this.loading();
       }
@@ -244,10 +243,11 @@ export class SocketService {
 
     clearInterval(this.interval);
 
-    this.socket.emit("disableStop");
+    this.socket.emit("crash");
+
     this.currentPlayers.forEach(bet => {
       if (bet.bonusId) {
-        this.userModel.findByIdAndUpdate(bet.player, { $pull: { bonuses: bet.bonusId } });
+        this.userModel.findByIdAndUpdate(bet.playerId, { $pull: { bonuses: bet.bonusId } });
       }
     });
 
@@ -257,6 +257,7 @@ export class SocketService {
     this.threePlayers = [];
 
     await sleep(STOP_DISABLE_MS);
+
 
     this.isBetWait = false;
 

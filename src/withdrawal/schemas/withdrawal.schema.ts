@@ -34,6 +34,10 @@ export class Withdrawal {
   @Prop()
   statusMessage: string;
 
+  @ApiProperty()
+  @Prop()
+  userRequisite: string;
+
   @ApiProperty({ oneOf: [{ type: "string" }, { $ref: getSchemaPath(Requisite) }] })
   @Prop({ required: true, type: mongoose.Schema.Types.ObjectId, ref: Requisite.name })
   requisite: Requisite;
