@@ -8,12 +8,28 @@ import { ConfirmReplenishmentDto } from "./dto/confirm-replenishment.dto";
 import { ApiBadRequestResponse, ApiCreatedResponse, ApiOkResponse, ApiTags, getSchemaPath } from "@nestjs/swagger";
 import { Replenishment } from "./schemas/replenishment.schema";
 import { CancelReplenishmentBadResponse, CancelReplenishmentResponse, ConfirmReplenishmentResponse } from "./responses/replenishment.response";
+import { LimitsOkResponse } from "./responses/limits.response";
+import { CommissionOkResponse } from "./responses/commission.response";
 
 @Auth()
 @ApiTags("Replenishments")
 @Controller("replenishments")
 export class ReplenishmentController {
   constructor(private readonly replenishmentService: ReplenishmentService) {}
+
+  @ApiOkResponse({
+    type: LimitsOkResponse,
+  })
+  @Get("/limits")
+  findLimits(@Req() req: Request) {
+    return this.replenishmentService.findLimits(req["user"]);
+  }
+
+  @ApiOkResponse({ type: CommissionOkResponse })
+  @Get("/commission")
+  findCommission(@Req() req: Request) {
+    return this.replenishmentService.commission(req["user"]);
+  }
 
   @ApiOkResponse({ type: [Replenishment] })
   @Get("/")

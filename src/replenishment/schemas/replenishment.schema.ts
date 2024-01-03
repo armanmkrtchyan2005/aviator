@@ -3,7 +3,6 @@ import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { ApiProperty, getSchemaPath } from "@nestjs/swagger";
 import { User, UserDocument } from "src/user/schemas/user.schema";
 import { Requisite } from "src/admin/schemas/requisite.schema";
-import { Type } from "class-transformer";
 
 export type ReplenishmentDocument = HydratedDocument<Replenishment>;
 
@@ -15,6 +14,9 @@ export enum ReplenishmentStatusEnum {
 
 @Schema()
 export class Replenishment {
+  @ApiProperty({ type: String })
+  _id: mongoose.Types.ObjectId;
+
   @ApiProperty({ type: String })
   @Prop({ required: true, type: mongoose.Schema.Types.ObjectId, ref: User.name })
   user: UserDocument;

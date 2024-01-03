@@ -30,7 +30,7 @@ export class SocketService {
     @InjectModel(Bet.name) private betModel: Model<Bet>,
     @InjectModel(Admin.name) private adminModel: Model<Admin>,
     private convertService: ConvertService,
-  ) { }
+  ) {}
 
   private currentPlayers: IBet[] = [];
   private algorithms: IAlgorithms[] = [];
@@ -61,9 +61,9 @@ export class SocketService {
   private totalBets: number = 0;
   private partOfProfit: number = 0;
 
-  handleConnection(client: Socket) { }
+  handleConnection(client: Socket) {}
 
-  handleDisconnect(socket: Socket): void { }
+  handleDisconnect(socket: Socket): void {}
 
   private randomOneHourAlgorithm() {
     const daley = _.random(HOUR_IN_MS, 2 * HOUR_IN_MS);
@@ -96,7 +96,7 @@ export class SocketService {
       await this.loading();
     }
 
-    this.socket.emit("game", { x: this.x, currentPlayers: this.currentPlayers.map(({ playerId, bonusCoeff, bonusId, ...bet }) => bet) });
+    this.socket.emit("game", { x: this.x });
   }
 
   async handleBet(userPayload: IAuthPayload, dto: BetDto) {
@@ -127,8 +127,19 @@ export class SocketService {
       bet = await this.convertService.convert(bonus?.currency, user.currency, bonus.bonus);
     }
 
-    this.currentPlayers.push({ playerId: userPayload.id, playerLogin: user.login, currency: user.currency, bet, time: new Date(), bonusId: bonus?._id, bonusCoeff: bonus.bonusCoeff });
+    this.currentPlayers.push({
+      playerId: userPayload.id,
+      playerLogin: user.login,
+      currency: user.currency,
+      bet,
+      time: new Date(),
+      bonusId: bonus?._id,
+      bonusCoeff: bonus.bonusCoeff,
+    });
 
+    const currentPlayers = this.currentPlayers.map(({ playerId, bonusCoeff, bonusId, ...bet }) => bet);
+
+    this.socket.emit("currentPlayers", currentPlayers);
     return { message: "Ставка сделана" };
   }
 
@@ -159,6 +170,10 @@ export class SocketService {
       win,
       coeff: this.x,
     };
+
+    const currentPlayers = this.currentPlayers.map(({ playerId, bonusCoeff, bonusId, ...bet }) => bet);
+
+    this.socket.emit("currentPlayers", currentPlayers);
 
     user.balance += win;
 
@@ -257,7 +272,6 @@ export class SocketService {
     this.threePlayers = [];
 
     await sleep(STOP_DISABLE_MS);
-
 
     this.isBetWait = false;
 

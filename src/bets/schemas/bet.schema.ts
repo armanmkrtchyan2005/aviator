@@ -5,10 +5,6 @@ import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
 export type BetDocument = HydratedDocument<Bet>;
 
-
-
-
-
 export interface IBet {
   playerId: string;
   playerLogin: string;

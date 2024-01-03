@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { CreateReplenishmentDto } from "./dto/create-replenishment.dto";
 import { InjectModel } from "@nestjs/mongoose";
 import { Replenishment, ReplenishmentStatusEnum } from "./schemas/replenishment.schema";
@@ -23,6 +23,26 @@ export class ReplenishmentService {
     private schedulerRegistry: SchedulerRegistry,
     private convertService: ConvertService,
   ) {}
+
+  async findLimits(userPayload: IAuthPayload) {
+    const user = await this.userModel.findById(userPayload.id, ["currency"]);
+
+    const admin = await this.adminModel.findOne({}, ["minLimit", "maxLimit"]);
+
+    const minLimit = await this.convertService.convert(admin.minLimit.currency, user.currency, admin.minLimit.amount);
+    const maxLimit = await this.convertService.convert(admin.maxLimit.currency, user.currency, admin.maxLimit.amount);
+
+    return { minLimit, maxLimit, currency: user.currency };
+  }
+
+  async commission(userPayload: IAuthPayload) {
+    const user = await this.userModel.findById(userPayload.id, ["currency"]);
+    const admin = await this.adminModel.findOne({}, ["commission", "commissionCurrency"]);
+
+    const commission = await this.convertService.convert(admin.commissionCurrency, user.currency, admin.commission);
+
+    return { commission, currency: user.currency };
+  }
 
   async findAll(userPayload: IAuthPayload) {
     const replenishments = await this.replenishmentModel
@@ -50,7 +70,14 @@ export class ReplenishmentService {
       throw new NotFoundException({ message: "Реквизит не найден" });
     }
 
-    const deduction = dto.amount + (await this.convertService.convert(admin.commissionCurrency, dto.currency, admin.commission));
+    const minLimit = await this.convertService.convert(admin.minLimit.currency, dto.currency, admin.minLimit.amount);
+    const maxLimit = await this.convertService.convert(admin.maxLimit.currency, dto.currency, admin.maxLimit.amount);
+
+    if (dto.amount < minLimit && dto.amount > maxLimit) {
+      throw new BadRequestException(`Сумма не должен бит не меньше чем ${minLimit + dto.currency} и не больше чем ${maxLimit + dto.currency}`);
+    }
+    const commission = await this.convertService.convert(admin.commissionCurrency, dto.currency, admin.commission);
+    const deduction = dto.amount + commission;
 
     const replenishment = await this.replenishmentModel.create({ ...dto, deduction, user: user._id });
 
@@ -65,7 +92,7 @@ export class ReplenishmentService {
     this.schedulerRegistry.addCronJob(replenishment._id.toString(), job);
     job.start();
 
-    return replenishment;
+    return { replenishment };
   }
 
   async cancelReplenishment(dto: CancelReplenishmentDto) {
