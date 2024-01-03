@@ -6,9 +6,17 @@ import { ApiProperty } from "@nestjs/swagger";
 
 export type UserDocument = HydratedDocument<User>;
 
-interface IDescendants {
+export class Descendants {
+  @ApiProperty()
   _id: string;
+
+  @ApiProperty()
   createdAt: Date;
+
+  @ApiProperty()
+  updatedUt: Date;
+
+  @ApiProperty()
   earnings: number;
 }
 
@@ -40,11 +48,9 @@ export class User {
   @Prop({ required: true, default: 0 })
   balance: number;
 
-  @ApiProperty()
   @Prop({ required: true, default: 0 })
   referralBalance: number;
 
-  @ApiProperty()
   @Prop({
     type: mongoose.Schema.Types.ObjectId,
     ref: User.name,
@@ -52,9 +58,8 @@ export class User {
   @Type(() => User)
   leader: User;
 
-  @ApiProperty()
   @Prop({ required: true, type: [{ type: Object }] })
-  descendants: IDescendants[];
+  descendants: Descendants[];
 
   @ApiProperty()
   @Prop({ required: true, type: [{ type: mongoose.Schema.Types.ObjectId, ref: Bonus.name, unique: true }] })

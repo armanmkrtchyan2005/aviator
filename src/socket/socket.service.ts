@@ -192,7 +192,7 @@ export class SocketService {
       const findIndex = leader.descendants.findIndex(i => i._id === user._id.toString());
       const descendant = leader.descendants[findIndex];
 
-      leader.descendants[findIndex] = { ...descendant, earnings: descendant.earnings + converted };
+      leader.descendants[findIndex] = { ...descendant, earnings: descendant.earnings + converted, updatedUt: new Date() };
 
       await leader.save();
     }

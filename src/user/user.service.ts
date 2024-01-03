@@ -31,7 +31,7 @@ export class UserService {
   ) {}
 
   async findMe(auth: IAuthPayload) {
-    const user = await this.userModel.findById(auth.id, { telegramId: true, login: true, referralBalance: true, descendants: true, email: true });
+    const user = await this.userModel.findById(auth.id, { telegramId: true, login: true, email: true });
 
     return user;
   }
@@ -40,6 +40,12 @@ export class UserService {
     const user = await this.userModel.findById(auth.id, ["balance", "currency"]);
 
     return user;
+  }
+
+  async referral(auth: IAuthPayload) {
+    const user = await this.userModel.findById(auth.id, { currency: true, referralBalance: true, descendants: true });
+    const descendants = user.descendants.sort((a, b) => b.earnings - a.earnings);
+    return { ...user, descendants };
   }
 
   async confirmEmailSendCode(session: Record<string, any>, userPayload: IAuthPayload) {

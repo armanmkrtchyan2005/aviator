@@ -60,7 +60,7 @@ export class AuthService {
     const newUser = await this.userModel.create({ ...dto, balance, password: hashedPassword, leader });
 
     if (leader) {
-      leader.descendants.push({ _id: newUser._id.toString(), createdAt: new Date(), earnings: 0 });
+      leader.descendants.push({ _id: newUser._id.toString(), createdAt: new Date(), updatedUt: new Date(), earnings: 0 });
 
       await leader.save();
     }

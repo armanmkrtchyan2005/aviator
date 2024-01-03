@@ -79,7 +79,7 @@ export class ReplenishmentService {
     const commission = await this.convertService.convert(admin.commissionCurrency, dto.currency, admin.commission);
     const deduction = dto.amount + commission;
 
-    const replenishment = await this.replenishmentModel.create({ ...dto, deduction, user: user._id });
+    const replenishment = await (await this.replenishmentModel.create({ ...dto, deduction, user: user._id })).populate("requisite");
 
     const job = new CronJob(CronExpression.EVERY_30_MINUTES, async () => {
       console.log("Time out");
@@ -92,7 +92,7 @@ export class ReplenishmentService {
     this.schedulerRegistry.addCronJob(replenishment._id.toString(), job);
     job.start();
 
-    return { replenishment };
+    return replenishment;
   }
 
   async cancelReplenishment(dto: CancelReplenishmentDto) {

@@ -43,6 +43,7 @@ import { Requisite } from "src/admin/schemas/requisite.schema";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { diskStorage } from "multer";
 import { extname } from "path";
+import { ReferralOkResponse } from "./responses/referral.response";
 
 @ApiTags("User")
 @Auth()
@@ -54,6 +55,12 @@ export class UserController {
   @Get("/")
   findMe(@Req() req: Request) {
     return this.userService.findMe(req["user"]);
+  }
+
+  @ApiOkResponse({ type: ReferralOkResponse })
+  @Get("/referral")
+  referral(@Req() req: Request) {
+    return this.userService.referral(req["auth"]);
   }
 
   @ApiOkResponse({ type: MyBalanceResponse })
