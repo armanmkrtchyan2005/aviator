@@ -6,7 +6,12 @@ import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import * as fs from "fs";
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { cors: true });
+  const privateKey = fs.readFileSync('secrets/private-key.pem', 'utf8');
+  const certificate = fs.readFileSync('secrets/public-certificate.pem', 'utf8');
+  const credentials = { key: privateKey, cert: certificate };
+
+  const app = await NestFactory.create(AppModule, {httpsOptions: credentials});
+  app.enableCors()
   const port = process.env.PORT || 8080;
 
   const config = new DocumentBuilder().setTitle("Aviator").setDescription("Aviator API документация").setVersion("1.0").build();
@@ -36,6 +41,7 @@ async function bootstrap() {
     }),
   );
 
+  
   await app.listen(port, () => {
     console.log(`Server started on port ${port}`);
   });
