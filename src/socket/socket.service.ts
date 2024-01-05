@@ -1,5 +1,3 @@
-// 10. -----------------------------?
-
 import { WsException } from "@nestjs/websockets";
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
@@ -13,6 +11,7 @@ import { Bet, IBet } from "src/bets/schemas/bet.schema";
 import { CashOutDto } from "./dto/cashOut.dto";
 import * as _ from "lodash";
 import { Admin, IAlgorithms } from "src/admin/schemas/admin.schema";
+import { Referral } from "src/user/schemas/referral.schema";
 
 const STOP_DISABLE_MS = 2000;
 const LOADING_MS = 5000;
@@ -29,6 +28,7 @@ export class SocketService {
     @InjectModel(User.name) private userModel: Model<User>,
     @InjectModel(Bet.name) private betModel: Model<Bet>,
     @InjectModel(Admin.name) private adminModel: Model<Admin>,
+    @InjectModel(Referral.name) private referralModel: Model<Referral>,
     private convertService: ConvertService,
   ) {}
 
@@ -134,7 +134,7 @@ export class SocketService {
       bet,
       time: new Date(),
       bonusId: bonus?._id,
-      bonusCoeff: bonus.bonusCoeff,
+      bonusCoeff: bonus?.bonusCoeff,
     });
 
     const currentPlayers = this.currentPlayers.map(({ playerId, bonusCoeff, bonusId, ...bet }) => bet);
@@ -163,7 +163,7 @@ export class SocketService {
       return new WsException(`Вы не можете выиграть до ${betData.bonusCoeff}x`);
     }
 
-    const win = this.x * betData.bet;
+    const win = +(this.x * betData.bet).toFixed(2);
 
     this.currentPlayers[betIndex] = {
       ...betData,
@@ -193,6 +193,8 @@ export class SocketService {
       const descendant = leader.descendants[findIndex];
 
       leader.descendants[findIndex] = { ...descendant, earnings: descendant.earnings + converted, updatedUt: new Date() };
+
+      await this.referralModel.create({ earned: converted, currency: leader.currency, createdAt: new Date(), user: leader._id });
 
       await leader.save();
     }

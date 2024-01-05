@@ -3,7 +3,7 @@ import * as fs from "fs";
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { User } from "./schemas/user.schema";
-import { Model } from "mongoose";
+import mongoose, { Model } from "mongoose";
 import { IAuthPayload } from "src/auth/auth.guard";
 import { generateCode, salt } from "src/auth/auth.service";
 import { SendCodeDto } from "src/auth/dto/send-code.dto";
@@ -17,6 +17,8 @@ import { AddBonusDto } from "./dto/add-bonus.dto";
 import { ConvertService } from "src/convert/convert.service";
 import { Requisite, RequisiteStatusEnum } from "src/admin/schemas/requisite.schema";
 import { Admin } from "src/admin/schemas/admin.schema";
+import { Referral } from "./schemas/referral.schema";
+import { FindReferralsByDayDto } from "./dto/findReferralsByDay.dto";
 
 @Injectable()
 export class UserService {
@@ -25,6 +27,7 @@ export class UserService {
     @InjectModel(Bonus.name) private bonusModel: Model<Bonus>,
     @InjectModel(Requisite.name) private requisiteModel: Model<Requisite>,
     @InjectModel(Admin.name) private adminModel: Model<Admin>,
+    @InjectModel(Referral.name) private referralModel: Model<Referral>,
     private jwtService: JwtService,
     private mailService: MailService,
     private convertService: ConvertService,
@@ -44,8 +47,46 @@ export class UserService {
 
   async referral(auth: IAuthPayload) {
     const user = await this.userModel.findById(auth.id, { currency: true, referralBalance: true, descendants: true });
-    const descendants = user.descendants.sort((a, b) => b.earnings - a.earnings);
-    return { ...user, descendants };
+    const descendants = user?.descendants?.sort((a, b) => b.earnings - a.earnings);
+    return { ...user.toJSON(), descendants };
+  }
+
+  async findReferralsByDay(auth: IAuthPayload, query: FindReferralsByDayDto) {
+    const referrals = await this.referralModel.aggregate([
+      { $match: { user: new mongoose.Types.ObjectId(auth.id) } },
+      {
+        $group: {
+          _id: {
+            year: { $year: "$createdAt" },
+            month: { $month: "$createdAt" },
+            day: { $dayOfMonth: "$createdAt" },
+          },
+          totalEarned: { $sum: "$earned" },
+        },
+      },
+      { $skip: query.skip },
+      { $limit: query.limit },
+      {
+        $addFields: {
+          date: {
+            $dateFromParts: {
+              year: "$_id.year",
+              month: "$_id.month",
+              day: "$_id.day",
+            },
+          },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+        },
+      },
+    ]);
+
+    // const referrals = await this.referralModel.find({ user: auth.id });
+
+    return referrals;
   }
 
   async confirmEmailSendCode(session: Record<string, any>, userPayload: IAuthPayload) {

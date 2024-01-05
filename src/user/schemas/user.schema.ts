@@ -62,7 +62,7 @@ export class User {
   descendants: Descendants[];
 
   @ApiProperty()
-  @Prop({ required: true, type: [{ type: mongoose.Schema.Types.ObjectId, ref: Bonus.name, unique: true }] })
+  @Prop({ required: true, type: [{ type: mongoose.Schema.Types.ObjectId, ref: Bonus.name }] })
   bonuses: BonusDocument[];
 
   @ApiProperty({ example: "/image.jpg" })

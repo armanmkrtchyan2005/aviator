@@ -44,6 +44,7 @@ import { FileInterceptor } from "@nestjs/platform-express";
 import { diskStorage } from "multer";
 import { extname } from "path";
 import { ReferralOkResponse } from "./responses/referral.response";
+import { FindReferralsByDayDto } from "./dto/findReferralsByDay.dto";
 
 @ApiTags("User")
 @Auth()
@@ -60,7 +61,13 @@ export class UserController {
   @ApiOkResponse({ type: ReferralOkResponse })
   @Get("/referral")
   referral(@Req() req: Request) {
-    return this.userService.referral(req["auth"]);
+    return this.userService.referral(req["user"]);
+  }
+
+  @ApiOkResponse()
+  @Get("/referral/by-days")
+  findReferralsByDay(@Req() req: Request, @Query() query: FindReferralsByDayDto) {
+    return this.userService.findReferralsByDay(req["user"], query);
   }
 
   @ApiOkResponse({ type: MyBalanceResponse })

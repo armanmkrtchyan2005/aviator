@@ -8,6 +8,7 @@ import { MailModule } from "src/mail/mail.module";
 import { Bonus, BonusSchema } from "./schemas/bonus.schema";
 import { Requisite, RequisiteSchema } from "src/admin/schemas/requisite.schema";
 import { Admin, AdminSchema } from "src/admin/schemas/admin.schema";
+import { Referral, ReferralSchema } from "./schemas/referral.schema";
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { Admin, AdminSchema } from "src/admin/schemas/admin.schema";
       { name: Bonus.name, schema: BonusSchema },
       { name: Requisite.name, schema: RequisiteSchema },
       { name: Admin.name, schema: AdminSchema },
+      { name: Referral.name, schema: ReferralSchema },
     ]),
     MailModule,
   ],

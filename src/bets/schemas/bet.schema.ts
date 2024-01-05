@@ -45,7 +45,11 @@ export class Bet {
     type: mongoose.Schema.Types.ObjectId,
     ref: User.name,
   })
-  player: User;
+  playerId: User;
+
+  @ApiProperty({ type: String })
+  @Prop({ require: true })
+  playerLogin: User;
 }
 
 export const BetSchema = SchemaFactory.createForClass(Bet);
