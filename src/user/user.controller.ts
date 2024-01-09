@@ -23,7 +23,7 @@ import { SendCodeDto } from "src/auth/dto/send-code.dto";
 import { ConfirmCodeDto } from "src/auth/dto/confirm-code.dto";
 import { OldPasswordConfirmDto } from "./dto/old-password-confirm.dto";
 import { ChangePasswordDto } from "src/auth/dto/change-password.dto";
-import { AddBonusDto } from "./dto/add-bonus.dto";
+import { AddPromoDto } from "./dto/add-promo.dto";
 import { User } from "./schemas/user.schema";
 import { MyBalanceResponse } from "./responses/my-balance.response";
 import { AddBonusBadResponse, AddBonusResponse } from "./responses/add-bonus.response";
@@ -45,6 +45,8 @@ import { diskStorage } from "multer";
 import { extname } from "path";
 import { ReferralOkResponse } from "./responses/referral.response";
 import { FindReferralsByDayDto } from "./dto/findReferralsByDay.dto";
+import { GetPromosDto } from "./dto/getPromos.dto";
+import { Promo } from "./schemas/promo.schema";
 
 @ApiTags("User")
 @Auth()
@@ -76,17 +78,22 @@ export class UserController {
     return this.userService.myBalance(req["user"]);
   }
 
-  @ApiOkResponse({ type: AddBonusResponse })
-  @ApiBadRequestResponse({ type: AddBonusBadResponse })
-  @Post("/bonus")
-  addBonus(@Req() req: Request, @Body() dto: AddBonusDto) {
-    return this.userService.addBonus(dto, req["user"]);
+  @ApiOkResponse({ type: Promo })
+  @Post("/promos")
+  addPromo(@Req() req: Request, @Body() dto: AddPromoDto) {
+    return this.userService.addPromo(dto, req["user"]);
+  }
+
+  @ApiOkResponse({ type: [Promo] })
+  @Get("/promos")
+  getPromos(@Query() dto: GetPromosDto, @Req() req: Request) {
+    return this.userService.getPromos(dto, req["user"]);
   }
 
   @ApiOkResponse({ type: Bonus })
-  @Get("/bonus")
-  getBonuses(@Req() req: Request) {
-    return this.userService.getBonuses(req["user"]);
+  @Get("/promos/:id")
+  getPromo(@Param("id") id: string) {
+    return this.userService.getPromo(id);
   }
 
   @ApiOkResponse({ type: ConfirmEmailSendCodeResponse })

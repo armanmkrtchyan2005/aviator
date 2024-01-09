@@ -1,8 +1,8 @@
 import mongoose, { HydratedDocument } from "mongoose";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Type } from "class-transformer";
-import { Bonus, BonusDocument } from "./bonus.schema";
 import { ApiProperty } from "@nestjs/swagger";
+import { Promo } from "./promo.schema";
 
 export type UserDocument = HydratedDocument<User>;
 
@@ -60,10 +60,6 @@ export class User {
 
   @Prop({ required: true, type: [{ type: Object }] })
   descendants: Descendants[];
-
-  @ApiProperty()
-  @Prop({ required: true, type: [{ type: mongoose.Schema.Types.ObjectId, ref: Bonus.name }] })
-  bonuses: BonusDocument[];
 
   @ApiProperty({ example: "/image.jpg" })
   @Prop({ default: "" })

@@ -1,6 +1,6 @@
 import * as bcrypt from "bcrypt";
 import * as fs from "fs";
-import { BadRequestException, Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { User } from "./schemas/user.schema";
 import mongoose, { Model } from "mongoose";
@@ -12,19 +12,22 @@ import { JwtService } from "@nestjs/jwt";
 import { MailService } from "src/mail/mail.service";
 import { OldPasswordConfirmDto } from "./dto/old-password-confirm.dto";
 import { ChangePasswordDto } from "src/auth/dto/change-password.dto";
-import { Bonus } from "./schemas/bonus.schema";
-import { AddBonusDto } from "./dto/add-bonus.dto";
+import { AddPromoDto } from "./dto/add-promo.dto";
 import { ConvertService } from "src/convert/convert.service";
 import { Requisite, RequisiteStatusEnum } from "src/admin/schemas/requisite.schema";
 import { Admin } from "src/admin/schemas/admin.schema";
 import { Referral } from "./schemas/referral.schema";
 import { FindReferralsByDayDto } from "./dto/findReferralsByDay.dto";
+import { Promo } from "./schemas/promo.schema";
+import { UserPromo } from "./schemas/userPromo.schema";
+import { GetPromosDto } from "./dto/getPromos.dto";
 
 @Injectable()
 export class UserService {
   constructor(
     @InjectModel(User.name) private userModel: Model<User>,
-    @InjectModel(Bonus.name) private bonusModel: Model<Bonus>,
+    @InjectModel(Promo.name) private promoModel: Model<Promo>,
+    @InjectModel(UserPromo.name) private userPromoModel: Model<UserPromo>,
     @InjectModel(Requisite.name) private requisiteModel: Model<Requisite>,
     @InjectModel(Admin.name) private adminModel: Model<Admin>,
     @InjectModel(Referral.name) private referralModel: Model<Referral>,
@@ -83,8 +86,6 @@ export class UserService {
         },
       },
     ]);
-
-    // const referrals = await this.referralModel.find({ user: auth.id });
 
     return referrals;
   }
@@ -214,53 +215,44 @@ export class UserService {
     }
   }
 
-  async addBonus(dto: AddBonusDto, userPayload: IAuthPayload) {
-    const bonus = await this.bonusModel.findOne({ promoCode: dto.promoCode });
+  async addPromo(dto: AddPromoDto, authPayload: IAuthPayload) {
+    const user = await this.userModel.findById(authPayload.id);
 
-    if (!bonus) {
-      throw new BadRequestException("Нет такого промокода");
+    if (!user) {
+      throw new UnauthorizedException();
     }
 
-    if (bonus.usedCount >= bonus.maxUsedCount) {
-      throw new BadRequestException("Нет такого промокода");
+    const promo = await this.promoModel.findOne({ name: dto.promoCode, active: true }, ["type", "will_finish", "coef", "amount"]);
+
+    if (!promo) {
+      throw new NotFoundException("Промокод не найден");
     }
 
-    const user = await this.userModel.findById(userPayload.id);
-    const isHavePromoCode = user.bonuses.some(b => {
-      return b._id === bonus._id;
-    });
+    const userPromo = await this.userPromoModel.findOne({ user: user._id, promo: promo._id });
 
-    if (isHavePromoCode) {
-      throw new BadRequestException("такой промокод у вас уже есть");
+    if (userPromo) {
+      throw new BadRequestException("У вас уже есть такой промокод");
     }
 
-    user.bonuses.push(bonus);
-    await user.save();
+    await this.userPromoModel.create({ user: user._id, promo: promo._id });
 
-    bonus.usedCount++;
-    await bonus.save();
-
-    return { message: "Промокод успешно активирован" };
+    return promo;
   }
 
-  async getBonuses(userPayload: IAuthPayload) {
-    const user = await this.userModel.findById(userPayload.id, { bonuses: true }).populate("bonuses");
+  async getPromos(dto: GetPromosDto, userPayload: IAuthPayload) {
+    const userPromos = await this.userPromoModel
+      .find({ user: userPayload.id }, ["promo"])
+      .populate({ path: "promo", match: { type: dto.type }, select: ["type", "coef", "amount", "will_finish"] });
 
-    return user.bonuses;
+    const promos = userPromos.map(userPromo => userPromo.promo);
+
+    return promos;
   }
 
-  async getBonus(userPayload: IAuthPayload, id: string) {
-    const user = await this.userModel.findById(userPayload.id);
-    const bonus = await this.bonusModel.findById(id);
+  async getPromo(id: string) {
+    const promo = await this.promoModel.findById(id, ["type", "will_finish", "coef", "amount"]);
 
-    if (!bonus) {
-      throw new BadRequestException("Бонус не найден");
-    }
-
-    bonus.bonus = await this.convertService.convert(bonus.currency, user.currency, bonus.bonus);
-    bonus.currency = user.currency;
-
-    return bonus;
+    return promo;
   }
 
   async findRecommendedRequisites(userPayload: IAuthPayload) {

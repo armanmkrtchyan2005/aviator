@@ -1,7 +1,7 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { IsNotEmpty } from "class-validator";
 
-export class AddBonusDto {
+export class AddPromoDto {
   @ApiProperty({
     example: "NewYear2099",
   })

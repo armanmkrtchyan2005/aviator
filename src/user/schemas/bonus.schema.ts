@@ -1,57 +1,47 @@
 import mongoose, { HydratedDocument } from "mongoose";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { ApiProperty } from "@nestjs/swagger";
 import { User } from "./user.schema";
-import { Transform } from "class-transformer";
-import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
 export type BonusDocument = HydratedDocument<Bonus>;
 
-export enum BalanceType {}
+export enum CoefParamsType {
+  TO_USER = "to_user",
+  ADD_BALANCE = "add_balance",
+  NEW_USERS = "new_users",
+}
+
+class CoefParams {
+  type: CoefParamsType;
+
+  amount_first: number;
+
+  amount_second: number;
+
+  from_amount: number;
+
+  coef: number;
+}
 
 @Schema()
 export class Bonus {
   @ApiProperty({ type: "string" })
   _id: mongoose.Types.ObjectId;
 
-  @ApiProperty()
-  @Prop({ required: true, enum: BalanceType })
-  type: BalanceType;
+  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: User.name })
+  to_user_id: User; // if bonus is given to the specific user
 
-  @ApiProperty()
-  @Prop({ required: true, unique: true })
-  promoCode: string;
+  @Prop({ type: [{ type: mongoose.Schema.Types.ObjectId, ref: User.name }] })
+  actived_users: User[];
 
-  @ApiProperty()
-  @Prop({ required: true })
-  currency: string;
-
-  @ApiProperty()
   @Prop()
-  bonus: number;
+  will_finish: string;
 
-  @ApiProperty()
   @Prop()
-  bonusPercent: number;
+  coef_params: CoefParams;
 
-  @ApiProperty()
   @Prop()
-  bonusCoeff: number;
-
-  @ApiProperty()
-  @Prop({ required: true })
-  maxUsedCount: number;
-
-  @ApiProperty()
-  @Prop({ required: true })
-  usedCount: number;
-
-  @ApiProperty()
-  @Prop({ required: true, expires: 0 })
-  expiresIn: Date;
-
-  @ApiPropertyOptional()
-  @Prop({ type: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }] })
-  users: User[];
+  active: boolean;
 }
 
 export const BonusSchema = SchemaFactory.createForClass(Bonus);

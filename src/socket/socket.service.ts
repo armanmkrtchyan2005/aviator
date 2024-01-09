@@ -110,22 +110,7 @@ export class SocketService {
       return new WsException("Пользователь не авторизован");
     }
 
-    const bonus = user.bonuses.find(bon => bon._id == dto.bonusId);
-
     let bet: number;
-
-    if (!bonus) {
-      bet = await this.convertService.convert(user.currency, dto.currency, dto.bet);
-
-      if (bet > user.balance) {
-        return new WsException("Недостаточный баланс");
-      }
-      user.balance -= bet;
-
-      await user.save();
-    } else {
-      bet = await this.convertService.convert(bonus?.currency, user.currency, bonus.bonus);
-    }
 
     this.currentPlayers.push({
       playerId: userPayload.id,
@@ -133,8 +118,6 @@ export class SocketService {
       currency: user.currency,
       bet,
       time: new Date(),
-      bonusId: bonus?._id,
-      bonusCoeff: bonus?.bonusCoeff,
     });
 
     const currentPlayers = this.currentPlayers.map(({ playerId, bonusCoeff, bonusId, ...bet }) => bet);
@@ -176,8 +159,6 @@ export class SocketService {
     this.socket.emit("currentPlayers", currentPlayers);
 
     user.balance += win;
-
-    user.bonuses = user.bonuses.filter(bonus => betData.bonusId !== bonus._id);
 
     await user.save();
 
