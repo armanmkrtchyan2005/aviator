@@ -14,6 +14,9 @@ export class UserPromo {
 
   @Prop({ required: true, type: mongoose.Schema.Types.ObjectId, ref: Promo.name })
   promo: Promo;
+
+  @Prop({ required: true, default: false })
+  active: boolean
 }
 
 export const UserPromoSchema = SchemaFactory.createForClass(UserPromo);

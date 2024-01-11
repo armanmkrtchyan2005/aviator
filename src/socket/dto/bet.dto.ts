@@ -10,8 +10,12 @@ export class BetDto {
   @IsNumber()
   bet: number; // сумма ставки
 
+  @IsNotEmpty()
+  @IsNumber()
+  betNumber: number
+
   @IsMongoId()
   @Transform(({ value }) => new mongoose.Types.ObjectId(value))
   @IsOptional()
-  bonusId?: mongoose.Types.ObjectId; // id бонуса (необязательно)
+  promoId?: mongoose.Types.ObjectId; // id бонуса (необязательно)
 }

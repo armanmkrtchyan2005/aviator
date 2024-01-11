@@ -22,8 +22,6 @@ import { WithdrawalModule } from './withdrawal/withdrawal.module';
     MongooseModule.forRoot(process.env.MONGO_URI),
     AuthModule,
     UserModule,
-    MailModule,
-    ConvertModule,
     SocketModule,
     BetsModule,
     AdminModule,
@@ -33,4 +31,4 @@ import { WithdrawalModule } from './withdrawal/withdrawal.module';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }

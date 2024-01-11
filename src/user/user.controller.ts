@@ -52,7 +52,7 @@ import { Promo } from "./schemas/promo.schema";
 @Auth()
 @Controller("user")
 export class UserController {
-  constructor(private userService: UserService) {}
+  constructor(private userService: UserService) { }
 
   @ApiOkResponse({ type: User })
   @Get("/")
@@ -92,8 +92,8 @@ export class UserController {
 
   @ApiOkResponse({ type: Bonus })
   @Get("/promos/:id")
-  getPromo(@Param("id") id: string) {
-    return this.userService.getPromo(id);
+  getPromo(@Req() req: Request, @Param("id") id: string) {
+    return this.userService.getPromo(req["user"], id);
   }
 
   @ApiOkResponse({ type: ConfirmEmailSendCodeResponse })

@@ -12,6 +12,7 @@ import { CashOutDto } from "./dto/cashOut.dto";
 import * as _ from "lodash";
 import { Admin, IAlgorithms } from "src/admin/schemas/admin.schema";
 import { Referral } from "src/user/schemas/referral.schema";
+import { UserPromo } from "src/user/schemas/userPromo.schema";
 
 const STOP_DISABLE_MS = 2000;
 const LOADING_MS = 5000;
@@ -27,10 +28,11 @@ export class SocketService {
   constructor(
     @InjectModel(User.name) private userModel: Model<User>,
     @InjectModel(Bet.name) private betModel: Model<Bet>,
+    @InjectModel(UserPromo.name) private userPromoModel: Model<UserPromo>,
     @InjectModel(Admin.name) private adminModel: Model<Admin>,
     @InjectModel(Referral.name) private referralModel: Model<Referral>,
     private convertService: ConvertService,
-  ) {}
+  ) { }
 
   private currentPlayers: IBet[] = [];
   private algorithms: IAlgorithms[] = [];
@@ -61,9 +63,9 @@ export class SocketService {
   private totalBets: number = 0;
   private partOfProfit: number = 0;
 
-  handleConnection(client: Socket) {}
+  handleConnection(client: Socket) { }
 
-  handleDisconnect(socket: Socket): void {}
+  handleDisconnect(socket: Socket): void { }
 
   private randomOneHourAlgorithm() {
     const daley = _.random(HOUR_IN_MS, 2 * HOUR_IN_MS);
@@ -104,23 +106,46 @@ export class SocketService {
       return new WsException("Ставки сейчас не применяются");
     }
 
-    const user = await this.userModel.findById(userPayload?.id, ["currency", "balance", "bonuses"]).populate("bonuses");
+    const user = await this.userModel.findById(userPayload?.id, ["currency", "balance", "bonuses"])
 
     if (!user) {
       return new WsException("Пользователь не авторизован");
     }
 
+    const userPromo = await this.userPromoModel.findOne({ user: user._id, promo: dto.promoId, active: false }).populate("promo")
+
     let bet: number;
 
-    this.currentPlayers.push({
+    if (!userPromo) {
+      bet = await this.convertService.convert(user.currency, dto.currency, dto.bet);
+
+      if (bet > user.balance) {
+        return new WsException("Недостаточный баланс");
+      }
+
+      user.balance -= bet;
+
+      await user.save();
+    } else {
+      bet = await this.convertService.convert(userPromo.promo?.currency, user.currency, userPromo.promo.amount);
+      userPromo.active = true
+      await userPromo.save()
+    }
+    const betDataObject: IBet = {
       playerId: userPayload.id,
       playerLogin: user.login,
       currency: user.currency,
       bet,
+      promo: userPromo?.promo,
       time: new Date(),
-    });
+      betNumber: dto.betNumber
+    }
+    const betData = await this.betModel.create(betDataObject)
+    betDataObject._id = betData._id.toString()
 
-    const currentPlayers = this.currentPlayers.map(({ playerId, bonusCoeff, bonusId, ...bet }) => bet);
+    this.currentPlayers.push(betDataObject);
+
+    const currentPlayers = this.currentPlayers.map(({ _id, playerId, promo, ...bet }) => bet);
 
     this.socket.emit("currentPlayers", currentPlayers);
     return { message: "Ставка сделана" };
@@ -129,8 +154,8 @@ export class SocketService {
   async handleCashOut(userPayload: IAuthPayload, dto: CashOutDto) {
     const user = await this.userModel.findById(userPayload.id);
 
-    const betIndex = this.currentPlayers.findIndex((b, i) => {
-      return b.playerId == userPayload?.id && i + 1 == dto.betNumber && !b.win;
+    const betIndex = this.currentPlayers.findIndex((b) => {
+      return b.playerId == userPayload?.id && dto.betNumber === b.betNumber;
     });
 
     if (betIndex == -1) {
@@ -142,19 +167,26 @@ export class SocketService {
       return new WsException("Вы уже сняли эту ставку");
     }
 
-    if (betData.bonusId && this.x < betData.bonusCoeff) {
-      return new WsException(`Вы не можете выиграть до ${betData.bonusCoeff}x`);
+    if (betData.promo && this.x < betData?.promo?.coef) {
+      return new WsException(`Вы не можете выиграть до ${betData.promo.coef}x`);
     }
-
-    const win = +(this.x * betData.bet).toFixed(2);
+    const x = this.x
+    const win = +(x * betData.bet).toFixed(2);
 
     this.currentPlayers[betIndex] = {
       ...betData,
       win,
-      coeff: this.x,
+      coeff: x,
     };
 
-    const currentPlayers = this.currentPlayers.map(({ playerId, bonusCoeff, bonusId, ...bet }) => bet);
+    const bet = await this.betModel.findById(betData._id)
+
+    bet.win = win
+    bet.win = x
+
+    await bet.save()
+
+    const currentPlayers = this.currentPlayers.map(({ _id, playerId, promo, ...bet }) => bet);
 
     this.socket.emit("currentPlayers", currentPlayers);
 
@@ -242,14 +274,6 @@ export class SocketService {
     clearInterval(this.interval);
 
     this.socket.emit("crash");
-
-    this.currentPlayers.forEach(bet => {
-      if (bet.bonusId) {
-        this.userModel.findByIdAndUpdate(bet.playerId, { $pull: { bonuses: bet.bonusId } });
-      }
-    });
-
-    await this.betModel.create(this.currentPlayers);
 
     this.currentPlayers = [];
     this.threePlayers = [];

@@ -2,10 +2,13 @@ import mongoose, { HydratedDocument, Types } from "mongoose";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { User } from "../../user/schemas/user.schema";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { Promo } from "src/user/schemas/promo.schema";
 
 export type BetDocument = HydratedDocument<Bet>;
 
 export interface IBet {
+  _id?: string;
+  betNumber: number;
   playerId: string;
   playerLogin: string;
   bet: number;
@@ -13,8 +16,7 @@ export interface IBet {
   time: Date;
   coeff?: number;
   win?: number;
-  bonusId?: Types.ObjectId;
-  bonusCoeff?: number;
+  promo?: Promo;
 }
 
 @Schema()

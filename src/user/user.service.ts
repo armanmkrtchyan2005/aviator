@@ -34,7 +34,7 @@ export class UserService {
     private jwtService: JwtService,
     private mailService: MailService,
     private convertService: ConvertService,
-  ) {}
+  ) { }
 
   async findMe(auth: IAuthPayload) {
     const user = await this.userModel.findById(auth.id, { telegramId: true, login: true, email: true });
@@ -222,7 +222,7 @@ export class UserService {
       throw new UnauthorizedException();
     }
 
-    const promo = await this.promoModel.findOne({ name: dto.promoCode, active: true }, ["type", "will_finish", "coef", "amount"]);
+    const promo = await this.promoModel.findOne({ name: dto.promoCode }, ["type", "will_finish", "coef", "amount", "currency"]);
 
     if (!promo) {
       throw new NotFoundException("Промокод не найден");
@@ -241,16 +241,23 @@ export class UserService {
 
   async getPromos(dto: GetPromosDto, userPayload: IAuthPayload) {
     const userPromos = await this.userPromoModel
-      .find({ user: userPayload.id }, ["promo"])
-      .populate({ path: "promo", match: { type: dto.type }, select: ["type", "coef", "amount", "will_finish"] });
+      .find({ user: userPayload.id, active: false }, ["promo"])
+      .populate({ path: "promo", match: { type: dto.type }, select: ["type", "coef", "amount", "will_finish", "currency"] });
 
     const promos = userPromos.map(userPromo => userPromo.promo);
 
     return promos;
   }
 
-  async getPromo(id: string) {
-    const promo = await this.promoModel.findById(id, ["type", "will_finish", "coef", "amount"]);
+  async getPromo(authPayload: IAuthPayload, id: string) {
+    const user = await this.userModel.findById(authPayload.id);
+
+    const promo = await this.promoModel.findById(id, ["type", "will_finish", "coef", "amount", "currency"]);
+
+    const amount = await this.convertService.convert(promo.currency, user.currency, promo.amount)
+
+    promo.amount = amount
+    promo.currency = user.currency;
 
     return promo;
   }
@@ -307,6 +314,6 @@ export class UserService {
 
     await user.save();
 
-    return user;
+    return imagePath;
   }
 }

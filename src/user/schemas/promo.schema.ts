@@ -29,6 +29,10 @@ export class Promo {
   @Prop({ required: true })
   amount: number; // for add_balance it is percentage
 
+  @ApiProperty()
+  @Prop({ required: true })
+  currency: string;
+
   @Prop()
   max_count: number;
 
@@ -39,15 +43,10 @@ export class Promo {
   @Prop()
   coef: number;
 
-  @Prop({ type: [{ type: mongoose.Schema.Types.ObjectId, ref: User.name }] })
-  actived_users: User[];
-
-  @ApiProperty({ type: "date" })
+  @ApiProperty({ type: Date })
   @Prop()
   will_finish: string;
-
-  @Prop()
-  active: boolean;
 }
 
 export const PromoSchema = SchemaFactory.createForClass(Promo);
+
