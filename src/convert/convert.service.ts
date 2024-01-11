@@ -9,10 +9,15 @@ export class ConvertService {
     const $ = cheerio.load(data);
 
     let val = $(".iBp4i").text().split(" ")[0] || `${amount}`
-    console.log(val);
 
-    val = val.split(",").join("")
+    const separators = val.replace(/\p{Number}/gu, '').split("")
 
-    return +val;
+    let thousandSeparator = separators.length === 1 ? "1" : separators[0]
+    let decimalSeparator = separators[separators.length - 1]
+
+    return parseFloat(val
+      .replace(new RegExp('\\' + thousandSeparator, 'g'), '')
+      .replace(new RegExp('\\' + decimalSeparator), '.')
+    );
   }
 }
