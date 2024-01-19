@@ -8,16 +8,25 @@ import { Bet } from "./schemas/bet.schema";
 
 @Injectable()
 export class BetsService {
-  constructor(@InjectModel(User.name) private userModel: Model<User>, @InjectModel(Bet.name) private betModel: Model<Bet>) {}
+  constructor(@InjectModel(User.name) private userModel: Model<User>, @InjectModel(Bet.name) private betModel: Model<Bet>) { }
 
   async topBets(query: MyBetsQueryDto) {
-    const bets = await this.betModel.find().sort({ win: -1, time: -1 }).skip(query.skip).limit(query.limit);
+    const current = new Date();
+    let lastMonth = new Date();
+
+    lastMonth.setMonth(lastMonth.getMonth() - 1);
+    const bets = await this.betModel.find({
+      time: {
+        $gte: new Date(lastMonth),
+        $lte: current
+      }
+    }).sort({ win: -1, time: -1 }).skip(query.skip).limit(query.limit);
 
     return bets;
   }
 
   async myBets(auth: IAuthPayload, query: MyBetsQueryDto) {
-    const bets = await this.betModel.find({ player: auth.id }).skip(query.skip).limit(query.limit).sort({ time: -1 });
+    const bets = await this.betModel.find({ playerId: auth.id }).skip(query.skip).limit(query.limit).sort({ time: -1 });
 
     return bets;
   }

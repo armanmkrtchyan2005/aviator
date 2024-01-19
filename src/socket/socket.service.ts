@@ -63,8 +63,9 @@ export class SocketService {
   private totalBets: number = 0;
   private partOfProfit: number = 0;
 
-  handleConnection(client: Socket) { }
+  async handleConnection(client: Socket) {
 
+  }
   handleDisconnect(socket: Socket): void { }
 
   private randomOneHourAlgorithm() {
@@ -95,7 +96,7 @@ export class SocketService {
     }
 
     if (this.x > this.random) {
-      await this.loading();
+      return await this.loading();
     }
 
     this.socket.emit("game", { x: this.x });
@@ -117,7 +118,7 @@ export class SocketService {
     let bet: number;
 
     if (!userPromo) {
-      bet = await this.convertService.convert(user.currency, dto.currency, dto.bet);
+      bet = await this.convertService.convert(dto.currency, user.currency, dto.bet);
 
       if (bet > user.balance) {
         return new WsException("Недостаточный баланс");
@@ -217,6 +218,7 @@ export class SocketService {
       this.threePlayers = this.threePlayers.filter(u => u.playerId !== userPayload?.id);
       if (!this.threePlayers.length) {
         this.loading();
+        return { message: "Вы выиграли" }
       }
     }
 
@@ -225,6 +227,7 @@ export class SocketService {
       const totalWinAmount = this.currentPlayers.reduce((prev, next) => prev + next.win, 0);
       if (totalWinAmount >= this.maxWinAmount) {
         this.loading();
+        return { message: "Вы выиграли" }
       }
     }
 
@@ -236,6 +239,7 @@ export class SocketService {
 
       if (winsCount >= this.totalWinsCount) {
         this.loading();
+        return { message: "Вы выиграли" }
       }
     }
 
@@ -245,6 +249,7 @@ export class SocketService {
       const totalWinAmount = this.currentPlayers.reduce((prev, next) => prev + next.win, 0);
       if (totalWinAmount >= this.maxWinAmount) {
         this.loading();
+        return { message: "Вы выиграли" }
       }
     }
 
@@ -256,6 +261,7 @@ export class SocketService {
 
         if (totalWinAmount >= this.partOfProfit) {
           this.loading();
+          return { message: "Вы выиграли" }
         }
       }
     }
@@ -264,14 +270,13 @@ export class SocketService {
   }
 
   private async loading() {
+    clearInterval(this.interval);
     this.x = 1;
     this.step = 0.0006;
     this.random = _.random(MAX_COEFF, true);
 
     const admin = await this.adminModel.findOne();
     this.algorithms = admin?.algorithms;
-
-    clearInterval(this.interval);
 
     this.socket.emit("crash");
 
@@ -285,6 +290,7 @@ export class SocketService {
     this.socket.emit("loading");
 
     await sleep(LOADING_MS);
+
 
     //1. 3 player algorithm loading
     if (this.algorithms[0]?.active) {

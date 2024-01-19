@@ -1,6 +1,12 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Transform } from "class-transformer";
-import { IsNumber, IsOptional, Max, Min } from "class-validator";
+import { IsEnum, IsNumber, IsOptional, Max, Min } from "class-validator";
+
+export enum DateSort {
+  DAY = "day",
+  MONTH = "month",
+  YEAR = "year"
+}
 
 export class MyBetsQueryDto {
   @ApiProperty({ example: 0, required: false, default: 0, description: "Skip elements" })
@@ -17,4 +23,9 @@ export class MyBetsQueryDto {
   @Max(25)
   @IsOptional()
   limit: number = 6;
+
+  @ApiProperty({ required: false, enum: DateSort, default: DateSort.DAY })
+  @IsEnum(DateSort)
+  @IsOptional()
+  dateSort: DateSort = DateSort.DAY
 }

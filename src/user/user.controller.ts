@@ -43,7 +43,7 @@ import { Requisite } from "src/admin/schemas/requisite.schema";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { diskStorage } from "multer";
 import { extname } from "path";
-import { ReferralOkResponse } from "./responses/referral.response";
+import { ReferralByDaysOkResponse, ReferralOkResponse } from "./responses/referral.response";
 import { FindReferralsByDayDto } from "./dto/findReferralsByDay.dto";
 import { GetPromosDto } from "./dto/getPromos.dto";
 import { Promo } from "./schemas/promo.schema";
@@ -66,7 +66,7 @@ export class UserController {
     return this.userService.referral(req["user"]);
   }
 
-  @ApiOkResponse()
+  @ApiOkResponse({ type: ReferralByDaysOkResponse })
   @Get("/referral/by-days")
   findReferralsByDay(@Req() req: Request, @Query() query: FindReferralsByDayDto) {
     return this.userService.findReferralsByDay(req["user"], query);

@@ -11,3 +11,12 @@ export class ReferralOkResponse {
   @ApiProperty({ type: [Descendants] })
   descendants: Descendants[];
 }
+
+
+export class ReferralByDaysOkResponse {
+  @ApiProperty()
+  date: Date
+
+  @ApiProperty()
+  totalEarned: number
+}

@@ -1,23 +1,25 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import axios from "axios";
 import * as cheerio from 'cheerio';
+import { Cache } from "cache-manager";
+import { CACHE_MANAGER } from "@nestjs/cache-manager";
 
 @Injectable()
 export class ConvertService {
+  constructor(@Inject(CACHE_MANAGER) private cacheManager: Cache) { }
+
   async convert(from: string, to: string, amount: number) {
-    const { data } = await axios.get<string>(`https://www.google.com/search?q=${amount}+${from}+to+${to}+&hl=en`)
-    const $ = cheerio.load(data);
+    const cache = await this.cacheManager.get<number>(`${from}-${to}`)
+    if (cache) {
+      return amount * cache
+    }
 
-    let val = $(".iBp4i").text().split(" ")[0] || `${amount}`
+    const { data } = await axios.get(`https://cdn.jsdelivr.net/gh/fawazahmed0/currency-api@1/latest/currencies/${from.toLowerCase()}.json`)
 
-    const separators = val.replace(/\p{Number}/gu, '').split("")
+    const rate = data[from.toLowerCase()][to.toLowerCase()]
 
-    let thousandSeparator = separators.length === 1 ? "1" : separators[0]
-    let decimalSeparator = separators[separators.length - 1]
+    await this.cacheManager.set(`${from}-${to}`, rate, 1000 * 60 * 60)
 
-    return parseFloat(val
-      .replace(new RegExp('\\' + thousandSeparator, 'g'), '')
-      .replace(new RegExp('\\' + decimalSeparator), '.')
-    );
+    return amount * rate
   }
 }

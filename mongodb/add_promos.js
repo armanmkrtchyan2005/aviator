@@ -12,9 +12,7 @@ db.getCollection('promos').insert([
     amount: 10000,
     max_count: 20,
     coef: 2.2,
-    actived_users: [],
     will_finish: "20.01.2024",
-    active: true,
   },
   {
     type: "promo",
@@ -22,9 +20,7 @@ db.getCollection('promos').insert([
     amount: 2000,
     max_count: 20,
     coef: 1.5,
-    actived_users: [],
     will_finish: "20.01.2024",
-    active: true,
   },
   {
     type: "promo",
@@ -32,9 +28,7 @@ db.getCollection('promos').insert([
     amount: 2000,
     max_count: 20,
     coef: 1.5,
-    actived_users: [],
     will_finish: "20.01.2024",
-    active: true,
   },
   {
     type: "promo",
@@ -42,8 +36,6 @@ db.getCollection('promos').insert([
     amount: 2000,
     max_count: 20,
     coef: 1.5,
-    actived_users: [],
     will_finish: "20.01.2024",
-    active: true,
   }
 ]);

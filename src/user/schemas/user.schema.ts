@@ -64,6 +64,9 @@ export class User {
   @ApiProperty({ example: "/image.jpg" })
   @Prop({ default: "" })
   profileImage: string;
+
+  @Prop()
+  socketId: string
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

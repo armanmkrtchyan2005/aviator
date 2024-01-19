@@ -6,25 +6,24 @@ import { SocketAuthGuard } from "./socketAuth.guard";
 import { BetDto } from "./dto/bet.dto";
 import { CashOutDto } from "./dto/cashOut.dto";
 import { SocketExceptionsFilter } from "./socket.exception";
-import { ApiTags } from "@nestjs/swagger";
 
 @WebSocketGateway({ cors: true })
 @UseFilters(SocketExceptionsFilter)
 export class SocketGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() public server: Server;
 
-  constructor(private readonly socketService: SocketService) {}
+  constructor(private readonly socketService: SocketService) { }
 
   afterInit(server: any) {
     this.socketService.socket = server;
     this.socketService.handleStartGame();
   }
 
-  handleConnection(socket: Socket): void {
-    this.socketService.handleConnection(socket);
+  handleConnection(client: Socket) {
+
   }
 
-  handleDisconnect(client: any) {}
+  handleDisconnect(client: any) { }
 
   @UseGuards(SocketAuthGuard)
   @SubscribeMessage("bet")

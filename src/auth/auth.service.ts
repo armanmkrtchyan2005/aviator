@@ -26,7 +26,7 @@ export const generateCode = () => {
 
 @Injectable()
 export class AuthService {
-  constructor(private jwtService: JwtService, @InjectModel(User.name) private userModel: Model<User>, private mailService: MailService, private convertService: ConvertService) {}
+  constructor(private jwtService: JwtService, @InjectModel(User.name) private userModel: Model<User>, private mailService: MailService, private convertService: ConvertService) { }
 
   async signUp(dto: SignUpDto): Promise<SignUpCreatedResponse> {
     const userEmail = await this.userModel.findOne({
@@ -107,9 +107,10 @@ export class AuthService {
 
     const token = this.jwtService.sign({ id: user._id, code }, { expiresIn: 60 * 60 * 2 });
 
+    await this.mailService.sendUserForgotCode(dto.email, code);
+
     session.codeToken = token;
 
-    await this.mailService.sendUserForgotCode(dto.email, code);
 
     return { message: "На ваш Email отправлен код для подтверждения" };
   }
