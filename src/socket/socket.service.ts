@@ -35,6 +35,7 @@ export class SocketService {
   ) { }
 
   private currentPlayers: IBet[] = [];
+
   private algorithms: IAlgorithms[] = [];
   public socket: Socket = null;
 
@@ -107,7 +108,7 @@ export class SocketService {
       return new WsException("Ставки сейчас не применяются");
     }
 
-    const user = await this.userModel.findById(userPayload?.id, ["currency", "balance", "bonuses"])
+    const user = await this.userModel.findById(userPayload?.id, ["currency", "balance", "bonuses", "login"])
 
     if (!user) {
       return new WsException("Пользователь не авторизован");
@@ -135,8 +136,8 @@ export class SocketService {
     const betDataObject: IBet = {
       playerId: userPayload.id,
       playerLogin: user.login,
-      currency: user.currency,
-      bet,
+      currency: "USD",
+      bet: await this.convertService.convert(user.currency, "USD", bet),
       promo: userPromo?.promo,
       time: new Date(),
       betNumber: dto.betNumber
@@ -145,10 +146,15 @@ export class SocketService {
     betDataObject._id = betData._id.toString()
 
     this.currentPlayers.push(betDataObject);
+    let betAmount = 0
+    let winAmount = 0
+    const currentPlayers = this.currentPlayers.map(({ _id, playerId, promo, ...bet }) => {
+      betAmount += bet.bet
+      winAmount += bet.win
+      return bet
+    });
 
-    const currentPlayers = this.currentPlayers.map(({ _id, playerId, promo, ...bet }) => bet);
-
-    this.socket.emit("currentPlayers", currentPlayers);
+    this.socket.emit("currentPlayers", { betAmount, winAmount, currentPlayers });
     return { message: "Ставка сделана" };
   }
 
@@ -172,11 +178,12 @@ export class SocketService {
       return new WsException(`Вы не можете выиграть до ${betData.promo.coef}x`);
     }
     const x = this.x
-    const win = +(x * betData.bet).toFixed(2);
+    const betAmount = await this.convertService.convert(betData.currency, user.currency, betData.bet)
+    const win = +(x * betAmount).toFixed(2);
 
     this.currentPlayers[betIndex] = {
       ...betData,
-      win,
+      win: betData.bet * x,
       coeff: x,
     };
 
@@ -186,10 +193,16 @@ export class SocketService {
     bet.win = x
 
     await bet.save()
+    let betsAmount = 0
+    let winAmount = 0
+    const currentPlayers = this.currentPlayers.map(({ _id, playerId, promo, ...bet }) => {
+      betsAmount += bet.bet
+      winAmount += bet.win
+      bet
+    });
 
-    const currentPlayers = this.currentPlayers.map(({ _id, playerId, promo, ...bet }) => bet);
 
-    this.socket.emit("currentPlayers", currentPlayers);
+    this.socket.emit("currentPlayers", { betAmount: betsAmount, winAmount, currentPlayers });
 
     user.balance += win;
 
@@ -349,6 +362,7 @@ export class SocketService {
         this.partOfProfit = profit / (this.maxGameCount / 2);
         if (profit < 0) {
           this.loading();
+          return this.interval = setInterval(() => this.game(), 100);
         }
       } else if (this.playedCount == this.maxGameCount) {
         this.playedCount = 0;

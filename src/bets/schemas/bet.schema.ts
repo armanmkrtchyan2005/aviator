@@ -51,7 +51,7 @@ export class Bet {
 
   @ApiProperty({ type: String })
   @Prop({ require: true })
-  playerLogin: User;
+  playerLogin: string;
 }
 
 export const BetSchema = SchemaFactory.createForClass(Bet);
