@@ -43,10 +43,9 @@ export class Promo {
   @Prop()
   coef: number;
 
-  @ApiProperty({ type: Date })
+  @ApiProperty()
   @Prop()
   will_finish: string;
 }
 
 export const PromoSchema = SchemaFactory.createForClass(Promo);
-

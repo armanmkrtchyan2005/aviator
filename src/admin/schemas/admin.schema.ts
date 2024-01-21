@@ -1,5 +1,6 @@
 import mongoose, { HydratedDocument } from "mongoose";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { ApiProperty } from "@nestjs/swagger";
 
 export type AdminDocument = HydratedDocument<Admin>;
 
@@ -16,6 +17,20 @@ interface IAdmin_panel_data {
 
 interface IReplenishmentLimit {
   amount: number;
+  currency: string;
+}
+
+export class GameLimits {
+  @ApiProperty()
+  min: number;
+
+  @ApiProperty()
+  max: number;
+
+  @ApiProperty()
+  maxWin: number;
+
+  @ApiProperty({ example: "UZS" })
   currency: string;
 }
 
@@ -45,6 +60,9 @@ export class Admin {
 
   @Prop({ required: true, default: "USD" })
   commissionCurrency: string;
+
+  @Prop({ required: true, type: Object })
+  gameLimits: GameLimits;
 }
 
 export const AdminSchema = SchemaFactory.createForClass(Admin);

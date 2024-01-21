@@ -7,5 +7,5 @@ export class ConfirmCodeDto {
   })
   @IsNotEmpty()
   @IsNumber()
-  code: string;
+  code: number;
 }

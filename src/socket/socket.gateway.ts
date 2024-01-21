@@ -12,18 +12,16 @@ import { SocketExceptionsFilter } from "./socket.exception";
 export class SocketGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() public server: Server;
 
-  constructor(private readonly socketService: SocketService) { }
+  constructor(private readonly socketService: SocketService) {}
 
   afterInit(server: any) {
     this.socketService.socket = server;
     this.socketService.handleStartGame();
   }
 
-  handleConnection(client: Socket) {
+  handleConnection(client: Socket) {}
 
-  }
-
-  handleDisconnect(client: any) { }
+  handleDisconnect(client: any) {}
 
   @UseGuards(SocketAuthGuard)
   @SubscribeMessage("bet")

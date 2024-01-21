@@ -16,7 +16,10 @@ export class UserPromo {
   promo: Promo;
 
   @Prop({ required: true, default: false })
-  active: boolean
+  active: boolean;
+
+  @Prop({})
+  limit: number;
 }
 
 export const UserPromoSchema = SchemaFactory.createForClass(UserPromo);

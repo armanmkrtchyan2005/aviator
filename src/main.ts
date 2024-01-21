@@ -10,7 +10,7 @@ async function bootstrap() {
   const certificate = fs.readFileSync("secrets/public-certificate.pem", "utf8");
   const httpsOptions = { key: privateKey, cert: certificate };
 
-  const nestOptions: NestApplicationOptions = { httpsOptions }; //for https add httpsOptions
+  const nestOptions: NestApplicationOptions = {}; //for https add httpsOptions
 
   const app = await NestFactory.create(AppModule, nestOptions);
   app.enableCors();

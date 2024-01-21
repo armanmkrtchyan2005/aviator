@@ -47,17 +47,26 @@ import { ReferralByDaysOkResponse, ReferralOkResponse } from "./responses/referr
 import { FindReferralsByDayDto } from "./dto/findReferralsByDay.dto";
 import { GetPromosDto } from "./dto/getPromos.dto";
 import { Promo } from "./schemas/promo.schema";
+import { GameLimits } from "src/admin/schemas/admin.schema";
 
 @ApiTags("User")
 @Auth()
 @Controller("user")
 export class UserController {
-  constructor(private userService: UserService) { }
+  constructor(private userService: UserService) {}
 
   @ApiOkResponse({ type: User })
   @Get("/")
   findMe(@Req() req: Request) {
     return this.userService.findMe(req["user"]);
+  }
+
+  @ApiOkResponse({
+    type: GameLimits,
+  })
+  @Get("/game-limits")
+  findGameLimits() {
+    return this.userService.findGameLimits();
   }
 
   @ApiOkResponse({ type: ReferralOkResponse })

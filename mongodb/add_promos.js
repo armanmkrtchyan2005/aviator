@@ -2,10 +2,10 @@
 // Use Ctrl+Space inside a snippet or a string literal to trigger completions.
 
 // The current database to use.
-use('aviator');
+use("aviator");
 
 // Create a new document in the collection.
-db.getCollection('promos').insert([
+db.getCollection("promos").insert([
   {
     type: "promo",
     name: "newyear2024",
@@ -37,5 +37,32 @@ db.getCollection('promos').insert([
     max_count: 20,
     coef: 1.5,
     will_finish: "20.01.2024",
-  }
+  },
+  {
+    type: "add_balance",
+    name: "add_balance1",
+    amount: 10,
+    currency: "UZS",
+    limit: 1000000,
+    max_count: 20,
+    will_finish: "30.01.2024",
+  },
+  {
+    type: "add_balance",
+    name: "add_balance2",
+    amount: 10,
+    currency: "UZS",
+    limit: 2000000,
+    max_count: 20,
+    will_finish: "30.01.2024",
+  },
+  {
+    type: "add_balance",
+    name: "add_balance3",
+    amount: 10,
+    currency: "UZS",
+    limit: 100000,
+    max_count: 20,
+    will_finish: "30.01.2024",
+  },
 ]);

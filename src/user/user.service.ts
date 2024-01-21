@@ -18,7 +18,7 @@ import { Requisite, RequisiteStatusEnum } from "src/admin/schemas/requisite.sche
 import { Admin } from "src/admin/schemas/admin.schema";
 import { Referral } from "./schemas/referral.schema";
 import { FindReferralsByDayDto } from "./dto/findReferralsByDay.dto";
-import { Promo } from "./schemas/promo.schema";
+import { Promo, PromoSchema, PromoType } from "./schemas/promo.schema";
 import { UserPromo } from "./schemas/userPromo.schema";
 import { GetPromosDto } from "./dto/getPromos.dto";
 
@@ -34,12 +34,17 @@ export class UserService {
     private jwtService: JwtService,
     private mailService: MailService,
     private convertService: ConvertService,
-  ) { }
+  ) {}
 
   async findMe(auth: IAuthPayload) {
     const user = await this.userModel.findById(auth.id, { telegramId: true, login: true, email: true });
 
     return user;
+  }
+
+  async findGameLimits() {
+    const admin = await this.adminModel.findOne({}, ["gameLimits"]);
+    return admin.gameLimits;
   }
 
   async myBalance(auth: IAuthPayload) {
@@ -222,7 +227,7 @@ export class UserService {
       throw new UnauthorizedException();
     }
 
-    const promo = await this.promoModel.findOne({ name: dto.promoCode }, ["type", "will_finish", "coef", "amount", "currency"]);
+    const promo = await this.promoModel.findOne({ name: dto.promoCode }, ["type", "will_finish", "coef", "amount", "currency", "limit"]);
 
     if (!promo) {
       throw new NotFoundException("Промокод не найден");
@@ -234,17 +239,28 @@ export class UserService {
       throw new BadRequestException("У вас уже есть такой промокод");
     }
 
-    await this.userPromoModel.create({ user: user._id, promo: promo._id });
+    const newUserPromo = await this.userPromoModel.create({ user: user._id, promo: promo._id });
+
+    if (promo.type === PromoType.ADD_BALANCE) {
+      newUserPromo.limit = await this.convertService.convert(promo.currency, user.currency, promo.limit);
+
+      await newUserPromo.save();
+    }
 
     return promo;
   }
 
   async getPromos(dto: GetPromosDto, userPayload: IAuthPayload) {
-    const userPromos = await this.userPromoModel
-      .find({ user: userPayload.id, active: false }, ["promo"])
-      .populate({ path: "promo", match: { type: dto.type }, select: ["type", "coef", "amount", "will_finish", "currency"] });
+    const user = await this.userModel.findById(userPayload.id);
 
-    const promos = userPromos.map(userPromo => userPromo.promo);
+    const promos = await this.userPromoModel.aggregate([
+      { $match: { user: user._id, active: false } },
+      { $lookup: { from: "promos", localField: "promo", foreignField: "_id", as: "promo" } },
+      { $unwind: "$promo" },
+      { $match: { "promo.type": dto.type } },
+      { $set: dto.type === PromoType.ADD_BALANCE ? { "promo.limit": "$limit", "promo.currency": user.currency } : {} },
+      { $replaceWith: "$promo" },
+    ]);
 
     return promos;
   }
@@ -254,9 +270,9 @@ export class UserService {
 
     const promo = await this.promoModel.findById(id, ["type", "will_finish", "coef", "amount", "currency"]);
 
-    const amount = await this.convertService.convert(promo.currency, user.currency, promo.amount)
+    const amount = await this.convertService.convert(promo.currency, user.currency, promo.amount);
 
-    promo.amount = amount
+    promo.amount = amount;
     promo.currency = user.currency;
 
     return promo;

@@ -6,5 +6,5 @@ import { IsEnum } from "class-validator";
 export class GetPromosDto {
   @ApiProperty({ enum: PromoType })
   @IsEnum(PromoType)
-  type: "";
+  type: PromoType;
 }
