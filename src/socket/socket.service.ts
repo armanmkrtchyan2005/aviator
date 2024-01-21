@@ -32,7 +32,7 @@ export class SocketService {
     @InjectModel(Admin.name) private adminModel: Model<Admin>,
     @InjectModel(Referral.name) private referralModel: Model<Referral>,
     private convertService: ConvertService,
-  ) {}
+  ) { }
 
   private currentPlayers: IBet[] = [];
   private betAmount = 0;
@@ -66,8 +66,8 @@ export class SocketService {
   private totalBets: number = 0;
   private partOfProfit: number = 0;
 
-  async handleConnection(client: Socket) {}
-  handleDisconnect(socket: Socket): void {}
+  async handleConnection(client: Socket) { }
+  handleDisconnect(socket: Socket): void { }
 
   private randomOneHourAlgorithm() {
     const daley = _.random(HOUR_IN_MS, 2 * HOUR_IN_MS);
@@ -109,12 +109,23 @@ export class SocketService {
     }
 
     const user = await this.userModel.findById(userPayload?.id, ["currency", "balance", "bonuses", "login"]);
-
+    const { gameLimits } = await this.adminModel.findOne({}, ["gameLimits"])
     if (!user) {
       return new WsException("Пользователь не авторизован");
     }
 
     const userPromo = await this.userPromoModel.findOne({ user: user._id, promo: dto.promoId, active: false }).populate("promo");
+
+    const minBet = await this.convertService.convert(gameLimits.currency, dto.currency, gameLimits.min)
+    const maxBet = await this.convertService.convert(gameLimits.currency, dto.currency, gameLimits.max)
+
+    if (dto.bet < minBet) {
+      return new WsException(`Минимальная ставка ${minBet} ${user.currency}`);
+    }
+
+    if (dto.bet > maxBet) {
+      return new WsException(`Максимальная ставка ${maxBet} ${user.currency}`);
+    }
 
     let bet: number;
 
