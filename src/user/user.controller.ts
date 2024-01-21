@@ -53,7 +53,7 @@ import { GameLimits } from "src/admin/schemas/admin.schema";
 @Auth()
 @Controller("user")
 export class UserController {
-  constructor(private userService: UserService) {}
+  constructor(private userService: UserService) { }
 
   @ApiOkResponse({ type: User })
   @Get("/")
@@ -65,8 +65,8 @@ export class UserController {
     type: GameLimits,
   })
   @Get("/game-limits")
-  findGameLimits() {
-    return this.userService.findGameLimits();
+  findGameLimits(@Req() req: Request) {
+    return this.userService.findGameLimits(req["user"]);
   }
 
   @ApiOkResponse({ type: ReferralOkResponse })
