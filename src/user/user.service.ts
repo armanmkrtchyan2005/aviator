@@ -34,7 +34,7 @@ export class UserService {
     private jwtService: JwtService,
     private mailService: MailService,
     private convertService: ConvertService,
-  ) {}
+  ) { }
 
   async findMe(auth: IAuthPayload) {
     const user = await this.userModel.findById(auth.id, { telegramId: true, login: true, email: true });
@@ -258,11 +258,27 @@ export class UserService {
       { $lookup: { from: "promos", localField: "promo", foreignField: "_id", as: "promo" } },
       { $unwind: "$promo" },
       { $match: { "promo.type": dto.type } },
-      { $set: dto.type === PromoType.ADD_BALANCE ? { "promo.limit": "$limit", "promo.currency": user.currency } : {} },
-      { $replaceWith: "$promo" },
+      {
+        $addFields: {
+          "promo.limit": { $cond: [{ $eq: [dto.type, PromoType.ADD_BALANCE] }, "$limit", null] },
+          "promo.currency": {
+            $cond: [
+              { $eq: [dto.type, PromoType.ADD_BALANCE] },
+              user.currency,
+              "$promo.currency" // Keep the original value if not ADD_BALANCE
+            ]
+          },
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          promo: 1,
+        }
+      },
     ]);
 
-    return promos;
+    return promos.map((entry) => entry.promo);
   }
 
   async getPromo(authPayload: IAuthPayload, id: string) {
