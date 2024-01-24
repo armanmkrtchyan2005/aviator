@@ -12,6 +12,10 @@ import { ConfirmReplenishmentDto } from "./dto/confirm-replenishment.dto";
 import { Requisite } from "src/admin/schemas/requisite.schema";
 import { SchedulerRegistry, CronExpression } from "@nestjs/schedule";
 import { CronJob } from "cron";
+import { UserPromo } from "src/user/schemas/userPromo.schema";
+import { PromoType } from "src/user/schemas/promo.schema";
+import { Bonus, CoefParamsType } from "src/user/schemas/bonus.schema";
+import * as _ from "lodash";
 
 @Injectable()
 export class ReplenishmentService {
@@ -20,6 +24,8 @@ export class ReplenishmentService {
     @InjectModel(User.name) private userModel: Model<User>,
     @InjectModel(Requisite.name) private requisiteModel: Model<Requisite>,
     @InjectModel(Replenishment.name) private replenishmentModel: Model<Replenishment>,
+    @InjectModel(UserPromo.name) private userPromoModel: Model<UserPromo>,
+    @InjectModel(Bonus.name) private bonusModel: Model<Bonus>,
     private schedulerRegistry: SchedulerRegistry,
     private convertService: ConvertService,
   ) {}
@@ -78,6 +84,32 @@ export class ReplenishmentService {
     }
     const commission = await this.convertService.convert(admin.commissionCurrency, dto.currency, admin.commission);
     const deduction = dto.amount + commission;
+
+    const bonuses = await this.userPromoModel.find({ user: user._id }).populate("promo");
+    const amount = await this.convertService.convert(dto.currency, user.currency, dto.amount);
+    let sum = 0;
+
+    for (let bonus of bonuses) {
+      if (bonus.limit >= amount) {
+        sum += (dto.amount * bonus.promo.amount) / 100;
+        bonus.limit -= amount;
+        await bonus.save();
+      }
+    }
+
+    // const addBalanceBonuses = await this.bonusModel.find({
+    //   active: true,
+    //   coef_params: { type: CoefParamsType.ADD_BALANCE },
+    //   $or: [{ coef_params: { to_user_id: null } }, { coef_params: { to_user_id: user._id } }],
+    // });
+
+    // for(let addBalanceBonus of addBalanceBonuses) {
+    //   const amount = _.random(addBalanceBonus.coef_params.amount_first, addBalanceBonus.coef_params.amount_second);
+
+    //   addBalanceBonus
+    // }
+
+    // dto.amount += sum;
 
     const replenishment = await (await this.replenishmentModel.create({ ...dto, deduction, user: user._id })).populate("requisite");
 

@@ -8,6 +8,8 @@ import { Admin, AdminSchema } from "src/admin/schemas/admin.schema";
 import { Replenishment, ReplenishmentSchema } from "./schemas/replenishment.schema";
 import { Requisite, RequisiteSchema } from "src/admin/schemas/requisite.schema";
 import { ScheduleModule } from "@nestjs/schedule";
+import { UserPromo, UserPromoSchema } from "src/user/schemas/userPromo.schema";
+import { Bonus, BonusSchema } from "src/user/schemas/bonus.schema";
 
 @Module({
   imports: [
@@ -17,6 +19,8 @@ import { ScheduleModule } from "@nestjs/schedule";
       { name: User.name, schema: UserSchema },
       { name: Requisite.name, schema: RequisiteSchema },
       { name: Replenishment.name, schema: ReplenishmentSchema },
+      { name: UserPromo.name, schema: UserPromoSchema },
+      { name: Bonus.name, schema: BonusSchema },
     ]),
     ConvertModule,
   ],

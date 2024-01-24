@@ -16,6 +16,8 @@ import { SendCodeOkResponse } from "./responses/send-code.response";
 import { ConfirmCodeOkResponse } from "./responses/confirm-code.response";
 import { ChangePasswordDto } from "./dto/change-password.dto";
 import { ChangePasswordOkResponse } from "./responses/change-password.response";
+import { Bonus, CoefParamsType } from "src/user/schemas/bonus.schema";
+import * as _ from "lodash";
 
 const saltRounds = 10;
 export const salt = bcrypt.genSaltSync(saltRounds);
@@ -26,7 +28,13 @@ export const generateCode = () => {
 
 @Injectable()
 export class AuthService {
-  constructor(private jwtService: JwtService, @InjectModel(User.name) private userModel: Model<User>, private mailService: MailService, private convertService: ConvertService) {}
+  constructor(
+    private jwtService: JwtService,
+    @InjectModel(User.name) private userModel: Model<User>,
+    @InjectModel(Bonus.name) private bonusModel: Model<Bonus>,
+    private mailService: MailService,
+    private convertService: ConvertService,
+  ) {}
 
   async signUp(dto: SignUpDto): Promise<SignUpCreatedResponse> {
     const userEmail = await this.userModel.findOne({
@@ -51,19 +59,30 @@ export class AuthService {
       throw new BadRequestException(errors);
     }
 
-    const balance = await this.convertService.convert("USD", dto.currency, 1);
+    const newUsersBonuses = await this.bonusModel.find({ active: true, coef_params: { type: CoefParamsType.NEW_USERS } });
 
     const hashedPassword = bcrypt.hashSync(dto.password, salt);
 
     const leader = await this.userModel.findOne({ login: dto.from });
 
-    const newUser = await this.userModel.create({ ...dto, balance, password: hashedPassword, leader });
+    const newUser = await this.userModel.create({ ...dto, password: hashedPassword, leader });
 
     if (leader) {
       leader.descendants.push({ _id: newUser._id.toString(), createdAt: new Date(), updatedUt: new Date(), earnings: 0 });
 
       await leader.save();
     }
+
+    let balance = 0;
+    for (let newUsersBonus of newUsersBonuses) {
+      const amount = _.random(newUsersBonus.coef_params.amount_first, newUsersBonus.coef_params.amount_second);
+      balance += await this.convertService.convert("USD", dto.currency, amount);
+      newUsersBonus.actived_users.push(newUser);
+    }
+
+    newUser.balance = balance;
+
+    await newUser.save();
 
     const token = this.jwtService.sign({ id: newUser._id }, {});
 

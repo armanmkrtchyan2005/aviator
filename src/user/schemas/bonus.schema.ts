@@ -12,14 +12,18 @@ export enum CoefParamsType {
 }
 
 class CoefParams {
+  @Prop({ enum: CoefParamsType })
   type: CoefParamsType;
-
+  //new users random limits
+  @Prop()
   amount_first: number;
 
+  @Prop()
   amount_second: number;
 
+  // add_balance
+  @Prop()
   from_amount: number;
-
   coef: number;
 }
 
