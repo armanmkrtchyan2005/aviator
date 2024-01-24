@@ -34,7 +34,7 @@ export class UserService {
     private jwtService: JwtService,
     private mailService: MailService,
     private convertService: ConvertService,
-  ) { }
+  ) {}
 
   async findMe(auth: IAuthPayload) {
     const user = await this.userModel.findById(auth.id, { telegramId: true, login: true, email: true });
@@ -43,12 +43,12 @@ export class UserService {
   }
 
   async findGameLimits(authPayload: IAuthPayload) {
-    const user = await this.userModel.findById(authPayload.id)
+    const user = await this.userModel.findById(authPayload.id);
 
     const { gameLimits } = await this.adminModel.findOne({}, ["gameLimits"]);
-    const min = await this.convertService.convert(gameLimits.currency, user.currency, gameLimits.min)
-    const max = await this.convertService.convert(gameLimits.currency, user.currency, gameLimits.max)
-    const maxWin = await this.convertService.convert(gameLimits.currency, user.currency, gameLimits.maxWin)
+    const min = await this.convertService.convert(gameLimits.currency, user.currency, gameLimits.min);
+    const max = await this.convertService.convert(gameLimits.currency, user.currency, gameLimits.max);
+    const maxWin = await this.convertService.convert(gameLimits.currency, user.currency, gameLimits.maxWin);
 
     return { min, max, maxWin, currency: user.currency };
   }
@@ -101,39 +101,26 @@ export class UserService {
     return referrals;
   }
 
-  async confirmEmailSendCode(session: Record<string, any>, userPayload: IAuthPayload) {
-    session.codeToken = "";
+  async confirmEmailSendCode(userPayload: IAuthPayload) {
     const user = await this.userModel.findById(userPayload.id);
-
     const code = generateCode();
+    const token = this.jwtService.sign({ id: user._id, code }, { expiresIn: 60 * 60 * 4 });
+    user.codeToken = token;
 
-    const token = this.jwtService.sign({ id: user._id, code }, { expiresIn: 60 * 60 * 2 });
+    await user.save();
 
     await this.mailService.sendUserForgotCode(user.email, code);
-
-    session.codeToken = token;
 
     return { message: "На ваш Email отправлен код для подтверждения" };
   }
 
-  async confirmEmailConfirmCode(dto: ConfirmCodeDto, session: Record<string, any>) {
-    if (!session.codeToken) {
-      throw new BadRequestException("Неверный код");
-    }
-
+  async confirmEmailConfirmCode(userPayload: IAuthPayload, dto: ConfirmCodeDto) {
     try {
-      const payload = await this.jwtService.verifyAsync(session.codeToken);
-
-      if (payload?.code !== dto.code) {
+      const user = await this.userModel.findById(userPayload.id);
+      const payload = await this.jwtService.verifyAsync(user.codeToken);
+      if (payload.code !== dto.code) {
         throw new BadRequestException("Неверный код");
       }
-
-      session.codeToken = "";
-
-      const user = await this.userModel.findById(payload.id);
-      user.email = payload.email;
-
-      await user.save();
 
       return { message: "Ваш email подтверждён" };
     } catch (error) {
@@ -141,9 +128,7 @@ export class UserService {
     }
   }
 
-  async changeEmailSendCode(dto: SendCodeDto, session: Record<string, any>, userPayload: IAuthPayload) {
-    session.codeToken = "";
-
+  async changeEmailSendCode(dto: SendCodeDto, userPayload: IAuthPayload) {
     const userFromEmail = await this.userModel.findOne({
       email: dto.email,
     });
@@ -153,35 +138,25 @@ export class UserService {
     }
 
     const user = await this.userModel.findById(userPayload.id);
-
     const code = generateCode();
+    const token = this.jwtService.sign({ id: user._id, code, email: dto.email }, { expiresIn: 60 * 60 * 4 });
+    user.codeToken = token;
 
-    const token = this.jwtService.sign({ id: user._id, code, email: dto.email }, { expiresIn: 60 * 60 * 2 });
+    await user.save();
 
-    await this.mailService.sendUserForgotCode(dto.email, code);
-
-    session.codeToken = token;
+    await this.mailService.sendUserForgotCode(user.email, code);
 
     return { message: "На ваш Email отправлен код для подтверждения" };
   }
 
-  async changeEmailConfirmCode(dto: ConfirmCodeDto, session: Record<string, any>) {
-    if (!session.codeToken) {
-      throw new BadRequestException("Неверный код");
-    }
-
+  async changeEmailConfirmCode(userPayload: IAuthPayload, dto: ConfirmCodeDto) {
     try {
-      const payload = await this.jwtService.verifyAsync(session.codeToken);
-
-      if (payload?.code !== dto.code) {
+      const user = await this.userModel.findById(userPayload.id);
+      const payload = await this.jwtService.verifyAsync(user.codeToken);
+      if (payload.code !== dto.code) {
         throw new BadRequestException("Неверный код");
       }
-
-      session.codeToken = "";
-
-      const user = await this.userModel.findById(payload.id);
       user.email = payload.email;
-
       await user.save();
 
       return { message: "Ваш email успешно изменен" };
@@ -271,20 +246,20 @@ export class UserService {
             $cond: [
               { $eq: [dto.type, PromoType.ADD_BALANCE] },
               user.currency,
-              "$promo.currency" // Keep the original value if not ADD_BALANCE
-            ]
+              "$promo.currency", // Keep the original value if not ADD_BALANCE
+            ],
           },
-        }
+        },
       },
       {
         $project: {
           _id: 0,
           promo: 1,
-        }
+        },
       },
     ]);
 
-    return promos.map((entry) => entry.promo);
+    return promos.map(entry => entry.promo);
   }
 
   async getPromo(authPayload: IAuthPayload, id: string) {

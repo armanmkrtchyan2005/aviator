@@ -1,6 +1,6 @@
 import mongoose, { HydratedDocument } from "mongoose";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { Type } from "class-transformer";
+import { Exclude, Type } from "class-transformer";
 import { ApiProperty } from "@nestjs/swagger";
 import { Promo } from "./promo.schema";
 
@@ -66,7 +66,10 @@ export class User {
   profileImage: string;
 
   @Prop()
-  socketId: string
+  codeToken: string;
+
+  @Prop()
+  socketId: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

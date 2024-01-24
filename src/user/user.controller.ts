@@ -53,7 +53,7 @@ import { GameLimits } from "src/admin/schemas/admin.schema";
 @Auth()
 @Controller("user")
 export class UserController {
-  constructor(private userService: UserService) { }
+  constructor(private userService: UserService) {}
 
   @ApiOkResponse({ type: User })
   @Get("/")
@@ -109,30 +109,30 @@ export class UserController {
   @HttpCode(HttpStatus.OK)
   @Post("confirm-email/send-code")
   confirmEmailSendCode(@Req() req: Request) {
-    return this.userService.confirmEmailSendCode(req.session, req["user"]);
+    return this.userService.confirmEmailSendCode(req["user"]);
   }
 
   @ApiOkResponse({ type: ConfirmEmailConfirmCodeResponse })
   @ApiBadRequestResponse({ type: ConfirmEmailConfirmCodeBadResponse })
   @HttpCode(HttpStatus.OK)
   @Post("confirm-email")
-  confirmEmailConfirmCode(@Session() session: Record<string, any>, @Body() dto: ConfirmCodeDto) {
-    return this.userService.confirmEmailConfirmCode(dto, session);
+  confirmEmailConfirmCode(@Req() req: Request, @Body() dto: ConfirmCodeDto) {
+    return this.userService.confirmEmailConfirmCode(req["user"], dto);
   }
 
   @ApiOkResponse({ type: ConfirmEmailSendCodeResponse })
   @HttpCode(HttpStatus.OK)
   @Post("change-email/send-code")
   confirm(@Req() req: Request, @Body() dto: SendCodeDto) {
-    return this.userService.changeEmailSendCode(dto, req.session, req["user"]);
+    return this.userService.changeEmailSendCode(dto, req["user"]);
   }
 
   @ApiOkResponse({ type: ChangeEmailConfirmCodeResponse })
   @ApiBadRequestResponse({ type: ConfirmEmailConfirmCodeBadResponse })
   @HttpCode(HttpStatus.OK)
   @Put("change-email")
-  confirmCode(@Session() session: Record<string, any>, @Body() dto: ConfirmCodeDto) {
-    return this.userService.changeEmailConfirmCode(dto, session);
+  confirmCode(@Req() req: Request, @Body() dto: ConfirmCodeDto) {
+    return this.userService.changeEmailConfirmCode(req["user"], dto);
   }
 
   @ApiOkResponse({ type: SignInOkResponse })
