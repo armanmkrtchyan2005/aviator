@@ -37,16 +37,16 @@ export class AuthController {
   @ApiBadRequestResponse({ description: "User from this email not founded", type: SendCodeBadResponse })
   @HttpCode(HttpStatus.OK)
   @Post("forgot/send-code")
-  sendCode(@Body() dto: SendCodeDto, @Session() session: Record<string, any>): Promise<SendCodeOkResponse> {
-    return this.authService.sendCode(dto, session);
+  sendCode(@Body() dto: SendCodeDto): Promise<SendCodeOkResponse> {
+    return this.authService.sendCode(dto);
   }
 
   @ApiOkResponse({ description: "Right code", type: ConfirmCodeOkResponse })
   @ApiBadRequestResponse({ description: "Wrong code", type: ConfirmCodeBadResponse })
   @HttpCode(HttpStatus.OK)
   @Post("forgot/confirm-code")
-  confirmCode(@Body() dto: ConfirmCodeDto, @Session() session: Record<string, any>): Promise<ConfirmCodeOkResponse> {
-    return this.authService.confirmCode(dto, session);
+  confirmCode(@Body() dto: ConfirmCodeDto): Promise<ConfirmCodeOkResponse> {
+    return this.authService.confirmCode(dto);
   }
 
   @ApiOkResponse({ description: "Right code", type: ChangePasswordOkResponse })

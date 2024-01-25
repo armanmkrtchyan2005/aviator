@@ -111,9 +111,7 @@ export class AuthService {
     return { token };
   }
 
-  async sendCode(dto: SendCodeDto, session: Record<string, any>): Promise<SendCodeOkResponse> {
-    session.codeToken = "";
-
+  async sendCode(dto: SendCodeDto): Promise<SendCodeOkResponse> {
     const user = await this.userModel.findOne({
       email: dto.email,
     });
@@ -124,30 +122,29 @@ export class AuthService {
 
     const code = generateCode();
 
-    const token = this.jwtService.sign({ id: user._id, code }, { expiresIn: 60 * 60 * 2 });
+    user.codeToken = this.jwtService.sign({ code }, { expiresIn: 60 * 60 * 2 });
 
     await this.mailService.sendUserForgotCode(dto.email, code);
 
-    session.codeToken = token;
+    await user.save();
 
     return { message: "На ваш Email отправлен код для подтверждения" };
   }
 
-  async confirmCode(dto: ConfirmCodeDto, session: Record<string, any>): Promise<ConfirmCodeOkResponse> {
-    if (!session.codeToken) {
-      throw new BadRequestException("Неверный код");
-    }
-
+  async confirmCode(dto: ConfirmCodeDto): Promise<ConfirmCodeOkResponse> {
     try {
-      const payload = await this.jwtService.verifyAsync(session.codeToken);
+      const user = await this.userModel.findOne({ email: dto.email });
+      const payload: { code: number } = await this.jwtService.verifyAsync(user.codeToken);
 
       if (payload?.code !== dto.code) {
         throw new BadRequestException("Неверный код");
       }
 
-      session.codeToken = "";
+      const token = await this.jwtService.signAsync({ id: user._id }, { expiresIn: 60 * 60 * 10 });
 
-      const token = await this.jwtService.signAsync({ id: payload.id }, { expiresIn: 60 * 60 * 10 });
+      user.codeToken = null;
+
+      await user.save();
 
       return { token };
     } catch (error) {
