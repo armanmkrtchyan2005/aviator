@@ -13,6 +13,7 @@ import { Admin, IAlgorithms } from "src/admin/schemas/admin.schema";
 import { Referral } from "src/user/schemas/referral.schema";
 import { UserPromo } from "src/user/schemas/userPromo.schema";
 import * as _ from "lodash";
+import { Coeff } from "src/bets/schemas/coeff.schema";
 
 const STOP_DISABLE_MS = 2000;
 const LOADING_MS = 5000;
@@ -31,6 +32,7 @@ export class SocketService {
     @InjectModel(UserPromo.name) private userPromoModel: Model<UserPromo>,
     @InjectModel(Admin.name) private adminModel: Model<Admin>,
     @InjectModel(Referral.name) private referralModel: Model<Referral>,
+    @InjectModel(Coeff.name) private coeffModel: Model<Coeff>,
     private convertService: ConvertService,
   ) { }
 
@@ -315,6 +317,10 @@ export class SocketService {
 
   private async loading() {
     clearInterval(this.interval);
+    this.socket.emit("crash");
+
+    await this.coeffModel.create({ coeff: +this.x.toFixed(2) })
+
     this.x = 1;
     this.step = 0.0006;
     this.random = _.random(MAX_COEFF, true);
@@ -323,7 +329,6 @@ export class SocketService {
 
     this.algorithms = admin?.algorithms;
 
-    this.socket.emit("crash");
 
     this.currentPlayers = [];
     this.betAmount = 0;

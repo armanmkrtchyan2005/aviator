@@ -5,10 +5,11 @@ import { InjectModel } from "@nestjs/mongoose";
 import { User } from "src/user/schemas/user.schema";
 import { Model } from "mongoose";
 import { Bet } from "./schemas/bet.schema";
+import { Coeff } from "./schemas/coeff.schema";
 
 @Injectable()
 export class BetsService {
-  constructor(@InjectModel(User.name) private userModel: Model<User>, @InjectModel(Bet.name) private betModel: Model<Bet>) { }
+  constructor(@InjectModel(User.name) private userModel: Model<User>, @InjectModel(Bet.name) private betModel: Model<Bet>, @InjectModel(Coeff.name) private coeffModel: Model<Coeff>) { }
 
   async topBets(query: MyBetsQueryDto) {
     const current = new Date();
@@ -29,5 +30,11 @@ export class BetsService {
     const bets = await this.betModel.find({ playerId: auth.id }).skip(query.skip).limit(query.limit).sort({ time: -1 });
 
     return bets;
+  }
+
+  async findLastCoeffs() {
+    const coeffs = await this.coeffModel.find({}).sort({ createdAt: -1 }).limit(30)
+
+    return coeffs
   }
 }
