@@ -59,7 +59,7 @@ export class AuthService {
       throw new BadRequestException("Данный логин уже зарегистрирован");
     }
 
-    if (dto.promocode && promo) {
+    if (dto.promocode && !promo) {
       throw new BadRequestException("Промокод не найден");
     }
 
@@ -88,14 +88,16 @@ export class AuthService {
     newUser.balance = balance;
 
     await newUser.save();
+    if (promo) {
+      const newUserPromo = await this.userPromoModel.create({ user: newUser._id, promo: promo?._id });
 
-    const newUserPromo = await this.userPromoModel.create({ user: newUser._id, promo: promo._id });
+      if (promo.type === PromoType.ADD_BALANCE) {
+        newUserPromo.limit = await this.convertService.convert(promo.currency, newUser.currency, promo.limit);
 
-    if (promo.type === PromoType.ADD_BALANCE) {
-      newUserPromo.limit = await this.convertService.convert(promo.currency, newUser.currency, promo.limit);
-
-      await newUserPromo.save();
+        await newUserPromo.save();
+      }
     }
+
 
     const token = this.jwtService.sign({ id: newUser._id }, {});
 

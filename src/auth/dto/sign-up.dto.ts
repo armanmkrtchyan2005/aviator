@@ -62,10 +62,6 @@ export class SignUpDto {
   @ApiProperty({
     example: 123456,
   })
-  @IsNotEmpty({
-    message: "Поле обзательно для заполнения",
-  })
-  @IsNumber({}, { message: "telegramId должно бить числом" })
   telegramId: number;
 
   @ApiProperty({

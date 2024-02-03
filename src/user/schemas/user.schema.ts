@@ -3,6 +3,9 @@ import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Exclude, Type } from "class-transformer";
 import { ApiProperty } from "@nestjs/swagger";
 import { Promo } from "./promo.schema";
+import * as autoIncrement from 'mongoose-plugin-autoinc';
+
+const START_AT = 100000
 
 export type UserDocument = HydratedDocument<User>;
 
@@ -26,7 +29,11 @@ export class User {
   _id: mongoose.Types.ObjectId;
 
   @ApiProperty()
-  @Prop({ required: true })
+  @Prop({ type: Number, unique: true })
+  uid: Number;
+
+  @ApiProperty()
+  @Prop()
   telegramId: number;
 
   @ApiProperty()
@@ -41,7 +48,7 @@ export class User {
   password: string;
 
   @ApiProperty()
-  @Prop()
+  @Prop({ default: "" })
   email: string;
 
   @ApiProperty()
@@ -72,4 +79,11 @@ export class User {
   socketId: string;
 }
 
-export const UserSchema = SchemaFactory.createForClass(User);
+
+export const UserSchema = SchemaFactory.createForClass(User).plugin(autoIncrement.plugin, {
+  model: User.name,
+  field: 'uid',
+  startAt: START_AT,
+  incrementBy: 1,
+});
+
