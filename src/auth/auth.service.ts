@@ -18,6 +18,8 @@ import { ChangePasswordDto } from "./dto/change-password.dto";
 import { ChangePasswordOkResponse } from "./responses/change-password.response";
 import { Bonus, CoefParamsType } from "src/user/schemas/bonus.schema";
 import * as _ from "lodash";
+import { Promo, PromoType } from "src/user/schemas/promo.schema";
+import { UserPromo } from "src/user/schemas/userPromo.schema";
 
 const saltRounds = 10;
 export const salt = bcrypt.genSaltSync(saltRounds);
@@ -32,9 +34,11 @@ export class AuthService {
     private jwtService: JwtService,
     @InjectModel(User.name) private userModel: Model<User>,
     @InjectModel(Bonus.name) private bonusModel: Model<Bonus>,
+    @InjectModel(Promo.name) private promoModel: Model<Promo>,
+    @InjectModel(UserPromo.name) private userPromoModel: Model<UserPromo>,
     private mailService: MailService,
     private convertService: ConvertService,
-  ) {}
+  ) { }
 
   async signUp(dto: SignUpDto): Promise<SignUpCreatedResponse> {
     const userEmail = await this.userModel.findOne({
@@ -45,18 +49,18 @@ export class AuthService {
       login: dto.login,
     });
 
-    const errors = [];
+    const promo = await this.promoModel.findOne({ name: dto.promocode }, ["type", "will_finish", "coef", "amount", "currency", "limit"]);
 
     if (userEmail) {
-      errors.push("Данный email уже зарегистрирован");
+      throw new BadRequestException("Данный email уже зарегистрирован");
     }
 
     if (userLogin) {
-      errors.push("Данный логин уже зарегистрирован");
+      throw new BadRequestException("Данный логин уже зарегистрирован");
     }
 
-    if (errors.length > 0) {
-      throw new BadRequestException(errors);
+    if (dto.promocode && promo) {
+      throw new BadRequestException("Промокод не найден");
     }
 
     const newUsersBonuses = await this.bonusModel.find({ active: true, coef_params: { type: CoefParamsType.NEW_USERS } });
@@ -74,6 +78,7 @@ export class AuthService {
     }
 
     let balance = 0;
+
     for (let newUsersBonus of newUsersBonuses) {
       const amount = _.random(newUsersBonus.coef_params.amount_first, newUsersBonus.coef_params.amount_second);
       balance += await this.convertService.convert("USD", dto.currency, amount);
@@ -83,6 +88,14 @@ export class AuthService {
     newUser.balance = balance;
 
     await newUser.save();
+
+    const newUserPromo = await this.userPromoModel.create({ user: newUser._id, promo: promo._id });
+
+    if (promo.type === PromoType.ADD_BALANCE) {
+      newUserPromo.limit = await this.convertService.convert(promo.currency, newUser.currency, promo.limit);
+
+      await newUserPromo.save();
+    }
 
     const token = this.jwtService.sign({ id: newUser._id }, {});
 

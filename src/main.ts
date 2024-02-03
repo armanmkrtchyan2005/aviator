@@ -1,18 +1,13 @@
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
-import { BadRequestException, NestApplicationOptions, ValidationPipe } from "@nestjs/common";
+import { ValidationPipe } from "@nestjs/common";
 import * as session from "express-session";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import * as fs from "fs";
 
 async function bootstrap() {
-  const privateKey = fs.readFileSync("secrets/private-key.pem", "utf8");
-  const certificate = fs.readFileSync("secrets/public-certificate.pem", "utf8");
-  const httpsOptions = { key: privateKey, cert: certificate };
 
-  const nestOptions: NestApplicationOptions = {}; //for https add httpsOptions
-
-  const app = await NestFactory.create(AppModule, nestOptions);
+  const app = await NestFactory.create(AppModule);
   app.enableCors();
   const port = process.env.PORT || 8080;
 

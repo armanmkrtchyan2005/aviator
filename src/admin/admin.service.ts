@@ -20,7 +20,7 @@ export class AdminService {
     @InjectModel(Withdrawal.name) private withdrawalModel: Model<Withdrawal>,
     private jwtService: JwtService,
     private convertService: ConvertService,
-  ) {}
+  ) { }
 
   async login(dto: AdminLoginDto) {
     await this.adminModel.create();
@@ -60,7 +60,7 @@ export class AdminService {
   }
 
   async getReplenishments() {
-    const replenishments = await this.replenishmentModel.find().sort({ createdAt: -1 });
+    const replenishments = await this.replenishmentModel.find().sort({ createdAt: -1 }).populate("requisite");
 
     return replenishments;
   }

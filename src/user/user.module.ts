@@ -27,4 +27,4 @@ import { UserPromo, UserPromoSchema } from "./schemas/userPromo.schema";
   controllers: [UserController],
   providers: [UserService],
 })
-export class UserModule {}
+export class UserModule { }

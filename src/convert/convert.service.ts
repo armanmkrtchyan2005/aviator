@@ -18,7 +18,7 @@ export class ConvertService {
 
     const rate = data[from.toLowerCase()][to.toLowerCase()]
 
-    await this.cacheManager.set(`${from}-${to}`, rate, 1000 * 60 * 60)
+    await this.cacheManager.set(`${from}-${to}`, rate, 1000 * 60)
 
     return amount * rate
   }

@@ -7,6 +7,8 @@ import { User, UserSchema } from "src/user/schemas/user.schema";
 import { MailModule } from "src/mail/mail.module";
 import { ConvertModule } from "src/convert/convert.module";
 import { Bonus, BonusSchema } from "src/user/schemas/bonus.schema";
+import { Promo, PromoSchema } from "src/user/schemas/promo.schema";
+import { UserPromo, UserPromoSchema } from "src/user/schemas/userPromo.schema";
 
 @Module({
   imports: [
@@ -24,6 +26,8 @@ import { Bonus, BonusSchema } from "src/user/schemas/bonus.schema";
     MongooseModule.forFeature([
       { name: User.name, schema: UserSchema },
       { name: Bonus.name, schema: BonusSchema },
+      { name: Promo.name, schema: PromoSchema },
+      { name: UserPromo.name, schema: UserPromoSchema },
     ]),
     MailModule,
     ConvertModule,
@@ -31,4 +35,4 @@ import { Bonus, BonusSchema } from "src/user/schemas/bonus.schema";
   controllers: [AuthController],
   providers: [AuthService],
 })
-export class AuthModule {}
+export class AuthModule { }

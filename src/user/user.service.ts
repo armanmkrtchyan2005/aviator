@@ -34,10 +34,10 @@ export class UserService {
     private jwtService: JwtService,
     private mailService: MailService,
     private convertService: ConvertService,
-  ) {}
+  ) { }
 
   async findMe(auth: IAuthPayload) {
-    const user = await this.userModel.findById(auth.id, { telegramId: true, login: true, email: true });
+    const user = await this.userModel.findById(auth.id, { telegramId: true, login: true, email: true, profileImage: true });
 
     return user;
   }

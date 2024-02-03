@@ -7,6 +7,9 @@ export type AdminDocument = HydratedDocument<Admin>;
 export interface IAlgorithms {
   id: number;
   active: boolean;
+  all_bets_amount: number;
+  all_withdrawal_amount: number;
+  used_count: number
 }
 
 interface IAdmin_panel_data {

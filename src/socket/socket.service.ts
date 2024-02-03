@@ -109,15 +109,15 @@ export class SocketService {
     }
 
     const user = await this.userModel.findById(userPayload?.id, ["currency", "balance", "bonuses", "login"]);
-    const { gameLimits } = await this.adminModel.findOne({}, ["gameLimits"])
+    const admin = await this.adminModel.findOne({}, ["gameLimits", "algorithms"])
     if (!user) {
       return new WsException("Пользователь не авторизован");
     }
 
     const userPromo = await this.userPromoModel.findOne({ user: user._id, promo: dto.promoId, active: false }).populate("promo");
 
-    const minBet = await this.convertService.convert(gameLimits.currency, dto.currency, gameLimits.min)
-    const maxBet = await this.convertService.convert(gameLimits.currency, dto.currency, gameLimits.max)
+    const minBet = await this.convertService.convert(admin.gameLimits.currency, dto.currency, admin.gameLimits.min)
+    const maxBet = await this.convertService.convert(admin.gameLimits.currency, dto.currency, admin.gameLimits.max)
 
     if (dto.bet < minBet) {
       return new WsException(`Минимальная ставка ${minBet} ${user.currency}`);
@@ -166,6 +166,16 @@ export class SocketService {
     this.betAmount += betDataObject.bet;
 
     this.socket.emit("currentPlayers", { betAmount: this.betAmount, winAmount: this.winAmount, currentPlayers });
+
+    const algorithms = admin.algorithms.map((algorithm) => {
+      if (algorithm.active) {
+        algorithm.all_bets_amount += betDataObject.bet;
+      }
+
+      return algorithm
+    })
+
+    await admin.updateOne({ $set: { algorithms } })
 
     return { message: "Ставка сделана" };
   }
@@ -235,8 +245,20 @@ export class SocketService {
       await leader.save();
     }
 
+    const admin = await this.adminModel.findOne({}, ["algorithms"])
+
+    const algorithms = admin.algorithms.map((algorithm) => {
+      if (algorithm.active) {
+        algorithm.all_withdrawal_amount += win;
+      }
+
+      return algorithm
+    })
+
+    await admin.updateOne({ $set: { algorithms } })
+
     //1. 3 player algorithm in Cash Out
-    if (this.algorithms[0]?.active) {
+    if (admin.algorithms[0]?.active) {
       this.threePlayers = this.threePlayers.filter(u => u.playerId !== userPayload?.id);
       if (!this.threePlayers.length) {
         this.loading();
@@ -245,7 +267,7 @@ export class SocketService {
     }
 
     // 2. Net income algorithm
-    if (this.algorithms[1]?.active) {
+    if (admin.algorithms[1]?.active) {
       const totalWinAmount = this.currentPlayers.reduce((prev, next) => prev + next.win, 0);
       if (totalWinAmount >= this.maxWinAmount) {
         this.loading();
@@ -254,7 +276,7 @@ export class SocketService {
     }
 
     // 7. Bet counts algorithm
-    if (this.algorithms[6]?.active) {
+    if (admin.algorithms[6]?.active) {
       const winsCount = this.currentPlayers.filter(bet => {
         return bet.win;
       }).length;
@@ -267,7 +289,7 @@ export class SocketService {
 
     // 8. -------------
 
-    if (this.algorithms[7]?.active) {
+    if (admin.algorithms[7]?.active) {
       const totalWinAmount = this.currentPlayers.reduce((prev, next) => prev + next.win, 0);
       if (totalWinAmount >= this.maxWinAmount) {
         this.loading();
@@ -275,7 +297,7 @@ export class SocketService {
       }
     }
 
-    if (this.algorithms[9]?.active) {
+    if (admin.algorithms[9]?.active) {
       if (this.playedCount < this.maxGameCount / 2) {
         this.totalWins += win;
       } else {
@@ -298,6 +320,7 @@ export class SocketService {
     this.random = _.random(MAX_COEFF, true);
 
     const admin = await this.adminModel.findOne();
+
     this.algorithms = admin?.algorithms;
 
     this.socket.emit("crash");
@@ -315,6 +338,16 @@ export class SocketService {
     this.socket.emit("loading");
 
     await sleep(LOADING_MS);
+
+    const algorithms = admin.algorithms.map((algorithm) => {
+      if (algorithm.active) {
+        algorithm.used_count++;
+      }
+
+      return algorithm
+    })
+
+    await admin.updateOne({ $set: { algorithms } })
 
     //1. 3 player algorithm loading
     if (this.algorithms[0]?.active) {

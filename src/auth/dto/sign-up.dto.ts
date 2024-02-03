@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsISO4217CurrencyCode, IsAlphanumeric, IsEmail, MinLength, MaxLength, IsNotEmpty, IsNumber, IsString } from "class-validator";
+import { IsISO4217CurrencyCode, IsAlphanumeric, IsEmail, MinLength, MaxLength, IsNotEmpty, IsNumber, IsString, IsOptional } from "class-validator";
 import { Match } from "../decorators/match.decorator";
 
 export const PASSWORD_MIN_LENGTH = 8;
@@ -56,6 +56,7 @@ export class SignUpDto {
       message: "Введите корректный email",
     },
   )
+  @IsOptional()
   email: string;
 
   @ApiProperty({
@@ -66,6 +67,14 @@ export class SignUpDto {
   })
   @IsNumber({}, { message: "telegramId должно бить числом" })
   telegramId: number;
+
+  @ApiProperty({
+    example: "promocode",
+    required: false,
+  })
+  @IsString({ message: "promocode должно быть текстовое" })
+  @IsOptional()
+  promocode: string
 
   @ApiProperty({
     example: "test123",
