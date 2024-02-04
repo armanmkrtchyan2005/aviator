@@ -8,6 +8,7 @@ export type ReplenishmentDocument = HydratedDocument<Replenishment>;
 
 export enum ReplenishmentStatusEnum {
   PENDING = "Ожидает оплаты",
+  PROCESSING = "В обработке...",
   COMPLETED = "Успешно завершена",
   CANCELED = "Отменена",
 }

@@ -146,6 +146,7 @@ export class ReplenishmentService {
   async confirmReplenishment(dto: ConfirmReplenishmentDto) {
     const replenishment = await this.replenishmentModel.findById(dto.id).populate("requisite");
 
+    replenishment.status = ReplenishmentStatusEnum.PENDING;
     replenishment.isPayConfirmed = true;
 
     await replenishment.save();
