@@ -7,6 +7,7 @@ export class CreateWithdrawalDto {
   currency: string;
 
   @ApiProperty({ example: 10000 })
+  @IsNotEmpty()
   @IsNumber()
   amount: number;
 
@@ -17,6 +18,6 @@ export class CreateWithdrawalDto {
 
   @ApiProperty()
   @IsNotEmpty()
-  @IsCreditCard()
-  userRequisite: string
+  @IsCreditCard({ message: "Реквизит должен быть кредитной картой" })
+  userRequisite: string;
 }

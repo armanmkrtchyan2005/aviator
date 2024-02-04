@@ -6,7 +6,7 @@ export class CancelReplenishmentResponse {
 }
 
 export class CancelReplenishmentBadResponse {
-  @ApiProperty({ example: "Невозможно отменить" })
+  @ApiProperty({ example: "Вы уже подтвердили оплату" })
   message: string;
 
   @ApiProperty({ example: "Bad Request" })

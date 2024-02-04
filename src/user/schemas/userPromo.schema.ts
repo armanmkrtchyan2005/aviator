@@ -19,6 +19,9 @@ export class UserPromo {
   active: boolean;
 
   @Prop({})
+  amount: number;
+
+  @Prop({})
   limit: number;
 }
 

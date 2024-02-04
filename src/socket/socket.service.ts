@@ -34,7 +34,7 @@ export class SocketService {
     @InjectModel(Referral.name) private referralModel: Model<Referral>,
     @InjectModel(Coeff.name) private coeffModel: Model<Coeff>,
     private convertService: ConvertService,
-  ) { }
+  ) {}
 
   private currentPlayers: IBet[] = [];
   private betAmount = 0;
@@ -68,8 +68,8 @@ export class SocketService {
   private totalBets: number = 0;
   private partOfProfit: number = 0;
 
-  async handleConnection(client: Socket) { }
-  handleDisconnect(socket: Socket): void { }
+  async handleConnection(client: Socket) {}
+  handleDisconnect(socket: Socket): void {}
 
   private randomOneHourAlgorithm() {
     const daley = _.random(HOUR_IN_MS, 2 * HOUR_IN_MS);
@@ -111,15 +111,15 @@ export class SocketService {
     }
 
     const user = await this.userModel.findById(userPayload?.id, ["currency", "balance", "bonuses", "login"]);
-    const admin = await this.adminModel.findOne({}, ["gameLimits", "algorithms"])
+    const admin = await this.adminModel.findOne({}, ["gameLimits", "algorithms"]);
     if (!user) {
       return new WsException("Пользователь не авторизован");
     }
 
     const userPromo = await this.userPromoModel.findOne({ user: user._id, promo: dto.promoId, active: false }).populate("promo");
 
-    const minBet = await this.convertService.convert(admin.gameLimits.currency, dto.currency, admin.gameLimits.min)
-    const maxBet = await this.convertService.convert(admin.gameLimits.currency, dto.currency, admin.gameLimits.max)
+    const minBet = await this.convertService.convert(admin.gameLimits.currency, dto.currency, admin.gameLimits.min);
+    const maxBet = await this.convertService.convert(admin.gameLimits.currency, dto.currency, admin.gameLimits.max);
 
     if (dto.bet < minBet) {
       return new WsException(`Минимальная ставка ${minBet} ${user.currency}`);
@@ -169,15 +169,15 @@ export class SocketService {
 
     this.socket.emit("currentPlayers", { betAmount: this.betAmount, winAmount: this.winAmount, currentPlayers });
 
-    const algorithms = admin.algorithms.map((algorithm) => {
+    const algorithms = admin.algorithms.map(algorithm => {
       if (algorithm.active) {
         algorithm.all_bets_amount += betDataObject.bet;
       }
 
-      return algorithm
-    })
+      return algorithm;
+    });
 
-    await admin.updateOne({ $set: { algorithms } })
+    await admin.updateOne({ $set: { algorithms } });
 
     return { message: "Ставка сделана" };
   }
@@ -247,17 +247,17 @@ export class SocketService {
       await leader.save();
     }
 
-    const admin = await this.adminModel.findOne({}, ["algorithms"])
+    const admin = await this.adminModel.findOne({}, ["algorithms"]);
 
-    const algorithms = admin.algorithms.map((algorithm) => {
+    const algorithms = admin.algorithms.map(algorithm => {
       if (algorithm.active) {
         algorithm.all_withdrawal_amount += win;
       }
 
-      return algorithm
-    })
+      return algorithm;
+    });
 
-    await admin.updateOne({ $set: { algorithms } })
+    await admin.updateOne({ $set: { algorithms } });
 
     //1. 3 player algorithm in Cash Out
     if (admin.algorithms[0]?.active) {
@@ -319,7 +319,7 @@ export class SocketService {
     clearInterval(this.interval);
     this.socket.emit("crash");
 
-    await this.coeffModel.create({ coeff: +this.x.toFixed(2) })
+    await this.coeffModel.create({ coeff: +this.x.toFixed(2) });
 
     this.x = 1;
     this.step = 0.0006;
@@ -328,7 +328,6 @@ export class SocketService {
     const admin = await this.adminModel.findOne();
 
     this.algorithms = admin?.algorithms;
-
 
     this.currentPlayers = [];
     this.betAmount = 0;
@@ -344,15 +343,15 @@ export class SocketService {
 
     await sleep(LOADING_MS);
 
-    const algorithms = admin.algorithms.map((algorithm) => {
+    const algorithms = admin.algorithms.map(algorithm => {
       if (algorithm.active) {
         algorithm.used_count++;
       }
 
-      return algorithm
-    })
+      return algorithm;
+    });
 
-    await admin.updateOne({ $set: { algorithms } })
+    await admin.updateOne({ $set: { algorithms } });
 
     //1. 3 player algorithm loading
     if (this.algorithms[0]?.active) {

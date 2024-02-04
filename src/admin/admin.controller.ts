@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Put } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Put, Query } from "@nestjs/common";
 import { AdminService } from "./admin.service";
 import { AdminLoginDto } from "./dto/adminLogin.dto";
 import { ApiBadRequestResponse, ApiOkResponse, ApiTags } from "@nestjs/swagger";
@@ -12,6 +12,7 @@ import { CancelReplenishmentDto } from "./dto/cancelReplenishment.dto";
 import { Withdrawal } from "src/withdrawal/schemas/withdrawal.schema";
 import { CancelReplenishmentBadResponse, CancelReplenishmentResponse } from "src/replenishment/responses/replenishment.response";
 import { CancelWithdrawalBadResponse, CancelWithdrawalOkResponse } from "src/withdrawal/responses/cancelWithdrawal.response";
+import { LimitQueryDto } from "./dto/limit-query.dto";
 
 @ApiTags("Admin")
 @Controller("admin")
@@ -66,8 +67,8 @@ export class AdminController {
   @AdminAuth()
   @ApiOkResponse({ type: Withdrawal })
   @Get("/withdrawals")
-  getWithdrawals() {
-    return this.adminService.getWithdrawals();
+  getWithdrawals(@Query() dto: LimitQueryDto) {
+    return this.adminService.getWithdrawals(dto);
   }
 
   @AdminAuth()

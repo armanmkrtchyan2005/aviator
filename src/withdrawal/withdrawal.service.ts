@@ -17,7 +17,7 @@ export class WithdrawalService {
     @InjectModel(Requisite.name) private requisiteModel: Model<Requisite>,
     @InjectModel(Withdrawal.name) private withdrawalModel: Model<Withdrawal>,
     private convertService: ConvertService,
-  ) { }
+  ) {}
 
   async findAll(userPayload: IAuthPayload) {
     const withdrawals = await this.withdrawalModel
@@ -62,7 +62,9 @@ export class WithdrawalService {
     withdrawal.status = WithdrawalStatusEnum.CANCELED;
     withdrawal.statusMessage = "Отменена пользователем";
 
-    withdrawal.user.balance += withdrawal.amount;
+    const amount = await this.convertService.convert(withdrawal.currency, withdrawal.user.currency, withdrawal.amount);
+
+    withdrawal.user.balance += amount;
     await withdrawal.save();
 
     return { message: "Пополнение отменена" };

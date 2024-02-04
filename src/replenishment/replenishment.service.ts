@@ -87,6 +87,7 @@ export class ReplenishmentService {
 
     const bonuses = await this.userPromoModel.find({ user: user._id }).populate("promo");
     const amount = await this.convertService.convert(dto.currency, user.currency, dto.amount);
+
     let sum = 0;
 
     for (let bonus of bonuses) {
@@ -130,7 +131,7 @@ export class ReplenishmentService {
   async cancelReplenishment(dto: CancelReplenishmentDto) {
     const replenishment = await this.replenishmentModel.findById(dto.id);
     if (!replenishment.isPayConfirmed) {
-      return { message: "Невозможно отменить" };
+      return { message: "Вы уже подтвердили оплату" };
     }
     replenishment.status = ReplenishmentStatusEnum.CANCELED;
     replenishment.statusMessage = "Отменена пользователем";

@@ -10,6 +10,7 @@ import { Replenishment, ReplenishmentStatusEnum } from "src/replenishment/schema
 import { ConvertService } from "src/convert/convert.service";
 import { Withdrawal, WithdrawalStatusEnum } from "src/withdrawal/schemas/withdrawal.schema";
 import { CancelReplenishmentDto } from "./dto/cancelReplenishment.dto";
+import { LimitQueryDto } from "./dto/limit-query.dto";
 
 @Injectable()
 export class AdminService {
@@ -20,7 +21,7 @@ export class AdminService {
     @InjectModel(Withdrawal.name) private withdrawalModel: Model<Withdrawal>,
     private jwtService: JwtService,
     private convertService: ConvertService,
-  ) { }
+  ) {}
 
   async login(dto: AdminLoginDto) {
     await this.adminModel.create();
@@ -107,7 +108,8 @@ export class AdminService {
     return { message: "Заявка отменена" };
   }
 
-  async getWithdrawals() {
+  //------------------------------------------------- add limit
+  async getWithdrawals(dto: LimitQueryDto) {
     const withdrawals = await this.withdrawalModel.find().sort({ createdAt: -1 });
 
     return withdrawals;
@@ -124,10 +126,6 @@ export class AdminService {
       throw new BadRequestException("Вы не можете менять подтвержденную заявку");
     }
 
-    withdrawal.user.balance += await this.convertService.convert(withdrawal.currency, withdrawal.user.currency, withdrawal.amount);
-
-    await withdrawal.user.save();
-
     withdrawal.status = WithdrawalStatusEnum.COMPLETED;
 
     await withdrawal.save();
@@ -136,7 +134,7 @@ export class AdminService {
   }
 
   async cancelWithdrawal(id: string, dto: CancelReplenishmentDto) {
-    const withdrawal = await this.withdrawalModel.findById(id);
+    const withdrawal = await this.withdrawalModel.findById(id).populate("user");
 
     if (!withdrawal) {
       throw new NotFoundException("Нет такой заявки");
@@ -149,6 +147,10 @@ export class AdminService {
     withdrawal.status = WithdrawalStatusEnum.CANCELED;
 
     withdrawal.statusMessage = dto.statusMessage;
+
+    withdrawal.user.balance += await this.convertService.convert(withdrawal.currency, withdrawal.user.currency, withdrawal.amount);
+
+    await withdrawal.user.save();
 
     await withdrawal.save();
 

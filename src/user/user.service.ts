@@ -217,6 +217,13 @@ export class UserService {
       throw new NotFoundException("Промокод не найден");
     }
 
+    const date = new Date(promo.will_finish.split(".").reverse().join("-"));
+    const now = new Date();
+
+    if (now > date) {
+      throw new NotFoundException("Промокод не найден");
+    }
+
     const userPromo = await this.userPromoModel.findOne({ user: user._id, promo: promo._id });
 
     if (userPromo) {
@@ -225,11 +232,15 @@ export class UserService {
 
     const newUserPromo = await this.userPromoModel.create({ user: user._id, promo: promo._id });
 
+    if (promo.type === PromoType.PROMO) {
+      newUserPromo.amount = await this.convertService.convert(promo.currency, user.currency, promo.amount);
+    }
+
     if (promo.type === PromoType.ADD_BALANCE) {
       newUserPromo.limit = await this.convertService.convert(promo.currency, user.currency, promo.limit);
-
-      await newUserPromo.save();
     }
+
+    await newUserPromo.save();
 
     return promo;
   }
@@ -244,20 +255,17 @@ export class UserService {
       { $match: { "promo.type": dto.type } },
       {
         $addFields: {
+          "promo.currency": user.currency,
           "promo.limit": { $cond: [{ $eq: [dto.type, PromoType.ADD_BALANCE] }, "$limit", null] },
-          "promo.currency": {
-            $cond: [
-              { $eq: [dto.type, PromoType.ADD_BALANCE] },
-              user.currency,
-              "$promo.currency", // Keep the original value if not ADD_BALANCE
-            ],
-          },
+          "promo.amount": { $cond: [{ $eq: [dto.type, PromoType.PROMO] }, "$amount", null] },
         },
       },
       {
         $project: {
           _id: 0,
-          promo: 1,
+          "promo.name": 0,
+          "promo.used_count": 0,
+          "promo.max_count": 0,
         },
       },
     ]);

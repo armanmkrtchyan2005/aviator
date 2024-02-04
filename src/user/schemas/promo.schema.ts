@@ -36,6 +36,9 @@ export class Promo {
   @Prop()
   max_count: number;
 
+  @Prop({ default: 0 })
+  used_count: number;
+
   @Prop()
   limit: number; // for add_balance
 
