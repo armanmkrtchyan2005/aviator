@@ -34,7 +34,7 @@ export class UserService {
     private jwtService: JwtService,
     private mailService: MailService,
     private convertService: ConvertService,
-  ) { }
+  ) {}
 
   async findMe(auth: IAuthPayload) {
     const user = await this.userModel.findById(auth.id, { telegramId: true, login: true, email: true, profileImage: true });
@@ -144,7 +144,7 @@ export class UserService {
 
     await user.save();
 
-    await this.mailService.sendUserForgotCode(user.email, code);
+    await this.mailService.sendUserForgotCode(dto.email, code);
 
     return { message: "На ваш Email отправлен код для подтверждения" };
   }
@@ -156,7 +156,10 @@ export class UserService {
       if (payload.code !== dto.code) {
         throw new BadRequestException("Неверный код");
       }
+
       user.email = payload.email;
+      user.codeToken = "";
+
       await user.save();
 
       return { message: "Ваш email успешно изменен" };
