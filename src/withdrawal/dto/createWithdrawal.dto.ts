@@ -18,6 +18,5 @@ export class CreateWithdrawalDto {
 
   @ApiProperty()
   @IsNotEmpty()
-  @IsCreditCard({ message: "Реквизит должен быть кредитной картой" })
   userRequisite: string;
 }

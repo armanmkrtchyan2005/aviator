@@ -37,6 +37,9 @@ export class Requisite {
   @ApiProperty({ enum: RequisiteStatusEnum })
   @Prop({ required: true, default: RequisiteStatusEnum.INACTIVE, enum: RequisiteStatusEnum })
   status: RequisiteStatusEnum;
+
+  @Prop({ default: false })
+  isCreditCard: boolean;
 }
 
 export const RequisiteSchema = SchemaFactory.createForClass(Requisite);

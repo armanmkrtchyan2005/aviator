@@ -12,6 +12,7 @@ import { BetsModule } from "./bets/bets.module";
 import { AdminModule } from "./admin/admin.module";
 import { ReplenishmentModule } from './replenishment/replenishment.module';
 import { WithdrawalModule } from './withdrawal/withdrawal.module';
+import { LinksModule } from './links/links.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { WithdrawalModule } from './withdrawal/withdrawal.module';
     AdminModule,
     ReplenishmentModule,
     WithdrawalModule,
+    LinksModule,
   ],
   controllers: [AppController],
   providers: [AppService],

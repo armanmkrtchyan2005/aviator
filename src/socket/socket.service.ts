@@ -7,7 +7,7 @@ import { IAuthPayload } from "src/auth/auth.guard";
 import { ConvertService } from "src/convert/convert.service";
 import { User } from "src/user/schemas/user.schema";
 import { BetDto } from "./dto/bet.dto";
-import { Bet, IBet } from "src/bets/schemas/bet.schema";
+import { Bet, IAmount, IBet } from "src/bets/schemas/bet.schema";
 import { CashOutDto } from "./dto/cashOut.dto";
 import { Admin, IAlgorithms } from "src/admin/schemas/admin.schema";
 import { Referral } from "src/user/schemas/referral.schema";
@@ -37,8 +37,8 @@ export class SocketService {
   ) {}
 
   private currentPlayers: IBet[] = [];
-  private betAmount = 0;
-  private winAmount = 0;
+  private betAmount: IAmount = {};
+  private winAmount: IAmount = {};
 
   private algorithms: IAlgorithms[] = [];
   public socket: Socket = null;
@@ -56,6 +56,9 @@ export class SocketService {
   private maxWinAmount: number = 0;
 
   // Algorithm 7
+  private randomOneHourTimeOut: string | number | NodeJS.Timeout;
+
+  // Algorithm 7
   private totalWinsCount: number = 0;
 
   // Algorithm 9
@@ -69,14 +72,18 @@ export class SocketService {
   private partOfProfit: number = 0;
 
   async handleConnection(client: Socket) {}
+
   handleDisconnect(socket: Socket): void {}
 
-  private randomOneHourAlgorithm() {
-    const daley = _.random(HOUR_IN_MS, 2 * HOUR_IN_MS);
-    setTimeout(() => {
-      this.random = _.random(1, 100, true);
-      this.randomOneHourAlgorithm();
-    }, daley);
+  private async randomOneHourAlgorithm() {
+    const admin = await this.adminModel.findOne();
+    if (admin.algorithms[5].active) {
+      const daley = _.random(HOUR_IN_MS, 2 * HOUR_IN_MS);
+      this.randomOneHourTimeOut = setTimeout(() => {
+        this.random = _.random(1, 100, true);
+        this.randomOneHourAlgorithm();
+      }, daley);
+    }
   }
 
   handleStartGame() {
@@ -111,7 +118,7 @@ export class SocketService {
     }
 
     const user = await this.userModel.findById(userPayload?.id, ["currency", "balance", "bonuses", "login"]);
-    const admin = await this.adminModel.findOne({}, ["gameLimits", "algorithms"]);
+    const admin = await this.adminModel.findOne({}, ["gameLimits", "algorithms", "currencies"]);
     if (!user) {
       return new WsException("Пользователь не авторизован");
     }
@@ -129,27 +136,33 @@ export class SocketService {
       return new WsException(`Максимальная ставка ${maxBet} ${user.currency}`);
     }
 
-    let bet: number;
+    const bet: IAmount = {};
 
     if (!userPromo) {
-      bet = await this.convertService.convert(dto.currency, user.currency, dto.bet);
+      for (const currency of admin.currencies) {
+        bet[currency] = await this.convertService.convert(dto.currency, currency, dto.bet);
+      }
 
-      if (bet > user.balance) {
+      if (bet[user.currency] > user.balance) {
         return new WsException("Недостаточный баланс");
       }
 
-      user.balance -= bet;
+      user.balance -= bet[user.currency];
 
       await user.save();
     } else {
-      bet = await this.convertService.convert(userPromo.promo?.currency, user.currency, userPromo.promo.amount);
+      for (const currency of admin.currencies) {
+        bet[currency] = await this.convertService.convert(userPromo.promo.currency, currency, userPromo.promo.amount);
+      }
+
       userPromo.active = true;
       await userPromo.save();
     }
+
     const betDataObject: IBet = {
       playerId: userPayload.id,
       playerLogin: user.login,
-      currency: user.currency,
+      // currency: user.currency,
       bet,
       promo: userPromo?.promo,
       time: new Date(),
@@ -157,21 +170,20 @@ export class SocketService {
     };
     const betData = await this.betModel.create(betDataObject);
     betDataObject._id = betData._id.toString();
-
-    betDataObject.currency = "USD";
-    betDataObject.bet = await this.convertService.convert(user.currency, "USD", bet);
-
     this.currentPlayers.push(betDataObject);
 
     const currentPlayers = this.currentPlayers.map(({ _id, playerId, promo, ...bet }) => bet);
 
-    this.betAmount += betDataObject.bet;
+    // this.betAmount += betDataObject.bet[admin.currencies["USD"]];
+    for (let key in this.betAmount) {
+      this.betAmount[key] += bet[key];
+    }
 
     this.socket.emit("currentPlayers", { betAmount: this.betAmount, winAmount: this.winAmount, currentPlayers });
 
     const algorithms = admin.algorithms.map(algorithm => {
       if (algorithm.active) {
-        algorithm.all_bets_amount += betDataObject.bet;
+        algorithm.all_bets_amount += betDataObject.bet["USD"];
       }
 
       return algorithm;
@@ -183,7 +195,10 @@ export class SocketService {
   }
 
   async handleCashOut(userPayload: IAuthPayload, dto: CashOutDto) {
+    const x = this.x;
+
     const user = await this.userModel.findById(userPayload.id);
+    const admin = await this.adminModel.findOne({}, ["algorithms", "currencies"]);
 
     const betIndex = this.currentPlayers.findIndex(b => {
       return b.playerId == userPayload?.id && dto.betNumber === b.betNumber;
@@ -201,31 +216,36 @@ export class SocketService {
     if (betData.promo && this.x < betData?.promo?.coef) {
       return new WsException(`Вы не можете выиграть до ${betData.promo.coef}x`);
     }
+    const win: IAmount = {};
+    for (const currency of admin.currencies) {
+      win[currency] = +(x * betData.bet[currency]).toFixed(2);
+    }
 
-    const x = this.x;
-    const betAmount = await this.convertService.convert("USD", user.currency, betData.bet);
-    const win = +(x * betAmount).toFixed(2);
+    // const betAmount = await this.convertService.convert("USD", user.currency, betData.bet);
+    // const win = +(x * betAmount).toFixed(2);
 
     this.currentPlayers[betIndex] = {
       ...betData,
-      win: betData.bet * x,
+      win,
       coeff: x,
     };
 
     const bet = await this.betModel.findById(betData._id);
 
     bet.win = win;
-    bet.win = x;
+    bet.coeff = x;
 
     await bet.save();
 
-    this.winAmount += win;
+    for (let key in this.winAmount) {
+      this.winAmount[key] += win[key];
+    }
 
     const currentPlayers = this.currentPlayers.map(({ _id, playerId, promo, ...bet }) => bet);
 
     this.socket.emit("currentPlayers", { betAmount: this.betAmount, winAmount: this.winAmount, currentPlayers });
 
-    user.balance += win;
+    user.balance += win[user.currency];
 
     await user.save();
 
@@ -247,22 +267,23 @@ export class SocketService {
       await leader.save();
     }
 
-    const admin = await this.adminModel.findOne({}, ["algorithms"]);
+    // const algorithms = admin.algorithms.map(algorithm => {
+    //   if (algorithm.active) {
+    //     algorithm.all_withdrawal_amount += win;
+    //   }
 
-    const algorithms = admin.algorithms.map(algorithm => {
-      if (algorithm.active) {
-        algorithm.all_withdrawal_amount += win;
-      }
+    //   return algorithm;
+    // });
 
-      return algorithm;
-    });
-
-    await admin.updateOne({ $set: { algorithms } });
+    // await admin.updateOne({ $set: { algorithms } });
 
     //1. 3 player algorithm in Cash Out
     if (admin.algorithms[0]?.active) {
       this.threePlayers = this.threePlayers.filter(u => u.playerId !== userPayload?.id);
       if (!this.threePlayers.length) {
+        admin.algorithms[0].all_withdrawal_amount += win["USD"];
+        admin.algorithms[0].used_count++;
+        await admin.updateOne({ $set: { algorithms: admin.algorithms } });
         this.loading();
         return { message: "Вы выиграли" };
       }
@@ -270,8 +291,11 @@ export class SocketService {
 
     // 2. Net income algorithm
     if (admin.algorithms[1]?.active) {
-      const totalWinAmount = this.currentPlayers.reduce((prev, next) => prev + next.win, 0);
+      const totalWinAmount = this.currentPlayers.reduce((prev, next) => prev + next.win["USD"], 0);
       if (totalWinAmount >= this.maxWinAmount) {
+        admin.algorithms[1].all_withdrawal_amount += win["USD"];
+        admin.algorithms[1].used_count++;
+        await admin.updateOne({ $set: { algorithms: admin.algorithms } });
         this.loading();
         return { message: "Вы выиграли" };
       }
@@ -284,6 +308,9 @@ export class SocketService {
       }).length;
 
       if (winsCount >= this.totalWinsCount) {
+        admin.algorithms[6].all_withdrawal_amount += win["USD"];
+        admin.algorithms[6].used_count++;
+        await admin.updateOne({ $set: { algorithms: admin.algorithms } });
         this.loading();
         return { message: "Вы выиграли" };
       }
@@ -292,8 +319,11 @@ export class SocketService {
     // 8. -------------
 
     if (admin.algorithms[7]?.active) {
-      const totalWinAmount = this.currentPlayers.reduce((prev, next) => prev + next.win, 0);
+      const totalWinAmount = this.currentPlayers.reduce((prev, next) => prev + next.win["USD"], 0);
       if (totalWinAmount >= this.maxWinAmount) {
+        admin.algorithms[7].all_withdrawal_amount += win["USD"];
+        admin.algorithms[7].used_count++;
+        await admin.updateOne({ $set: { algorithms: admin.algorithms } });
         this.loading();
         return { message: "Вы выиграли" };
       }
@@ -301,11 +331,14 @@ export class SocketService {
 
     if (admin.algorithms[9]?.active) {
       if (this.playedCount < this.maxGameCount / 2) {
-        this.totalWins += win;
+        this.totalWins += win["USD"];
       } else {
-        const totalWinAmount = this.currentPlayers.reduce((prev, next) => prev + next.win, 0);
+        const totalWinAmount = this.currentPlayers.reduce((prev, next) => prev + next.win["USD"], 0);
 
         if (totalWinAmount >= this.partOfProfit) {
+          admin.algorithms[9].all_withdrawal_amount += win["USD"];
+          admin.algorithms[9].used_count++;
+          await admin.updateOne({ $set: { algorithms: admin.algorithms } });
           this.loading();
           return { message: "Вы выиграли" };
         }
@@ -330,8 +363,12 @@ export class SocketService {
     this.algorithms = admin?.algorithms;
 
     this.currentPlayers = [];
-    this.betAmount = 0;
-    this.winAmount = 0;
+    this.betAmount = {};
+    this.winAmount = {};
+    for (const currency of admin.currencies) {
+      this.betAmount[currency] = 0;
+      this.winAmount[currency] = 0;
+    }
 
     this.threePlayers = [];
 
@@ -343,16 +380,6 @@ export class SocketService {
 
     await sleep(LOADING_MS);
 
-    const algorithms = admin.algorithms.map(algorithm => {
-      if (algorithm.active) {
-        algorithm.used_count++;
-      }
-
-      return algorithm;
-    });
-
-    await admin.updateOne({ $set: { algorithms } });
-
     //1. 3 player algorithm loading
     if (this.algorithms[0]?.active) {
       this.threePlayers = _.sampleSize(this.threePlayers, 3);
@@ -361,7 +388,7 @@ export class SocketService {
 
     // 2. Net income algorithm loading
     if (this.algorithms[1]?.active) {
-      const totalAmount = this.currentPlayers.reduce((prev, curr) => prev + curr.bet, 0);
+      const totalAmount = this.currentPlayers.reduce((prev, curr) => prev + curr.bet["USD"], 0);
       this.maxWinAmount = (totalAmount * _.random(30, 100, true)) / 100;
     }
 
@@ -389,7 +416,7 @@ export class SocketService {
     // 8. --------
     if (this.algorithms[7]?.active) {
       const range = _.random(1, 3, true);
-      const totalAmount = this.currentPlayers.reduce((prev, curr) => prev + curr.bet, 0);
+      const totalAmount = this.currentPlayers.reduce((prev, curr) => prev + curr.bet["USD"], 0);
       this.maxWinAmount = totalAmount * range;
     }
 
@@ -403,7 +430,7 @@ export class SocketService {
       this.playedCount++;
       if (this.playedCount < this.maxGameCount / 2) {
         this.random = _.random(1.3, 1.8, true);
-        const totalAmount = this.currentPlayers.reduce((prev, curr) => prev + curr.bet, 0);
+        const totalAmount = this.currentPlayers.reduce((prev, curr) => prev + curr.bet["USD"], 0);
         this.totalBets += totalAmount;
       } else if (this.playedCount == this.maxGameCount / 2) {
         const profit = this.totalBets - this.totalWins;

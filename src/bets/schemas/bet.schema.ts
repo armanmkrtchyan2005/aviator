@@ -6,28 +6,32 @@ import { Promo } from "src/user/schemas/promo.schema";
 
 export type BetDocument = HydratedDocument<Bet>;
 
+export interface IAmount {
+  [key: string]: number;
+}
+
 export interface IBet {
   _id?: string;
   betNumber: number;
   playerId: string;
   playerLogin: string;
-  bet: number;
-  currency: string;
+  bet: IAmount;
+  // currency: string;
   time: Date;
   coeff?: number;
-  win?: number;
+  win?: IAmount;
   promo?: Promo;
 }
 
 @Schema()
 export class Bet {
-  @ApiProperty()
-  @Prop({ required: true })
-  bet: number;
+  @ApiProperty({ type: "object", properties: { USD: { type: "number" }, RUB: { type: "number" } } })
+  @Prop({ required: true, type: Object })
+  bet: IAmount;
 
-  @ApiProperty({ example: "USD" })
-  @Prop({ required: true })
-  currency: string;
+  // @ApiProperty({ example: "USD" })
+  // @Prop({ required: true })
+  // currency: string;
 
   @ApiProperty()
   @Prop({ required: true })
@@ -37,9 +41,9 @@ export class Bet {
   @Prop()
   coeff: number;
 
-  @ApiPropertyOptional()
-  @Prop()
-  win: number;
+  @ApiPropertyOptional({ type: "object", properties: { USD: { type: "number" }, RUB: { type: "number" } } })
+  @Prop({ type: Object })
+  win: IAmount;
 
   @ApiProperty({ type: String })
   @Prop({

@@ -8,6 +8,7 @@ import { IAuthPayload } from "src/auth/auth.guard";
 import { CreateWithdrawalDto } from "./dto/createWithdrawal.dto";
 import { Admin } from "src/admin/schemas/admin.schema";
 import { ConvertService } from "src/convert/convert.service";
+import { isCreditCard } from "class-validator";
 
 @Injectable()
 export class WithdrawalService {
@@ -37,13 +38,19 @@ export class WithdrawalService {
       throw new NotFoundException({ message: "Реквизит не найден" });
     }
 
+    if (requisite.isCreditCard && !isCreditCard(dto.requisite)) {
+      throw new BadRequestException(["Реквизит должен быть кредитной картой"]);
+    }
+
     const balance = await this.convertService.convert(dto.currency, user.currency, dto.amount);
 
     if (balance > user.balance) {
       throw new BadRequestException({ message: "Недостаточно средств на балансе!" });
     }
 
-    const withdrawal = await this.withdrawalModel.create({ ...dto, user: user._id });
+    const amount = await this.convertService.convert(dto.currency, requisite.currency, dto.amount);
+
+    const withdrawal = await this.withdrawalModel.create({ ...dto, amount, user: user._id });
 
     user.balance -= balance;
 

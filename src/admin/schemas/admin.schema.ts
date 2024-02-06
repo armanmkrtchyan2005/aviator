@@ -9,7 +9,7 @@ export interface IAlgorithms {
   active: boolean;
   all_bets_amount: number;
   all_withdrawal_amount: number;
-  used_count: number
+  used_count: number;
 }
 
 interface IAdmin_panel_data {
@@ -66,6 +66,12 @@ export class Admin {
 
   @Prop({ required: true, type: Object })
   gameLimits: GameLimits;
+
+  @Prop({})
+  support: string;
+
+  @Prop({ required: true, default: ["USD", "UZS", "KZT", "RUB"] })
+  currencies: string[];
 }
 
 export const AdminSchema = SchemaFactory.createForClass(Admin);
