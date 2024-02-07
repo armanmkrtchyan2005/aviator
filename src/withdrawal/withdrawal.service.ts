@@ -74,6 +74,7 @@ export class WithdrawalService {
     withdrawal.user.balance += amount;
 
     await withdrawal.user.save();
+    await withdrawal.save();
 
     return { message: "Пополнение отменена" };
   }
