@@ -72,7 +72,8 @@ export class WithdrawalService {
     const amount = await this.convertService.convert(withdrawal.currency, withdrawal.user.currency, withdrawal.amount);
 
     withdrawal.user.balance += amount;
-    await withdrawal.save();
+
+    await withdrawal.user.save();
 
     return { message: "Пополнение отменена" };
   }
