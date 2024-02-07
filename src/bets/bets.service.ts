@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { IAuthPayload } from "src/auth/auth.guard";
-import { MyBetsQueryDto } from "./dto/my-bets-query.dto";
+import { DateSort, MyBetsQueryDto } from "./dto/my-bets-query.dto";
 import { InjectModel } from "@nestjs/mongoose";
 import { User } from "src/user/schemas/user.schema";
 import { Model } from "mongoose";
@@ -19,13 +19,26 @@ export class BetsService {
     const current = new Date();
     let lastMonth = new Date();
 
-    lastMonth.setMonth(lastMonth.getMonth() - 1);
+    if (query.dateSort === DateSort.DAY) {
+      lastMonth.setDate(lastMonth.getDate() - 1);
+    }
+
+    if (query.dateSort === DateSort.MONTH) {
+      lastMonth.setMonth(lastMonth.getMonth() - 1);
+    }
+
+    if (query.dateSort === DateSort.YEAR) {
+      lastMonth.setFullYear(lastMonth.getFullYear() - 1);
+    }
 
     const bets = await this.betModel
       .find({
         time: {
           $gte: new Date(lastMonth),
           $lte: current,
+        },
+        win: {
+          $exists: true,
         },
       })
       .sort({ "win.USD": -1, time: -1 })
