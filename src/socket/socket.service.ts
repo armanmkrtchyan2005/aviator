@@ -88,7 +88,7 @@ export class SocketService {
   }
 
   handleStartGame() {
-    this.interval = setInterval(() => this.game(), 20);
+    this.interval = setInterval(() => this.game(), 100);
     // 6. random one hour algorithm
     this.randomOneHourAlgorithm();
   }
@@ -97,6 +97,8 @@ export class SocketService {
     this.x += this.step;
     this.x = +this.x.toFixed(2);
     this.step += 0.0006;
+
+    this.socket.emit("game", { x: this.x });
 
     // 4. ----------
     if (this.algorithms[3]?.active) {
@@ -107,10 +109,8 @@ export class SocketService {
     }
 
     if (this.x > this.random) {
-      return await this.loading();
+      return this.loading();
     }
-
-    this.socket.emit("game", { x: this.x });
   }
 
   async handleBet(userPayload: IAuthPayload, dto: BetDto) {
