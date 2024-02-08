@@ -15,6 +15,7 @@ import {
   UploadedFile,
   ParseFilePipe,
   FileTypeValidator,
+  MaxFileSizeValidator,
 } from "@nestjs/common";
 import { Request } from "express";
 import { Auth } from "src/auth/decorators/auth.decorator";
@@ -48,6 +49,8 @@ import { FindReferralsByDayDto } from "./dto/findReferralsByDay.dto";
 import { GetPromosDto } from "./dto/getPromos.dto";
 import { Promo } from "./schemas/promo.schema";
 import { GameLimits } from "src/admin/schemas/admin.schema";
+
+const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1mb
 
 @ApiTags("User")
 @Auth()
@@ -197,13 +200,17 @@ export class UserController {
     @Req() req: Request,
     @UploadedFile(
       new ParseFilePipe({
-        validators: [new FileTypeValidator({ fileType: /(jpg|jpeg|png|webp)$/ })],
+        validators: [new FileTypeValidator({ fileType: /(jpg|jpeg|png|webp)$/ }), new MaxFileSizeValidator({ maxSize: MAX_FILE_SIZE })],
         fileIsRequired: true,
       }),
     )
     file: Express.Multer.File,
   ) {
     const imagePath = file.path;
-    return this.userService.updateProfileImage(req["user"], imagePath);
+    const protocol = req.protocol;
+    const host = req.get("Host");
+    const origin = protocol + "://" + host + "/";
+
+    return this.userService.updateProfileImage(req["user"], origin, imagePath);
   }
 }
