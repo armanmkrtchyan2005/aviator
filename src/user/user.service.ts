@@ -14,7 +14,7 @@ import { OldPasswordConfirmDto } from "./dto/old-password-confirm.dto";
 import { ChangePasswordDto } from "src/auth/dto/change-password.dto";
 import { AddPromoDto } from "./dto/add-promo.dto";
 import { ConvertService } from "src/convert/convert.service";
-import { Requisite, RequisiteStatusEnum } from "src/admin/schemas/requisite.schema";
+import { Requisite } from "src/admin/schemas/requisite.schema";
 import { Admin } from "src/admin/schemas/admin.schema";
 import { Referral } from "./schemas/referral.schema";
 import { FindReferralsByDayDto } from "./dto/findReferralsByDay.dto";
@@ -292,7 +292,7 @@ export class UserService {
 
     const recommendedRequisites = await this.requisiteModel.find({
       currency: user.currency,
-      status: RequisiteStatusEnum.ACTIVE,
+      active: true,
     });
 
     return recommendedRequisites;
@@ -302,7 +302,7 @@ export class UserService {
     const requisites = await this.requisiteModel.aggregate([
       {
         $match: {
-          status: "Активный",
+          active: true,
         },
       },
       {

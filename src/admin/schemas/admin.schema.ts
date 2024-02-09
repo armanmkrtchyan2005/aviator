@@ -72,6 +72,12 @@ export class Admin {
 
   @Prop({ required: true, default: ["USD", "UZS", "KZT", "RUB"] })
   currencies: string[];
+
+  @Prop({ default: 0 })
+  manual_methods_balance: number;
+
+  @Prop({ default: 0 })
+  our_balance: number;
 }
 
 export const AdminSchema = SchemaFactory.createForClass(Admin);

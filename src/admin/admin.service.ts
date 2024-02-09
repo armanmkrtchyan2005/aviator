@@ -67,8 +67,9 @@ export class AdminService {
   }
 
   async confirmReplenishment(id: string) {
-    const replenishment = await this.replenishmentModel.findById(id).populate("user");
-
+    const admin = await this.adminModel.findOne({}, ["manual_methods_balance"]);
+    const replenishment = await this.replenishmentModel.findById(id).populate(["user", "requisite"]);
+    replenishment.requisite;
     if (!replenishment) {
       throw new NotFoundException("Нет такой заявки");
     }
@@ -84,6 +85,16 @@ export class AdminService {
     replenishment.status = ReplenishmentStatusEnum.COMPLETED;
 
     await replenishment.save();
+
+    const requisiteAmount = await this.convertService.convert(replenishment.currency, "USD", replenishment.amount);
+
+    replenishment.requisite.balance += requisiteAmount;
+
+    await replenishment.requisite.save();
+
+    admin.manual_methods_balance += requisiteAmount;
+
+    await admin.save();
 
     return { message: "Заявка подтверждена" };
   }
@@ -108,7 +119,7 @@ export class AdminService {
     return { message: "Заявка отменена" };
   }
 
-  //------------------------------------------------- add limit
+  //---------------------- add limit ------------------------------------------
   async getWithdrawals(dto: LimitQueryDto) {
     const withdrawals = await this.withdrawalModel.find().sort({ createdAt: -1 });
 

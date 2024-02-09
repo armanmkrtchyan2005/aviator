@@ -169,13 +169,17 @@ export class SocketService {
       time: new Date(),
       betNumber: dto.betNumber,
     };
+
     const betData = await this.betModel.create(betDataObject);
     betDataObject._id = betData._id.toString();
     this.currentPlayers.push(betDataObject);
 
     const currentPlayers = this.currentPlayers.map(({ _id, playerId, promo, ...bet }) => bet);
 
-    // this.betAmount += betDataObject.bet[admin.currencies["USD"]];
+    admin.our_balance += bet["USD"];
+
+    await admin.save();
+
     for (let key in this.betAmount) {
       this.betAmount[key] += bet[key];
     }
@@ -239,6 +243,10 @@ export class SocketService {
     bet.coeff = x;
 
     await bet.save();
+
+    admin.our_balance -= win["USD"];
+
+    await admin.save();
 
     for (let key in this.winAmount) {
       this.winAmount[key] += win[key];

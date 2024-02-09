@@ -4,11 +4,6 @@ import { ApiProperty } from "@nestjs/swagger";
 
 export type RequisiteDocument = HydratedDocument<Requisite>;
 
-export enum RequisiteStatusEnum {
-  ACTIVE = "Активный",
-  INACTIVE = "Неактивный",
-}
-
 @Schema({ timestamps: true })
 export class Requisite {
   @ApiProperty({ type: String })
@@ -34,12 +29,16 @@ export class Requisite {
   @Prop()
   commission: number;
 
-  @ApiProperty({ enum: RequisiteStatusEnum })
-  @Prop({ required: true, default: RequisiteStatusEnum.INACTIVE, enum: RequisiteStatusEnum })
-  status: RequisiteStatusEnum;
+  @ApiProperty()
+  @Prop({ required: true, default: false })
+  active: boolean;
 
   @Prop({ default: false })
   isCreditCard: boolean;
+
+  @ApiProperty()
+  @Prop({ default: 0 })
+  balance: number;
 }
 
 export const RequisiteSchema = SchemaFactory.createForClass(Requisite);

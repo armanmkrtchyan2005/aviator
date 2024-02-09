@@ -2,7 +2,7 @@ import mongoose, { HydratedDocument } from "mongoose";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { ApiProperty, getSchemaPath } from "@nestjs/swagger";
 import { User, UserDocument } from "src/user/schemas/user.schema";
-import { Requisite } from "src/admin/schemas/requisite.schema";
+import { Requisite, RequisiteDocument } from "src/admin/schemas/requisite.schema";
 
 export type ReplenishmentDocument = HydratedDocument<Replenishment>;
 
@@ -48,7 +48,7 @@ export class Replenishment {
 
   @ApiProperty({ oneOf: [{ type: "string" }, { $ref: getSchemaPath(Requisite) }] })
   @Prop({ required: true, type: mongoose.Schema.Types.ObjectId, ref: Requisite.name })
-  requisite: Requisite;
+  requisite: RequisiteDocument;
 
   @ApiProperty()
   @Prop({ required: true, default: Date.now() })

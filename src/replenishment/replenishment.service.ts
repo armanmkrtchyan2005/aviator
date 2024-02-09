@@ -70,7 +70,7 @@ export class ReplenishmentService {
     const admin = await this.adminModel.findOne();
 
     const user = await this.userModel.findById(userPayload.id);
-    const requisite = await this.requisiteModel.findById(dto.requisite);
+    const requisite = await this.requisiteModel.findOne({ _id: dto.requisite, active: true });
 
     if (!requisite) {
       throw new NotFoundException({ message: "Реквизит не найден" });
