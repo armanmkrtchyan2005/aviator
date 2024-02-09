@@ -21,6 +21,7 @@ import { FindReferralsByDayDto } from "./dto/findReferralsByDay.dto";
 import { Promo, PromoSchema, PromoType } from "./schemas/promo.schema";
 import { UserPromo } from "./schemas/userPromo.schema";
 import { GetPromosDto } from "./dto/getPromos.dto";
+import * as url from "url";
 import * as path from "path";
 
 @Injectable()
@@ -330,12 +331,13 @@ export class UserService {
 
   async updateProfileImage(userPayload: IAuthPayload, origin: string, imagePath: string) {
     const user = await this.userModel.findById(userPayload.id);
-    const profileImage = user.profileImage && new URL(user.profileImage)?.pathname;
+    const profileImage = url.parse(user.profileImage)?.pathname;
+
     const profileImagePath = path.normalize(process.cwd() + profileImage);
 
-    try {
+    if (profileImage) {
       fs.rmSync(profileImagePath, { recursive: true });
-    } catch (error) {}
+    }
 
     user.profileImage = new URL(imagePath, origin).toString();
 
