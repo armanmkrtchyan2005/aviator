@@ -38,7 +38,7 @@ export class AuthService {
     @InjectModel(UserPromo.name) private userPromoModel: Model<UserPromo>,
     private mailService: MailService,
     private convertService: ConvertService,
-  ) { }
+  ) {}
 
   async signUp(dto: SignUpDto): Promise<SignUpCreatedResponse> {
     const userEmail = await this.userModel.findOne({
@@ -98,7 +98,6 @@ export class AuthService {
       }
     }
 
-
     const token = this.jwtService.sign({ id: newUser._id }, {});
 
     return {
@@ -139,7 +138,7 @@ export class AuthService {
 
     user.codeToken = this.jwtService.sign({ code }, { expiresIn: 60 * 60 * 2 });
 
-    await this.mailService.sendUserForgotCode(dto.email, code);
+    await this.mailService.sendUserForgotCode(dto.email, code, user.login);
 
     await user.save();
 

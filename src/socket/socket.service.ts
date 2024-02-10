@@ -36,7 +36,7 @@ export class SocketService {
     private convertService: ConvertService,
   ) {}
 
-  private stoped = false;
+  private stopped = false;
   private currentPlayers: IBet[] = [];
   private betAmount: IAmount = {};
   private winAmount: IAmount = {};
@@ -119,7 +119,8 @@ export class SocketService {
     }
 
     const user = await this.userModel.findById(userPayload?.id, ["currency", "balance", "bonuses", "login"]);
-    const admin = await this.adminModel.findOne({}, ["gameLimits", "algorithms", "currencies"]);
+    const admin = await this.adminModel.findOne({}, ["gameLimits", "algorithms", "currencies", "our_balance"]);
+
     if (!user) {
       return new WsException("Пользователь не авторизован");
     }
@@ -197,6 +198,37 @@ export class SocketService {
     await admin.updateOne({ $set: { algorithms } });
 
     return { message: "Ставка сделана" };
+  }
+
+  async handleCancel(userPayload: IAuthPayload, dto: CashOutDto) {
+    if (this.isBetWait) {
+      return new WsException("Отмена ставки невозможна");
+    }
+
+    const user = await this.userModel.findById(userPayload.id);
+
+    const admin = await this.adminModel.findOne({}, ["gameLimits", "currencies", "our_balance"]);
+
+    const bet = this.currentPlayers.find(b => {
+      return b.playerId == userPayload?.id && dto.betNumber === b.betNumber;
+    });
+
+    if (!bet) {
+      return new WsException("У вас нет такой ставки");
+    }
+
+    user.balance += bet.bet[user.currency];
+    admin.our_balance -= bet.bet["USD"];
+
+    for (let key in this.betAmount) {
+      this.betAmount[key] -= bet[key];
+    }
+
+    this.currentPlayers = this.currentPlayers.filter(player => player._id !== bet._id);
+
+    this.socket.emit("currentPlayers", { betAmount: this.betAmount, winAmount: this.winAmount, currentPlayers: this.currentPlayers });
+
+    return { message: "Ставка отменена" };
   }
 
   async handleCashOut(userPayload: IAuthPayload, dto: CashOutDto) {
@@ -360,11 +392,11 @@ export class SocketService {
   }
 
   private async loading() {
-    if (this.stoped) {
+    if (this.stopped) {
       return;
     }
     clearInterval(this.interval);
-    this.stoped = true;
+    this.stopped = true;
     this.socket.emit("crash");
 
     await this.coeffModel.create({ coeff: +this.x.toFixed(2) });
@@ -461,7 +493,11 @@ export class SocketService {
       }
     }
 
-    this.stoped = false;
+    if (this.algorithms[10]?.active) {
+      this.random = 1;
+    }
+
+    this.stopped = false;
 
     this.interval = setInterval(() => this.game(), 100);
   }

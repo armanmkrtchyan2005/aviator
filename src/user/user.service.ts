@@ -111,7 +111,7 @@ export class UserService {
 
     await user.save();
 
-    await this.mailService.sendUserForgotCode(user.email, code);
+    await this.mailService.sendUserForgotCode(user.email, code, user.login);
 
     return { message: "На ваш Email отправлен код для подтверждения" };
   }
@@ -136,7 +136,7 @@ export class UserService {
     });
 
     if (userFromEmail) {
-      throw new BadRequestException("Такой пользователь уже существует");
+      throw new BadRequestException("Невозможно привязать данный Email");
     }
 
     const user = await this.userModel.findById(userPayload.id);
@@ -146,7 +146,7 @@ export class UserService {
 
     await user.save();
 
-    await this.mailService.sendUserForgotCode(dto.email, code);
+    await this.mailService.sendUserForgotCode(dto.email, code, user.login);
 
     return { message: "На ваш Email отправлен код для подтверждения" };
   }

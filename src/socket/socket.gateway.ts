@@ -30,6 +30,12 @@ export class SocketGateway implements OnGatewayInit, OnGatewayConnection, OnGate
   }
 
   @UseGuards(SocketAuthGuard)
+  @SubscribeMessage("cancel")
+  handleCancel(@ConnectedSocket() client: Socket, @MessageBody() dto: CashOutDto) {
+    return this.socketService.handleCancel(client["user"], dto);
+  }
+
+  @UseGuards(SocketAuthGuard)
   @SubscribeMessage("cash-out")
   handleCashOut(@ConnectedSocket() client: Socket, @MessageBody() dto: CashOutDto) {
     return this.socketService.handleCashOut(client["user"], dto);
