@@ -108,7 +108,7 @@ export class SocketService {
       }
     }
 
-    if (this.x > this.random) {
+    if (this.x >= this.random) {
       return this.loading();
     }
   }
