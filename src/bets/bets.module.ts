@@ -5,6 +5,7 @@ import { MongooseModule } from "@nestjs/mongoose";
 import { User, UserSchema } from "src/user/schemas/user.schema";
 import { Bet, BetSchema } from "./schemas/bet.schema";
 import { Coeff, CoeffSchema } from "./schemas/coeff.schema";
+import { LastGame, LastGameSchema } from "./schemas/lastGame.schema";
 
 @Module({
   imports: [
@@ -12,9 +13,10 @@ import { Coeff, CoeffSchema } from "./schemas/coeff.schema";
       { name: User.name, schema: UserSchema },
       { name: Bet.name, schema: BetSchema },
       { name: Coeff.name, schema: CoeffSchema },
+      { name: LastGame.name, schema: LastGameSchema },
     ]),
   ],
   controllers: [BetsController],
   providers: [BetsService],
 })
-export class BetsModule { }
+export class BetsModule {}

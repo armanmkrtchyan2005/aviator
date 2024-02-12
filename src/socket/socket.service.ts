@@ -14,6 +14,7 @@ import { Referral } from "src/user/schemas/referral.schema";
 import { UserPromo } from "src/user/schemas/userPromo.schema";
 import * as _ from "lodash";
 import { Coeff } from "src/bets/schemas/coeff.schema";
+import { LastGame } from "src/bets/schemas/lastGame.schema";
 
 const STOP_DISABLE_MS = 2000;
 const LOADING_MS = 5000;
@@ -33,6 +34,7 @@ export class SocketService {
     @InjectModel(Admin.name) private adminModel: Model<Admin>,
     @InjectModel(Referral.name) private referralModel: Model<Referral>,
     @InjectModel(Coeff.name) private coeffModel: Model<Coeff>,
+    @InjectModel(LastGame.name) private lastGameModel: Model<LastGame>,
     private convertService: ConvertService,
   ) {}
 
@@ -146,7 +148,7 @@ export class SocketService {
       }
 
       if (bet[user.currency] > user.balance) {
-        return new WsException("Недостаточный баланс");
+        return new WsException("Недостаточно денег на балансе");
       }
 
       user.balance -= bet[user.currency];
@@ -400,6 +402,8 @@ export class SocketService {
     this.socket.emit("crash");
 
     await this.coeffModel.create({ coeff: +this.x.toFixed(2) });
+    await this.lastGameModel.deleteMany();
+    await this.lastGameModel.create(this.currentPlayers);
 
     this.x = 1;
     this.step = 0.0006;

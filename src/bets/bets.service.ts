@@ -6,6 +6,7 @@ import { User } from "src/user/schemas/user.schema";
 import { Model } from "mongoose";
 import { Bet } from "./schemas/bet.schema";
 import { Coeff } from "./schemas/coeff.schema";
+import { LastGame } from "./schemas/lastGame.schema";
 
 @Injectable()
 export class BetsService {
@@ -13,6 +14,7 @@ export class BetsService {
     @InjectModel(User.name) private userModel: Model<User>,
     @InjectModel(Bet.name) private betModel: Model<Bet>,
     @InjectModel(Coeff.name) private coeffModel: Model<Coeff>,
+    @InjectModel(LastGame.name) private lastGameModel: Model<LastGame>,
   ) {}
 
   async topBets(query: MyBetsQueryDto) {
@@ -58,5 +60,11 @@ export class BetsService {
     const coeffs = await this.coeffModel.find({}).sort({ createdAt: -1 }).limit(30);
 
     return coeffs;
+  }
+
+  async findLastGame() {
+    const lastGame = await this.lastGameModel.find({});
+
+    return lastGame;
   }
 }

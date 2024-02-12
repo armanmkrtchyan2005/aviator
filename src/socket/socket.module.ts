@@ -10,6 +10,7 @@ import { Referral, ReferralSchema } from "src/user/schemas/referral.schema";
 import { Promo, PromoSchema } from "src/user/schemas/promo.schema";
 import { UserPromo, UserPromoSchema } from "src/user/schemas/userPromo.schema";
 import { Coeff, CoeffSchema } from "src/bets/schemas/coeff.schema";
+import { LastGame, LastGameSchema } from "src/bets/schemas/lastGame.schema";
 
 @Module({
   imports: [
@@ -21,9 +22,10 @@ import { Coeff, CoeffSchema } from "src/bets/schemas/coeff.schema";
       { name: Admin.name, schema: AdminSchema },
       { name: Referral.name, schema: ReferralSchema },
       { name: Coeff.name, schema: CoeffSchema },
+      { name: LastGame.name, schema: LastGameSchema },
     ]),
     ConvertModule,
   ],
   providers: [SocketGateway, SocketService],
 })
-export class SocketModule { }
+export class SocketModule {}
