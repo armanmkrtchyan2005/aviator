@@ -15,6 +15,7 @@ export interface IBet {
   betNumber: number;
   playerId: string;
   playerLogin: string;
+  playerImg: string;
   bet: IAmount;
   // currency: string;
   time: Date;
@@ -56,6 +57,10 @@ export class Bet {
   @ApiProperty({ type: String })
   @Prop({ require: true })
   playerLogin: string;
+
+  @ApiProperty({ type: String })
+  @Prop()
+  playerImg: string;
 }
 
 export const BetSchema = SchemaFactory.createForClass(Bet);

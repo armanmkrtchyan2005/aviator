@@ -12,7 +12,7 @@ db.getCollection("promos").insert([
     amount: 10000,
     max_count: 20,
     coef: 2.2,
-    will_finish: "20.01.2024",
+    will_finish: "28.02.2024",
   },
   {
     type: "promo",
@@ -20,7 +20,7 @@ db.getCollection("promos").insert([
     amount: 2000,
     max_count: 20,
     coef: 1.5,
-    will_finish: "20.01.2024",
+    will_finish: "28.02.2024",
   },
   {
     type: "promo",
@@ -28,7 +28,7 @@ db.getCollection("promos").insert([
     amount: 2000,
     max_count: 20,
     coef: 1.5,
-    will_finish: "20.01.2024",
+    will_finish: "28.02.2024",
   },
   {
     type: "promo",
@@ -36,7 +36,7 @@ db.getCollection("promos").insert([
     amount: 2000,
     max_count: 20,
     coef: 1.5,
-    will_finish: "20.01.2024",
+    will_finish: "28.02.2024",
   },
   {
     type: "add_balance",
@@ -45,7 +45,7 @@ db.getCollection("promos").insert([
     currency: "UZS",
     limit: 1000000,
     max_count: 20,
-    will_finish: "30.01.2024",
+    will_finish: "28.02.2024",
   },
   {
     type: "add_balance",
@@ -54,7 +54,7 @@ db.getCollection("promos").insert([
     currency: "UZS",
     limit: 2000000,
     max_count: 20,
-    will_finish: "30.01.2024",
+    will_finish: "28.02.2024",
   },
   {
     type: "add_balance",
@@ -63,6 +63,6 @@ db.getCollection("promos").insert([
     currency: "UZS",
     limit: 100000,
     max_count: 20,
-    will_finish: "30.01.2024",
+    will_finish: "28.02.2024",
   },
 ]);

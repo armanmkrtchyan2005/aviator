@@ -7,7 +7,7 @@ import { Model } from "mongoose";
 import { User } from "src/user/schemas/user.schema";
 import { SignUpDto } from "./dto/sign-up.dto";
 import { SignInDto } from "./dto/sign-in.dto";
-import { MailService } from "src/mail/mail.service";
+import { MailService, SendEmailType } from "src/mail/mail.service";
 import { SendCodeDto } from "./dto/send-code.dto";
 import { ConfirmCodeDto } from "./dto/confirm-code.dto";
 import { SignUpCreatedResponse } from "./responses/sign-up.response";
@@ -63,6 +63,16 @@ export class AuthService {
       throw new BadRequestException("Промокод не найден");
     }
 
+    // if (dto.email) {
+    //   const code = generateCode();
+
+    //   // user.codeToken = this.jwtService.sign({ code }, { expiresIn: 60 * 60 * 2 });
+
+    //   this.mailService.sendUserForgotCode({ code, email: dto.email, type: SendEmailType.REGISTRATION });
+
+    //   return;
+    // }
+
     const newUsersBonuses = await this.bonusModel.find({ active: true, coef_params: { type: CoefParamsType.NEW_USERS } });
 
     const hashedPassword = bcrypt.hashSync(dto.password, salt);
@@ -107,7 +117,7 @@ export class AuthService {
 
   async signIn(dto: SignInDto): Promise<SignInOkResponse> {
     const user = await this.userModel.findOne({
-      login: dto.login,
+      $or: [{ login: dto.login }, { email: dto.login }],
     });
 
     if (!user) {
@@ -138,7 +148,7 @@ export class AuthService {
 
     user.codeToken = this.jwtService.sign({ code }, { expiresIn: 60 * 60 * 2 });
 
-    await this.mailService.sendUserForgotCode(dto.email, code, user.login);
+    await this.mailService.sendUserForgotCode({ code, email: dto.email, login: user.login, type: SendEmailType.FORGOT });
 
     await user.save();
 

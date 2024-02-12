@@ -120,7 +120,7 @@ export class SocketService {
       return new WsException("Ставки сейчас не применяются");
     }
 
-    const user = await this.userModel.findById(userPayload?.id, ["currency", "balance", "bonuses", "login"]);
+    const user = await this.userModel.findById(userPayload?.id, ["currency", "balance", "bonuses", "login", "profileImage"]);
     const admin = await this.adminModel.findOne({}, ["gameLimits", "algorithms", "currencies", "our_balance"]);
 
     if (!user) {
@@ -166,6 +166,7 @@ export class SocketService {
     const betDataObject: IBet = {
       playerId: userPayload.id,
       playerLogin: user.login,
+      playerImg: user.profileImage,
       // currency: user.currency,
       bet,
       promo: userPromo?.promo,
@@ -237,7 +238,7 @@ export class SocketService {
     const x = this.x;
 
     const user = await this.userModel.findById(userPayload.id);
-    const admin = await this.adminModel.findOne({}, ["algorithms", "currencies"]);
+    const admin = await this.adminModel.findOne({}, ["algorithms", "currencies", "our_balance"]);
 
     const betIndex = this.currentPlayers.findIndex(b => {
       return b.playerId == userPayload?.id && dto.betNumber === b.betNumber;

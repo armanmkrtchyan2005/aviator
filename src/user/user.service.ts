@@ -9,7 +9,7 @@ import { generateCode, salt } from "src/auth/auth.service";
 import { SendCodeDto } from "src/auth/dto/send-code.dto";
 import { ConfirmCodeDto } from "src/auth/dto/confirm-code.dto";
 import { JwtService } from "@nestjs/jwt";
-import { MailService } from "src/mail/mail.service";
+import { MailService, SendEmailType } from "src/mail/mail.service";
 import { OldPasswordConfirmDto } from "./dto/old-password-confirm.dto";
 import { ChangePasswordDto } from "src/auth/dto/change-password.dto";
 import { AddPromoDto } from "./dto/add-promo.dto";
@@ -111,7 +111,7 @@ export class UserService {
 
     await user.save();
 
-    await this.mailService.sendUserForgotCode(user.email, code, user.login);
+    await this.mailService.sendUserForgotCode({ code, email: user.email, type: SendEmailType.CHANGE, login: user.login });
 
     return { message: "На ваш Email отправлен код для подтверждения" };
   }
@@ -146,7 +146,7 @@ export class UserService {
 
     await user.save();
 
-    await this.mailService.sendUserForgotCode(dto.email, code, user.login);
+    await this.mailService.sendUserForgotCode({ code, email: dto.email, login: user.login, type: SendEmailType.CHANGE });
 
     return { message: "На ваш Email отправлен код для подтверждения" };
   }
@@ -197,6 +197,8 @@ export class UserService {
       const hashedPassword = bcrypt.hashSync(dto.password, salt);
 
       user.password = hashedPassword;
+
+      await user.save();
 
       return {
         message: "Ваш пароль успешно изменен",
