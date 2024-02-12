@@ -31,6 +31,7 @@
     "@nestjs/platform-socket.io": "^10.3.0",
     "@nestjs/schedule": "^4.0.0",
     "@nestjs/swagger": "^7.1.17",
+    "@nestjs/throttler": "^5.1.2",
     "@types/nodemailer": "^6.4.13",
     "axios": "^1.6.5",
     "bcrypt": "^5.1.1",
@@ -46,6 +47,7 @@
     "nodemailer": "^6.9.7",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.2.0",
+    "sharp": "^0.33.2",
     "socket.io": "^4.7.2",
     "socket.io-client": "^4.7.2"
   },

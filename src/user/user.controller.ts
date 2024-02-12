@@ -42,15 +42,17 @@ import { SignInOkResponse } from "src/auth/responses/sign-in.response";
 import { FindRequisitesResponse } from "./responses/requisite.response";
 import { Requisite } from "src/admin/schemas/requisite.schema";
 import { FileInterceptor } from "@nestjs/platform-express";
-import { diskStorage } from "multer";
+import { diskStorage, memoryStorage } from "multer";
 import { extname } from "path";
 import { ReferralByDaysOkResponse, ReferralOkResponse } from "./responses/referral.response";
 import { FindReferralsByDayDto } from "./dto/findReferralsByDay.dto";
 import { GetPromosDto } from "./dto/getPromos.dto";
 import { Promo } from "./schemas/promo.schema";
 import { GameLimits } from "src/admin/schemas/admin.schema";
+import { SkipThrottle } from "@nestjs/throttler";
+import { SharpPipe } from "src/pipes/sharp.pipe";
 
-const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1mb
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 1mb
 
 @ApiTags("User")
 @Auth()
@@ -108,6 +110,7 @@ export class UserController {
     return this.userService.getPromo(req["user"], id);
   }
 
+  @SkipThrottle({ default: false })
   @ApiOkResponse({ type: ConfirmEmailSendCodeResponse })
   @HttpCode(HttpStatus.OK)
   @Post("confirm-email/send-code")
@@ -115,6 +118,7 @@ export class UserController {
     return this.userService.confirmEmailSendCode(req["user"]);
   }
 
+  @SkipThrottle({ default: false })
   @ApiOkResponse({ type: ConfirmEmailConfirmCodeResponse })
   @ApiBadRequestResponse({ type: ConfirmEmailConfirmCodeBadResponse })
   @HttpCode(HttpStatus.OK)
@@ -123,6 +127,7 @@ export class UserController {
     return this.userService.confirmEmailConfirmCode(req["user"], dto);
   }
 
+  @SkipThrottle({ default: false })
   @ApiOkResponse({ type: ConfirmEmailSendCodeResponse })
   @HttpCode(HttpStatus.OK)
   @Post("change-email/send-code")
@@ -130,6 +135,7 @@ export class UserController {
     return this.userService.changeEmailSendCode(dto, req["user"]);
   }
 
+  @SkipThrottle({ default: false })
   @ApiOkResponse({ type: ChangeEmailConfirmCodeResponse })
   @ApiBadRequestResponse({ type: ConfirmEmailConfirmCodeBadResponse })
   @HttpCode(HttpStatus.OK)
@@ -138,6 +144,7 @@ export class UserController {
     return this.userService.changeEmailConfirmCode(req["user"], dto);
   }
 
+  @SkipThrottle({ default: false })
   @ApiOkResponse({ type: SignInOkResponse })
   @ApiBadRequestResponse({ type: OldPasswordConfirmBadResponse })
   @HttpCode(HttpStatus.OK)
@@ -146,6 +153,7 @@ export class UserController {
     return this.userService.oldPasswordConfirm(dto, req["user"]);
   }
 
+  @SkipThrottle({ default: false })
   @ApiOkResponse({ type: ChangePasswordResponse })
   @ApiBadRequestResponse({ type: ChangePasswordBadResponse })
   @HttpCode(HttpStatus.OK)
@@ -181,21 +189,8 @@ export class UserController {
       },
     },
   })
+  @UseInterceptors(FileInterceptor("file"))
   @Put("/profile-image")
-  @UseInterceptors(
-    FileInterceptor("file", {
-      storage: diskStorage({
-        destination: "./uploads/profile-images",
-        filename: (req, file, callback) => {
-          const randomName = Array(32)
-            .fill(null)
-            .map(() => Math.round(Math.random() * 16).toString(16))
-            .join("");
-          return callback(null, `${randomName}${extname(file.originalname)}`);
-        },
-      }),
-    }),
-  )
   async uploadProfileImage(
     @Req() req: Request,
     @UploadedFile(
@@ -203,14 +198,14 @@ export class UserController {
         validators: [new FileTypeValidator({ fileType: /(jpg|jpeg|png|webp)$/ }), new MaxFileSizeValidator({ maxSize: MAX_FILE_SIZE })],
         fileIsRequired: true,
       }),
+      SharpPipe,
     )
-    file: Express.Multer.File,
+    file: string,
   ) {
-    const imagePath = file.path;
     const protocol = req.protocol;
     const host = req.get("Host");
     const origin = protocol + "://" + host + "/";
 
-    return this.userService.updateProfileImage(req["user"], origin, imagePath);
+    return this.userService.updateProfileImage(req["user"], origin, file);
   }
 }

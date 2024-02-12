@@ -11,12 +11,14 @@ import { SendCodeBadResponse, SendCodeOkResponse } from "./responses/send-code.r
 import { ConfirmCodeBadResponse, ConfirmCodeOkResponse } from "./responses/confirm-code.response";
 import { ChangePasswordDto } from "./dto/change-password.dto";
 import { ChangePasswordBadResponse, ChangePasswordOkResponse } from "./responses/change-password.response";
+import { SkipThrottle } from "@nestjs/throttler";
 
 @ApiTags("Authentication")
 @Controller("auth")
 export class AuthController {
   constructor(private authService: AuthService) {}
 
+  @SkipThrottle({ default: false })
   @ApiCreatedResponse({ description: "User created", type: SignUpCreatedResponse })
   @ApiBadRequestResponse({ description: "User validation errors", type: SignUpBadResponse })
   @HttpCode(HttpStatus.CREATED)
@@ -25,6 +27,7 @@ export class AuthController {
     return this.authService.signUp(dto);
   }
 
+  @SkipThrottle({ default: false })
   @ApiOkResponse({ description: "User successfully logged in", type: SignInOkResponse })
   @ApiBadRequestResponse({ description: "Login or password is wrong", type: SignInBadResponse })
   @HttpCode(HttpStatus.OK)
@@ -33,6 +36,7 @@ export class AuthController {
     return this.authService.signIn(dto);
   }
 
+  @SkipThrottle({ default: false })
   @ApiOkResponse({ description: "Code sended to your email", type: SendCodeOkResponse })
   @ApiBadRequestResponse({ description: "User from this email not founded", type: SendCodeBadResponse })
   @HttpCode(HttpStatus.OK)
@@ -41,6 +45,7 @@ export class AuthController {
     return this.authService.sendCode(dto);
   }
 
+  @SkipThrottle({ default: false })
   @ApiOkResponse({ description: "Right code", type: ConfirmCodeOkResponse })
   @ApiBadRequestResponse({ description: "Wrong code", type: ConfirmCodeBadResponse })
   @HttpCode(HttpStatus.OK)
@@ -49,6 +54,7 @@ export class AuthController {
     return this.authService.confirmCode(dto);
   }
 
+  @SkipThrottle({ default: false })
   @ApiOkResponse({ description: "Right code", type: ChangePasswordOkResponse })
   @ApiBadRequestResponse({ description: "Wrong code", type: ChangePasswordBadResponse })
   @ApiParam({ name: "token" })
