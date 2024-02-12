@@ -166,7 +166,7 @@ export class SocketService {
     const betDataObject: IBet = {
       playerId: userPayload.id,
       playerLogin: user.login,
-      playerImg: user.profileImage,
+      profileImage: user.profileImage,
       // currency: user.currency,
       bet,
       promo: userPromo?.promo,
