@@ -167,7 +167,7 @@ export class AdminService {
   }
 
   async cancelWithdrawal(account: Account, id: string, dto: CancelReplenishmentDto) {
-    const withdrawal = await this.withdrawalModel.findById(id).populate("user");
+    const withdrawal = await this.withdrawalModel.findOne({ _id: id, requisite: account.requisite }).populate("user");
 
     if (!withdrawal) {
       throw new NotFoundException("Нет такой заявки");
