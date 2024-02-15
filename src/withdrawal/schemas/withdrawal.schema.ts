@@ -14,6 +14,9 @@ export enum WithdrawalStatusEnum {
 
 @Schema()
 export class Withdrawal {
+  @ApiProperty()
+  _id: string;
+
   @ApiProperty({ type: String })
   @Prop({ required: true, type: mongoose.Schema.Types.ObjectId, ref: User.name })
   user: UserDocument;

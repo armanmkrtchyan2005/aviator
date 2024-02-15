@@ -5,6 +5,7 @@ import { Request } from "express";
 import { InjectModel } from "@nestjs/mongoose";
 import { Admin } from "./schemas/admin.schema";
 import { Model } from "mongoose";
+import { Account } from "./schemas/account.schema";
 
 interface IAdminAuthPayload extends JwtPayload {
   id: number;
@@ -12,7 +13,7 @@ interface IAdminAuthPayload extends JwtPayload {
 
 @Injectable()
 export class AdminAuthGuard implements CanActivate {
-  constructor(@InjectModel(Admin.name) private adminModel: Model<Admin>, private jwtService: JwtService) {}
+  constructor(@InjectModel(Account.name) private accountModel: Model<Account>, private jwtService: JwtService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
@@ -26,9 +27,7 @@ export class AdminAuthGuard implements CanActivate {
         secret: process.env.JWT_SECRET,
       });
 
-      const adminData = await this.adminModel.findOne();
-
-      const admin = adminData.admin_panel_data.find(admin => admin.id === payload.id);
+      const admin = await this.accountModel.findById(payload.id);
 
       if (!admin) {
         throw new UnauthorizedException();

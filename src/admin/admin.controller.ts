@@ -1,4 +1,5 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Put, Query } from "@nestjs/common";
+import { Request } from "express";
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Put, Query, Req } from "@nestjs/common";
 import { AdminService } from "./admin.service";
 import { AdminLoginDto } from "./dto/adminLogin.dto";
 import { ApiBadRequestResponse, ApiOkResponse, ApiTags } from "@nestjs/swagger";
@@ -44,46 +45,46 @@ export class AdminController {
   @AdminAuth()
   @ApiOkResponse({ type: Replenishment })
   @Get("/replenishments")
-  getRequisite() {
-    return this.adminService.getReplenishments();
+  getRequisite(@Req() req: Request, @Query() dto: LimitQueryDto) {
+    return this.adminService.getReplenishments(req["admin"], dto);
   }
 
   @AdminAuth()
   @ApiOkResponse({ type: ConfirmReplenishmentResponse })
   @ApiBadRequestResponse({ type: ConfirmReplenishmentBadResponse })
   @Put("/replenishments/:id")
-  confirmReplenishment(@Param("id") id: string) {
-    return this.adminService.confirmReplenishment(id);
+  confirmReplenishment(@Req() req: Request, @Param("id") id: string) {
+    return this.adminService.confirmReplenishment(req["admin"], id);
   }
 
   @AdminAuth()
   @ApiOkResponse({ type: CancelReplenishmentResponse })
   @ApiBadRequestResponse({ type: CancelReplenishmentBadResponse })
   @Put("/replenishments/:id/cancel")
-  cancelReplenishment(@Param("id") id: string, @Body() dto: CancelReplenishmentDto) {
-    return this.adminService.cancelReplenishment(id, dto);
+  cancelReplenishment(@Req() req: Request, @Param("id") id: string, @Body() dto: CancelReplenishmentDto) {
+    return this.adminService.cancelReplenishment(req["admin"], id, dto);
   }
 
   @AdminAuth()
   @ApiOkResponse({ type: Withdrawal })
   @Get("/withdrawals")
-  getWithdrawals(@Query() dto: LimitQueryDto) {
-    return this.adminService.getWithdrawals(dto);
+  getWithdrawals(@Req() req: Request, @Query() dto: LimitQueryDto) {
+    return this.adminService.getWithdrawals(req["admin"], dto);
   }
 
   @AdminAuth()
   @ApiOkResponse({ type: ConfirmReplenishmentResponse })
   @ApiBadRequestResponse({ type: ConfirmReplenishmentBadResponse })
   @Put("/withdrawals/:id")
-  confirmWithdrawal(@Param("id") id: string) {
-    return this.adminService.confirmWithdrawal(id);
+  confirmWithdrawal(@Req() req: Request, @Param("id") id: string) {
+    return this.adminService.confirmWithdrawal(req["admin"], id);
   }
 
   @AdminAuth()
   @ApiOkResponse({ type: CancelWithdrawalOkResponse })
   @ApiBadRequestResponse({ type: CancelWithdrawalBadResponse })
   @Put("/withdrawals/:id/cancel")
-  cancelWithdrawal(@Param("id") id: string, @Body() dto: CancelReplenishmentDto) {
-    return this.adminService.cancelWithdrawal(id, dto);
+  cancelWithdrawal(@Req() req: Request, @Param("id") id: string, @Body() dto: CancelReplenishmentDto) {
+    return this.adminService.cancelWithdrawal(req["admin"], id, dto);
   }
 }

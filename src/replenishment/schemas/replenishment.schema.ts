@@ -3,6 +3,7 @@ import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { ApiProperty, getSchemaPath } from "@nestjs/swagger";
 import { User, UserDocument } from "src/user/schemas/user.schema";
 import { Requisite, RequisiteDocument } from "src/admin/schemas/requisite.schema";
+import { IAmount } from "src/bets/schemas/bet.schema";
 
 export type ReplenishmentDocument = HydratedDocument<Replenishment>;
 
@@ -22,17 +23,13 @@ export class Replenishment {
   @Prop({ required: true, type: mongoose.Schema.Types.ObjectId, ref: User.name })
   user: UserDocument;
 
-  @ApiProperty({ example: 100 })
-  @Prop({ required: true })
-  amount: number;
+  @ApiProperty({ properties: { USD: { example: 100 } } })
+  @Prop({ required: true, type: Object })
+  amount: IAmount;
 
-  @ApiProperty({ example: "USD" })
-  @Prop({ required: true })
-  currency: string;
-
-  @ApiProperty({ example: 110 })
-  @Prop({ required: true })
-  deduction: number;
+  @ApiProperty({ properties: { USD: { example: 110 } } })
+  @Prop({ required: true, type: Object })
+  deduction: IAmount;
 
   @ApiProperty({ enum: ReplenishmentStatusEnum })
   @Prop({ required: true, default: ReplenishmentStatusEnum.PENDING, enum: ReplenishmentStatusEnum })

@@ -8,11 +8,13 @@ import { Requisite, RequisiteSchema } from "./schemas/requisite.schema";
 import { Replenishment, ReplenishmentSchema } from "src/replenishment/schemas/replenishment.schema";
 import { ConvertModule } from "src/convert/convert.module";
 import { Withdrawal, WithdrawalSchema } from "src/withdrawal/schemas/withdrawal.schema";
+import { Account, AccountSchema } from "./schemas/account.schema";
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: Admin.name, schema: AdminSchema },
+      { name: Account.name, schema: AccountSchema },
       { name: User.name, schema: UserSchema },
       { name: Replenishment.name, schema: ReplenishmentSchema },
       { name: Requisite.name, schema: RequisiteSchema },

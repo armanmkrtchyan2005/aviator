@@ -1,6 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Transform } from "class-transformer";
-import { IsDate, IsNumber, IsOptional, Max, Min } from "class-validator";
+import { IsDate, IsNumber, IsOptional, IsString, Max, Min } from "class-validator";
 
 export class LimitQueryDto {
   @ApiProperty({ example: 0, required: false, minimum: 0, default: 0, description: "Skip elements" })
@@ -22,11 +22,16 @@ export class LimitQueryDto {
   @Transform(({ value }) => new Date(value))
   @IsDate()
   @IsOptional()
-  stateDate: Date;
+  startDate: Date;
 
   @ApiProperty({ required: false })
   @Transform(({ value }) => new Date(value))
   @IsDate()
   @IsOptional()
   endDate: Date;
+
+  @ApiProperty({ default: "" })
+  @IsString()
+  @IsOptional()
+  q: string = "";
 }

@@ -11,11 +11,14 @@ import { ConvertService } from "src/convert/convert.service";
 import { Withdrawal, WithdrawalStatusEnum } from "src/withdrawal/schemas/withdrawal.schema";
 import { CancelReplenishmentDto } from "./dto/cancelReplenishment.dto";
 import { LimitQueryDto } from "./dto/limit-query.dto";
+import { Account } from "./schemas/account.schema";
+import * as bcrypt from "bcrypt";
 
 @Injectable()
 export class AdminService {
   constructor(
     @InjectModel(Admin.name) private adminModel: Model<Admin>,
+    @InjectModel(Account.name) private accountModel: Model<Account>,
     @InjectModel(Replenishment.name) private replenishmentModel: Model<Replenishment>,
     @InjectModel(Requisite.name) private requisiteModel: Model<Requisite>,
     @InjectModel(Withdrawal.name) private withdrawalModel: Model<Withdrawal>,
@@ -24,24 +27,23 @@ export class AdminService {
   ) {}
 
   async login(dto: AdminLoginDto) {
-    await this.adminModel.create();
-    const adminData = await this.adminModel.findOne();
+    const account = await this.accountModel.findOne({ login: dto.login });
 
-    const admin = adminData.admin_panel_data.find(admin => admin.login === dto.login);
-
-    if (!admin) {
+    if (!account) {
       throw new BadRequestException("Неправильный логин или пароль");
     }
 
-    if (admin.password !== dto.password) {
+    const isEqual = bcrypt.compareSync(dto.password, account.password);
+
+    if (!isEqual) {
       throw new BadRequestException("Неправильный логин или пароль");
     }
 
-    const token = this.jwtService.sign({ id: admin.id });
+    const token = this.jwtService.sign({ id: account._id });
 
     return { token };
   }
-
+  //------------------- Harcnel Karenin -----------------
   async createRequisite(dto: CreateRequisiteDto) {
     const requisite = await this.requisiteModel.findOne({ requisite: dto.requisite });
 
@@ -54,22 +56,33 @@ export class AdminService {
     return newRequisite;
   }
 
+  //------------------- Harcnel Karenin -----------------
   async getRequisites() {
     const requisites = await this.requisiteModel.find();
 
     return requisites;
   }
 
-  async getReplenishments() {
-    const replenishments = await this.replenishmentModel.find().sort({ createdAt: -1 }).populate("requisite");
+  async getReplenishments(account: Account, dto: LimitQueryDto) {
+    const replenishments = await this.replenishmentModel
+      .aggregate([
+        { $match: { requisite: account.requisite } },
+        { $addFields: { _id: { $toString: "$_id" } } },
+        {
+          $match: { _id: { $regex: dto.q, $options: "i" } },
+        },
+      ])
+      .limit(dto.limit)
+      .skip(dto.skip)
+      .sort({ createdAt: -1 });
 
     return replenishments;
   }
 
-  async confirmReplenishment(id: string) {
+  async confirmReplenishment(account: Account, id: string) {
     const admin = await this.adminModel.findOne({}, ["manual_methods_balance"]);
-    const replenishment = await this.replenishmentModel.findById(id).populate(["user", "requisite"]);
-    replenishment.requisite;
+    const replenishment = await this.replenishmentModel.findOne({ _id: id, requisite: account.requisite }).populate(["user", "requisite"]);
+
     if (!replenishment) {
       throw new NotFoundException("Нет такой заявки");
     }
@@ -78,7 +91,7 @@ export class AdminService {
       throw new BadRequestException("Вы не можете менять подтвержденную заявку");
     }
 
-    replenishment.user.balance += await this.convertService.convert(replenishment.currency, replenishment.user.currency, replenishment.amount);
+    replenishment.user.balance += replenishment.amount[replenishment.user.currency];
 
     await replenishment.user.save();
 
@@ -86,7 +99,7 @@ export class AdminService {
 
     await replenishment.save();
 
-    const requisiteAmount = await this.convertService.convert(replenishment.currency, "USD", replenishment.amount);
+    const requisiteAmount = replenishment.deduction[replenishment.requisite.currency];
 
     replenishment.requisite.balance += requisiteAmount;
 
@@ -99,8 +112,8 @@ export class AdminService {
     return { message: "Заявка подтверждена" };
   }
 
-  async cancelReplenishment(id: string, dto: CancelReplenishmentDto) {
-    const replenishment = await this.replenishmentModel.findById(id).populate("user");
+  async cancelReplenishment(account: Account, id: string, dto: CancelReplenishmentDto) {
+    const replenishment = await this.replenishmentModel.findOne({ _id: id, requisite: account.requisite }).populate("user");
 
     if (!replenishment) {
       throw new NotFoundException("Нет такой заявки");
@@ -119,15 +132,24 @@ export class AdminService {
     return { message: "Заявка отменена" };
   }
 
-  //---------------------- add limit ------------------------------------------
-  async getWithdrawals(dto: LimitQueryDto) {
-    const withdrawals = await this.withdrawalModel.find().sort({ createdAt: -1 });
+  async getWithdrawals(account: Account, dto: LimitQueryDto) {
+    const withdrawals = await this.withdrawalModel
+      .aggregate([
+        { $match: { requisite: account.requisite } },
+        { $addFields: { _id: { $toString: "$_id" } } },
+        {
+          $match: { _id: { $regex: dto.q, $options: "i" } },
+        },
+      ])
+      .limit(dto.limit)
+      .skip(dto.skip)
+      .sort({ createdAt: -1 });
 
     return withdrawals;
   }
 
-  async confirmWithdrawal(id: string) {
-    const withdrawal = await this.withdrawalModel.findById(id);
+  async confirmWithdrawal(account: Account, id: string) {
+    const withdrawal = await this.withdrawalModel.findOne({ _id: id, requisite: account.requisite }).populate("requisite");
 
     if (!withdrawal) {
       throw new NotFoundException("Нет такой заявки");
@@ -144,7 +166,7 @@ export class AdminService {
     return { message: "Заявка подтверждена" };
   }
 
-  async cancelWithdrawal(id: string, dto: CancelReplenishmentDto) {
+  async cancelWithdrawal(account: Account, id: string, dto: CancelReplenishmentDto) {
     const withdrawal = await this.withdrawalModel.findById(id).populate("user");
 
     if (!withdrawal) {

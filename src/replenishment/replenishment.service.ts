@@ -16,6 +16,7 @@ import { UserPromo } from "src/user/schemas/userPromo.schema";
 import { PromoType } from "src/user/schemas/promo.schema";
 import { Bonus, CoefParamsType } from "src/user/schemas/bonus.schema";
 import * as _ from "lodash";
+import { IAmount } from "src/bets/schemas/bet.schema";
 
 @Injectable()
 export class ReplenishmentService {
@@ -76,24 +77,32 @@ export class ReplenishmentService {
       throw new NotFoundException({ message: "Реквизит не найден" });
     }
 
-    const minLimit = await this.convertService.convert(admin.minLimit.currency, dto.currency, admin.minLimit.amount);
-    const maxLimit = await this.convertService.convert(admin.maxLimit.currency, dto.currency, admin.maxLimit.amount);
+    const minLimit = await this.convertService.convert(admin.minLimit.currency, user.currency, admin.minLimit.amount);
+    const maxLimit = await this.convertService.convert(admin.maxLimit.currency, user.currency, admin.maxLimit.amount);
 
-    if (dto.amount < minLimit && dto.amount > maxLimit) {
-      throw new BadRequestException(`Сумма не должен бит не меньше чем ${minLimit + dto.currency} и не больше чем ${maxLimit + dto.currency}`);
+    const amount: IAmount = {};
+    const deduction: IAmount = {};
+
+    for (const currency of admin.currencies) {
+      amount[currency] = await this.convertService.convert(dto.currency, currency, dto.amount);
+
+      const commission = await this.convertService.convert(admin.commissionCurrency, currency, admin.commission);
+      deduction[currency] = amount[currency] + commission;
     }
-    const commission = await this.convertService.convert(admin.commissionCurrency, dto.currency, admin.commission);
-    const deduction = dto.amount + commission;
+
+    if (amount[user.currency] < minLimit && amount[user.currency] > maxLimit) {
+      throw new BadRequestException(`Сумма не должен бит не меньше чем ${minLimit + user.currency} и не больше чем ${maxLimit + user.currency}`);
+    }
 
     const bonuses = await this.userPromoModel.find({ user: user._id }).populate("promo");
-    const amount = await this.convertService.convert(dto.currency, user.currency, dto.amount);
+    // const amount = await this.convertService.convert(dto.currency, user.currency, dto.amount);
 
     let sum = 0;
 
     for (let bonus of bonuses) {
-      if (bonus.limit >= amount) {
+      if (bonus.limit >= amount[user.currency]) {
         sum += (dto.amount * bonus.promo.amount) / 100;
-        bonus.limit -= amount;
+        bonus.limit -= amount[user.currency];
         await bonus.save();
       }
     }
@@ -112,7 +121,7 @@ export class ReplenishmentService {
 
     // dto.amount += sum;
 
-    const replenishment = await (await this.replenishmentModel.create({ ...dto, deduction, user: user._id })).populate("requisite");
+    const replenishment = await (await this.replenishmentModel.create({ ...dto, deduction, user: user._id, amount })).populate("requisite");
 
     const job = new CronJob(CronExpression.EVERY_30_MINUTES, async () => {
       console.log("Time out");
