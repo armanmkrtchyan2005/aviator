@@ -3,35 +3,28 @@ import { Transform } from "class-transformer";
 import { IsDate, IsNumber, IsOptional, IsString, Max, Min } from "class-validator";
 
 export class LimitQueryDto {
-  @ApiProperty({ example: 0, required: false, minimum: 0, default: 0, description: "Skip elements" })
+  @ApiProperty({ example: 0, required: false, description: "Skip elements" })
   @Transform(({ value }) => parseInt(value))
   @IsNumber()
   @Min(0)
   @IsOptional()
-  skip: number = 0;
+  skip?: number;
 
-  @ApiProperty({ example: 10, required: false, default: 10, minimum: 10, maximum: 100, description: "Page limit" })
+  @ApiProperty({ example: 10, required: false, description: "Page limit" })
   @Transform(({ value }) => parseInt(value))
   @IsNumber()
-  @Min(10)
-  @Max(100)
   @IsOptional()
-  limit: number = 10;
+  limit?: number;
 
   @ApiProperty({ required: false })
   @Transform(({ value }) => new Date(value))
   @IsDate()
   @IsOptional()
-  startDate: Date;
+  startDate?: Date;
 
   @ApiProperty({ required: false })
   @Transform(({ value }) => new Date(value))
   @IsDate()
   @IsOptional()
-  endDate: Date;
-
-  @ApiProperty({ default: "" })
-  @IsString()
-  @IsOptional()
-  q: string = "";
+  endDate?: Date = new Date();
 }

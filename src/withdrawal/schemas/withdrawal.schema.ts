@@ -3,6 +3,8 @@ import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { ApiProperty, getSchemaPath } from "@nestjs/swagger";
 import { User, UserDocument } from "src/user/schemas/user.schema";
 import { Requisite, RequisiteDocument } from "src/admin/schemas/requisite.schema";
+import { Account } from "src/admin/schemas/account.schema";
+import { IAmount } from "src/bets/schemas/bet.schema";
 
 export type WithdrawalDocument = HydratedDocument<Withdrawal>;
 
@@ -21,13 +23,9 @@ export class Withdrawal {
   @Prop({ required: true, type: mongoose.Schema.Types.ObjectId, ref: User.name })
   user: UserDocument;
 
-  @ApiProperty({ example: 100 })
-  @Prop({ required: true })
-  amount: number;
-
-  @ApiProperty({ example: "USD" })
-  @Prop({ required: true })
-  currency: string;
+  @ApiProperty({ properties: { USD: { example: 110 } } })
+  @Prop({ required: true, type: Object })
+  amount: IAmount;
 
   @ApiProperty({ enum: WithdrawalStatusEnum })
   @Prop({ required: true, default: WithdrawalStatusEnum.PENDING, enum: WithdrawalStatusEnum })
@@ -41,7 +39,7 @@ export class Withdrawal {
   @Prop()
   userRequisite: string;
 
-  @ApiProperty({ oneOf: [{ type: "string" }, { $ref: getSchemaPath(Requisite) }] })
+  @ApiProperty({ type: Requisite })
   @Prop({ required: true, type: mongoose.Schema.Types.ObjectId, ref: Requisite.name })
   requisite: RequisiteDocument;
 
@@ -52,6 +50,10 @@ export class Withdrawal {
   @ApiProperty()
   @Prop()
   completedDate: Date;
+
+  @ApiProperty({ type: String })
+  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: Account.name })
+  active: Account;
 }
 
 export const WithdrawalSchema = SchemaFactory.createForClass(Withdrawal);

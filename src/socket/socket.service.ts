@@ -435,7 +435,7 @@ export class SocketService {
     //1. 3 player algorithm loading
     if (this.algorithms[0]?.active) {
       this.threePlayers = _.sampleSize(this.threePlayers, 3);
-      this.random = _.random(110, true);
+      this.random = _.random(80, 110, true);
     }
 
     // 2. Net income algorithm loading

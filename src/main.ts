@@ -9,7 +9,7 @@ import { join } from "path";
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.useStaticAssets(join(__dirname, "..", "uploads"), { prefix: "/uploads" });
-  app.enableCors();
+  app.enableCors({ origin: "*" });
   const port = process.env.PORT || 8080;
 
   const config = new DocumentBuilder().setTitle("Aviator").setDescription("Aviator API документация").setVersion("1.0").build();

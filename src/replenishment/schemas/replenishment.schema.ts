@@ -4,6 +4,7 @@ import { ApiProperty, getSchemaPath } from "@nestjs/swagger";
 import { User, UserDocument } from "src/user/schemas/user.schema";
 import { Requisite, RequisiteDocument } from "src/admin/schemas/requisite.schema";
 import { IAmount } from "src/bets/schemas/bet.schema";
+import { Account } from "src/admin/schemas/account.schema";
 
 export type ReplenishmentDocument = HydratedDocument<Replenishment>;
 
@@ -35,6 +36,9 @@ export class Replenishment {
   @Prop({ required: true, default: ReplenishmentStatusEnum.PENDING, enum: ReplenishmentStatusEnum })
   status: ReplenishmentStatusEnum;
 
+  @Prop({ required: true, type: mongoose.Schema.Types.ObjectId, ref: Account.name })
+  account: Account;
+
   @ApiProperty()
   @Prop()
   statusMessage: string;
@@ -43,7 +47,7 @@ export class Replenishment {
   @Prop({ required: true, default: false })
   isPayConfirmed: boolean;
 
-  @ApiProperty({ oneOf: [{ type: "string" }, { $ref: getSchemaPath(Requisite) }] })
+  @ApiProperty({ type: Requisite })
   @Prop({ required: true, type: mongoose.Schema.Types.ObjectId, ref: Requisite.name })
   requisite: RequisiteDocument;
 

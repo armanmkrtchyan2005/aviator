@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Admin } from "./schemas/admin.schema";
-import { Model } from "mongoose";
+import { Model, PipelineStage } from "mongoose";
 import { AdminLoginDto } from "./dto/adminLogin.dto";
 import { JwtService } from "@nestjs/jwt";
 import { Requisite } from "./schemas/requisite.schema";
@@ -11,8 +11,22 @@ import { ConvertService } from "src/convert/convert.service";
 import { Withdrawal, WithdrawalStatusEnum } from "src/withdrawal/schemas/withdrawal.schema";
 import { CancelReplenishmentDto } from "./dto/cancelReplenishment.dto";
 import { LimitQueryDto } from "./dto/limit-query.dto";
-import { Account } from "./schemas/account.schema";
+import { Account, AccountDocument } from "./schemas/account.schema";
 import * as bcrypt from "bcrypt";
+
+function limitAndSkipPipelines(dto: LimitQueryDto) {
+  const arrPipelines: PipelineStage[] = [];
+
+  if (dto.limit) {
+    arrPipelines.push({ $limit: dto.limit });
+  }
+
+  if (dto.skip) {
+    arrPipelines.push({ $skip: dto.skip });
+  }
+
+  return arrPipelines;
+}
 
 @Injectable()
 export class AdminService {
@@ -25,6 +39,10 @@ export class AdminService {
     private jwtService: JwtService,
     private convertService: ConvertService,
   ) {}
+
+  async adminDetails(account: Account) {
+    return account;
+  }
 
   async login(dto: AdminLoginDto) {
     const account = await this.accountModel.findOne({ login: dto.login });
@@ -43,7 +61,8 @@ export class AdminService {
 
     return { token };
   }
-  //------------------- Harcnel Karenin -----------------
+
+  // ????????????????????????????????????????
   async createRequisite(dto: CreateRequisiteDto) {
     const requisite = await this.requisiteModel.findOne({ requisite: dto.requisite });
 
@@ -56,7 +75,7 @@ export class AdminService {
     return newRequisite;
   }
 
-  //------------------- Harcnel Karenin -----------------
+  // ????????????????????????????????????????
   async getRequisites() {
     const requisites = await this.requisiteModel.find();
 
@@ -64,22 +83,33 @@ export class AdminService {
   }
 
   async getReplenishments(account: Account, dto: LimitQueryDto) {
+    const match: any = { account: account._id };
+
+    if (dto.startDate) {
+      match.createdAt = { $gte: dto.startDate };
+    }
+
+    if (dto.endDate) {
+      const nextDay = new Date(dto.endDate);
+      nextDay.setDate(dto.endDate.getDate() + 1);
+      match.createdAt = { ...match.createdAt, $lt: nextDay };
+    }
+
     const replenishments = await this.replenishmentModel
       .aggregate([
-        { $match: { requisite: account.requisite } },
-        { $addFields: { _id: { $toString: "$_id" } } },
+        { $match: match },
+        { $lookup: { from: "requisites", localField: "requisite", foreignField: "_id", as: "requisite" } },
         {
-          $match: { _id: { $regex: dto.q, $options: "i" } },
+          $unwind: "$requisite",
         },
+        ...limitAndSkipPipelines(dto),
       ])
-      .limit(dto.limit)
-      .skip(dto.skip)
       .sort({ createdAt: -1 });
 
     return replenishments;
   }
 
-  async confirmReplenishment(account: Account, id: string) {
+  async confirmReplenishment(account: AccountDocument, id: string) {
     const admin = await this.adminModel.findOne({}, ["manual_methods_balance"]);
     const replenishment = await this.replenishmentModel.findOne({ _id: id, requisite: account.requisite }).populate(["user", "requisite"]);
 
@@ -99,13 +129,14 @@ export class AdminService {
 
     await replenishment.save();
 
-    const requisiteAmount = replenishment.deduction[replenishment.requisite.currency];
+    const requisiteAmount = replenishment.deduction["USDT"] + (replenishment.deduction["USDT"] * account.replenishmentBonus) / 100;
 
-    replenishment.requisite.balance += requisiteAmount;
+    replenishment.requisite.balance -= requisiteAmount;
+    account.balance -= requisiteAmount;
+    admin.manual_methods_balance -= requisiteAmount;
 
     await replenishment.requisite.save();
-
-    admin.manual_methods_balance += requisiteAmount;
+    await account.save();
 
     await admin.save();
 
@@ -135,31 +166,63 @@ export class AdminService {
   async getWithdrawals(account: Account, dto: LimitQueryDto) {
     const withdrawals = await this.withdrawalModel
       .aggregate([
-        { $match: { requisite: account.requisite } },
-        { $addFields: { _id: { $toString: "$_id" } } },
+        { $lookup: { from: "requisites", localField: "requisite", foreignField: "_id", as: "requisite" } },
         {
-          $match: { _id: { $regex: dto.q, $options: "i" } },
+          $unwind: "$requisite",
         },
+        ...limitAndSkipPipelines(dto),
       ])
-      .limit(dto.limit)
-      .skip(dto.skip)
       .sort({ createdAt: -1 });
 
     return withdrawals;
   }
 
-  async confirmWithdrawal(account: Account, id: string) {
-    const withdrawal = await this.withdrawalModel.findOne({ _id: id, requisite: account.requisite }).populate("requisite");
+  async activateWithdrawal(account: AccountDocument, id: string) {
+    const withdrawal = await this.withdrawalModel.findById(id);
+
+    if (withdrawal.status === WithdrawalStatusEnum.CANCELED || withdrawal.status === WithdrawalStatusEnum.COMPLETED) {
+      throw new BadRequestException("Вы не можете активировать подтверждённую или отменённую заявку");
+    }
+
+    if (withdrawal.active) {
+      throw new BadRequestException("Это заявка уже была активирована");
+    }
+
+    withdrawal.active = account;
+
+    await withdrawal.save();
+
+    return { message: "Заявка активирована" };
+  }
+
+  async confirmWithdrawal(account: AccountDocument, id: string) {
+    const admin = await this.adminModel.findOne({}, ["manual_methods_balance"]);
+    const withdrawal = await this.withdrawalModel.findOne({ _id: id, active: account._id }).populate(["requisite", "active"]);
 
     if (!withdrawal) {
       throw new NotFoundException("Нет такой заявки");
     }
 
     if (withdrawal.status == WithdrawalStatusEnum.COMPLETED) {
-      throw new BadRequestException("Вы не можете менять подтвержденную заявку");
+      throw new BadRequestException("Это заявка уже была подтверждена");
+    }
+
+    if (account._id.toString() !== withdrawal.active._id.toString()) {
+      throw new BadRequestException("Вы не можете подтверждать заявку, активированную другим аккаунтом");
     }
 
     withdrawal.status = WithdrawalStatusEnum.COMPLETED;
+
+    const requisiteAmount = withdrawal.amount["USDT"] + (withdrawal.amount["USDT"] * account.withdrawalBonus) / 100;
+
+    withdrawal.requisite.balance += requisiteAmount;
+    account.balance += requisiteAmount;
+    admin.manual_methods_balance += requisiteAmount;
+
+    await withdrawal.requisite.save();
+    await account.save();
+
+    await admin.save();
 
     await withdrawal.save();
 
@@ -167,21 +230,25 @@ export class AdminService {
   }
 
   async cancelWithdrawal(account: Account, id: string, dto: CancelReplenishmentDto) {
-    const withdrawal = await this.withdrawalModel.findOne({ _id: id, requisite: account.requisite }).populate("user");
+    const withdrawal = await this.withdrawalModel.findOne({ _id: id, active: account._id }).populate(["user", "active"]);
 
     if (!withdrawal) {
       throw new NotFoundException("Нет такой заявки");
     }
 
     if (withdrawal.status == WithdrawalStatusEnum.COMPLETED || withdrawal.status == WithdrawalStatusEnum.CANCELED) {
-      throw new BadRequestException("Вы не можете менять заявку");
+      throw new BadRequestException("Вы не можете отменить уже подтверждённую или отменённую заявку");
+    }
+
+    if (account._id !== withdrawal.active._id) {
+      throw new BadRequestException("Вы не можете отменить заявку, активированную другим аккаунтом");
     }
 
     withdrawal.status = WithdrawalStatusEnum.CANCELED;
 
     withdrawal.statusMessage = dto.statusMessage;
 
-    withdrawal.user.balance += await this.convertService.convert(withdrawal.currency, withdrawal.user.currency, withdrawal.amount);
+    withdrawal.user.balance += withdrawal.amount[withdrawal.user.currency];
 
     await withdrawal.user.save();
 

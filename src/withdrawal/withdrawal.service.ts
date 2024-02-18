@@ -9,6 +9,7 @@ import { CreateWithdrawalDto } from "./dto/createWithdrawal.dto";
 import { Admin } from "src/admin/schemas/admin.schema";
 import { ConvertService } from "src/convert/convert.service";
 import { isCreditCard } from "class-validator";
+import { IAmount } from "src/bets/schemas/bet.schema";
 
 @Injectable()
 export class WithdrawalService {
@@ -31,6 +32,7 @@ export class WithdrawalService {
   }
 
   async createWithdrawal(userPayload: IAuthPayload, dto: CreateWithdrawalDto) {
+    const admin = await this.adminModel.findOne();
     const user = await this.userModel.findById(userPayload.id);
     const requisite = await this.requisiteModel.findOne({ _id: dto.requisite, active: true });
 
@@ -42,17 +44,19 @@ export class WithdrawalService {
       throw new BadRequestException(["Реквизит должен быть кредитной картой"]);
     }
 
-    const balance = await this.convertService.convert(dto.currency, user.currency, dto.amount);
+    const amount: IAmount = {};
 
-    if (balance > user.balance) {
+    for (const currency of admin.currencies) {
+      amount[currency] = await this.convertService.convert(dto.currency, currency, dto.amount);
+    }
+
+    if (amount[user.currency] > user.balance) {
       throw new BadRequestException({ message: "Недостаточно средств на балансе!" });
     }
 
-    const amount = await this.convertService.convert(dto.currency, requisite.currency, dto.amount);
-
     const withdrawal = await this.withdrawalModel.create({ ...dto, amount, user: user._id });
 
-    user.balance -= balance;
+    user.balance -= amount[user.currency];
 
     await user.save();
 
@@ -69,9 +73,7 @@ export class WithdrawalService {
     withdrawal.status = WithdrawalStatusEnum.CANCELED;
     withdrawal.statusMessage = "Отменена пользователем";
 
-    const amount = await this.convertService.convert(withdrawal.currency, withdrawal.user.currency, withdrawal.amount);
-
-    withdrawal.user.balance += amount;
+    withdrawal.user.balance += withdrawal.amount[withdrawal.user.currency];
 
     await withdrawal.user.save();
     await withdrawal.save();

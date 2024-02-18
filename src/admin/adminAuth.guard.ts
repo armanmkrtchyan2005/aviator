@@ -27,7 +27,7 @@ export class AdminAuthGuard implements CanActivate {
         secret: process.env.JWT_SECRET,
       });
 
-      const admin = await this.accountModel.findById(payload.id);
+      const admin = await this.accountModel.findById(payload.id, { password: false });
 
       if (!admin) {
         throw new UnauthorizedException();

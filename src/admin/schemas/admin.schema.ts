@@ -70,7 +70,7 @@ export class Admin {
   @Prop({})
   support: string;
 
-  @Prop({ required: true, default: ["USD", "UZS", "KZT", "RUB"] })
+  @Prop({ required: true, default: ["USD", "UZS", "KZT", "RUB", "USDT"] })
   currencies: string[];
 
   @Prop({ default: 0 })

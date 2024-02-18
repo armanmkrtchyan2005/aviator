@@ -39,6 +39,9 @@ export class Requisite {
   @ApiProperty()
   @Prop({ default: 0 })
   balance: number;
+
+  @Prop({ default: 0 })
+  accountCount: number;
 }
 
 export const RequisiteSchema = SchemaFactory.createForClass(Requisite);

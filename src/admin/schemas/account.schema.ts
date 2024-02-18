@@ -16,10 +16,10 @@ export class Account {
   @Prop({})
   password: string;
 
-  @Prop({})
+  @Prop({ default: 0 })
   replenishmentBonus: number;
 
-  @Prop({})
+  @Prop({ default: 0 })
   withdrawalBonus: number;
 
   @Prop({ default: 0 })

@@ -20,6 +20,13 @@ import { LimitQueryDto } from "./dto/limit-query.dto";
 export class AdminController {
   constructor(private adminService: AdminService) {}
 
+  @AdminAuth()
+  @ApiOkResponse({ type: Requisite })
+  @Get("/")
+  adminDetails(@Req() req: Request) {
+    return this.adminService.adminDetails(req["admin"]);
+  }
+
   @ApiOkResponse({ type: SignInOkResponse })
   @HttpCode(HttpStatus.OK)
   @Post("/login")
@@ -70,6 +77,13 @@ export class AdminController {
   @Get("/withdrawals")
   getWithdrawals(@Req() req: Request, @Query() dto: LimitQueryDto) {
     return this.adminService.getWithdrawals(req["admin"], dto);
+  }
+
+  @AdminAuth()
+  @ApiOkResponse({ type: Withdrawal })
+  @Put("/withdrawals/:id/activate")
+  activateWithdrawal(@Req() req: Request, @Param("id") id: string) {
+    return this.adminService.activateWithdrawal(req["admin"], id);
   }
 
   @AdminAuth()

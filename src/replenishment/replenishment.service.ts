@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from "@nestjs/comm
 import { CreateReplenishmentDto } from "./dto/create-replenishment.dto";
 import { InjectModel } from "@nestjs/mongoose";
 import { Replenishment, ReplenishmentStatusEnum } from "./schemas/replenishment.schema";
-import { Model } from "mongoose";
+import mongoose, { Model } from "mongoose";
 import { User } from "src/user/schemas/user.schema";
 import { Admin } from "src/admin/schemas/admin.schema";
 import { IAuthPayload } from "src/auth/auth.guard";
@@ -17,6 +17,7 @@ import { PromoType } from "src/user/schemas/promo.schema";
 import { Bonus, CoefParamsType } from "src/user/schemas/bonus.schema";
 import * as _ from "lodash";
 import { IAmount } from "src/bets/schemas/bet.schema";
+import { Account } from "src/admin/schemas/account.schema";
 
 @Injectable()
 export class ReplenishmentService {
@@ -27,6 +28,7 @@ export class ReplenishmentService {
     @InjectModel(Replenishment.name) private replenishmentModel: Model<Replenishment>,
     @InjectModel(UserPromo.name) private userPromoModel: Model<UserPromo>,
     @InjectModel(Bonus.name) private bonusModel: Model<Bonus>,
+    @InjectModel(Account.name) private accountModel: Model<Account>,
     private schedulerRegistry: SchedulerRegistry,
     private convertService: ConvertService,
   ) {}
@@ -74,7 +76,7 @@ export class ReplenishmentService {
     const requisite = await this.requisiteModel.findOne({ _id: dto.requisite, active: true });
 
     if (!requisite) {
-      throw new NotFoundException({ message: "Реквизит не найден" });
+      throw new NotFoundException("Реквизит не найден");
     }
 
     const minLimit = await this.convertService.convert(admin.minLimit.currency, user.currency, admin.minLimit.amount);
@@ -93,6 +95,22 @@ export class ReplenishmentService {
     if (amount[user.currency] < minLimit && amount[user.currency] > maxLimit) {
       throw new BadRequestException(`Сумма не должен бит не меньше чем ${minLimit + user.currency} и не больше чем ${maxLimit + user.currency}`);
     }
+
+    // const accountsCount = await this.accountModel.count({ requisite: dto.requisite });
+    const account = await this.accountModel.findOne({ balance: { $gte: amount["USDT"] } }).skip(requisite.accountCount);
+
+    // console.log(accountsCount);
+    // // console.log(account);
+
+    // if (!account) {
+    //   throw new NotFoundException("Реквизит не найден");
+    // }
+
+    // if (requisite.accountCount < accountsCount) {
+    //   requisite.accountCount++;
+    // } else {
+    //   requisite.accountCount = 0;
+    // }
 
     const bonuses = await this.userPromoModel.find({ user: user._id }).populate("promo");
     // const amount = await this.convertService.convert(dto.currency, user.currency, dto.amount);
@@ -121,7 +139,11 @@ export class ReplenishmentService {
 
     // dto.amount += sum;
 
-    const replenishment = await (await this.replenishmentModel.create({ ...dto, deduction, user: user._id, amount })).populate("requisite");
+    // const account = await this.accountModel.findOne({balance: amount})
+
+    // amount["USDT"] = await this.convertService.convert(dto.currency, "USDT", dto.amount);
+
+    const replenishment = await (await this.replenishmentModel.create({ ...dto, deduction, user: user._id, amount, account: account._id })).populate("requisite");
 
     const job = new CronJob(CronExpression.EVERY_30_MINUTES, async () => {
       console.log("Time out");
@@ -133,6 +155,8 @@ export class ReplenishmentService {
 
     this.schedulerRegistry.addCronJob(replenishment._id.toString(), job);
     job.start();
+
+    await requisite.save();
 
     return replenishment;
   }
@@ -154,6 +178,10 @@ export class ReplenishmentService {
 
   async confirmReplenishment(dto: ConfirmReplenishmentDto) {
     const replenishment = await this.replenishmentModel.findById(dto.id).populate("requisite");
+
+    if (replenishment.status === ReplenishmentStatusEnum.PENDING) {
+      throw new BadRequestException("Эту заявку вы уже подтвердили");
+    }
 
     replenishment.status = ReplenishmentStatusEnum.PENDING;
     replenishment.isPayConfirmed = true;
