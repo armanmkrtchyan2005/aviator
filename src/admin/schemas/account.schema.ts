@@ -10,21 +10,26 @@ export class Account {
   @ApiProperty({ type: String })
   _id: mongoose.Types.ObjectId;
 
+  @ApiProperty()
   @Prop({})
   login: string;
 
   @Prop({})
   password: string;
 
+  @ApiProperty()
   @Prop({ default: 0 })
   replenishmentBonus: number;
 
+  @ApiProperty()
   @Prop({ default: 0 })
   withdrawalBonus: number;
 
+  @ApiProperty()
   @Prop({ default: 0 })
   balance: number;
 
+  @ApiProperty()
   @ApiProperty()
   @Prop({ required: true, type: mongoose.Schema.Types.ObjectId, ref: Requisite.name })
   requisite: Requisite;

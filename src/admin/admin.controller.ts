@@ -80,7 +80,7 @@ export class AdminController {
   }
 
   @AdminAuth()
-  @ApiOkResponse({ type: Withdrawal })
+  @ApiOkResponse({ schema: { type: "object", properties: { message: { type: "string" } } } })
   @Put("/withdrawals/:id/activate")
   activateWithdrawal(@Req() req: Request, @Param("id") id: string) {
     return this.adminService.activateWithdrawal(req["admin"], id);
