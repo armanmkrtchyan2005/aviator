@@ -44,6 +44,7 @@ export class SocketService {
   private winAmount: IAmount = {};
 
   private algorithms: IAlgorithms[] = [];
+  private selectedAlgorithmId: number;
   public socket: Socket = null;
 
   private x = 1;
@@ -51,7 +52,7 @@ export class SocketService {
   private isBetWait = true;
 
   private interval: string | number | NodeJS.Timeout;
-  private random = _.random(MAX_COEFF, true);
+  private random = _.random(1, true);
   // Algorithm 1
   private threePlayers: IBet[] = [];
 
@@ -103,7 +104,7 @@ export class SocketService {
     this.socket.emit("game", { x: this.x });
 
     // 4. ----------
-    if (this.algorithms[3]?.active) {
+    if (this.selectedAlgorithmId === 4) {
       if (this.x > 1.9 && this.x < 2.2) {
         this.threePlayers = _.sampleSize(this.threePlayers, 3);
         this.random = _.random(110, true);
@@ -313,82 +314,79 @@ export class SocketService {
       await leader.save();
     }
 
-    // const algorithms = admin.algorithms.map(algorithm => {
-    //   if (algorithm.active) {
-    //     algorithm.all_withdrawal_amount += win;
-    //   }
+    let totalWinAmount: number;
 
-    //   return algorithm;
-    // });
-
-    // await admin.updateOne({ $set: { algorithms } });
-
-    //1. 3 player algorithm in Cash Out
-    if (admin.algorithms[0]?.active) {
-      this.threePlayers = this.threePlayers.filter(u => u.playerId !== userPayload?.id);
-      if (!this.threePlayers.length) {
-        admin.algorithms[0].all_withdrawal_amount += win["USD"];
-        admin.algorithms[0].used_count++;
-        await admin.updateOne({ $set: { algorithms: admin.algorithms } });
-        this.loading();
-        return { message: "Вы выиграли" };
-      }
-    }
-
-    // 2. Net income algorithm
-    if (admin.algorithms[1]?.active) {
-      const totalWinAmount = this.currentPlayers.reduce((prev, next) => prev + next.win["USD"], 0);
-      if (totalWinAmount >= this.maxWinAmount) {
-        admin.algorithms[1].all_withdrawal_amount += win["USD"];
-        admin.algorithms[1].used_count++;
-        await admin.updateOne({ $set: { algorithms: admin.algorithms } });
-        this.loading();
-        return { message: "Вы выиграли" };
-      }
-    }
-
-    // 7. Bet counts algorithm
-    if (admin.algorithms[6]?.active) {
-      const winsCount = this.currentPlayers.filter(bet => {
-        return bet.win;
-      }).length;
-
-      if (winsCount >= this.totalWinsCount) {
-        admin.algorithms[6].all_withdrawal_amount += win["USD"];
-        admin.algorithms[6].used_count++;
-        await admin.updateOne({ $set: { algorithms: admin.algorithms } });
-        this.loading();
-        return { message: "Вы выиграли" };
-      }
-    }
-
-    // 8. -------------
-
-    if (admin.algorithms[7]?.active) {
-      const totalWinAmount = this.currentPlayers.reduce((prev, next) => prev + next.win["USD"], 0);
-      if (totalWinAmount >= this.maxWinAmount) {
-        admin.algorithms[7].all_withdrawal_amount += win["USD"];
-        admin.algorithms[7].used_count++;
-        await admin.updateOne({ $set: { algorithms: admin.algorithms } });
-        this.loading();
-        return { message: "Вы выиграли" };
-      }
-    }
-
-    if (admin.algorithms[9]?.active) {
-      if (this.playedCount < this.maxGameCount / 2) {
-        this.totalWins += win["USD"];
-      } else {
-        const totalWinAmount = this.currentPlayers.reduce((prev, next) => prev + next.win["USD"], 0);
-
-        if (totalWinAmount >= this.partOfProfit) {
-          admin.algorithms[9].all_withdrawal_amount += win["USD"];
-          admin.algorithms[9].used_count++;
+    switch (this.selectedAlgorithmId) {
+      //1. 3 player algorithm in Cash Out
+      case 1:
+        this.threePlayers = this.threePlayers.filter(u => u.playerId !== userPayload?.id);
+        if (!this.threePlayers.length) {
+          admin.algorithms[0].all_withdrawal_amount += win["USD"];
+          admin.algorithms[0].used_count++;
           await admin.updateOne({ $set: { algorithms: admin.algorithms } });
           this.loading();
           return { message: "Вы выиграли" };
         }
-      }
+        break;
+
+      // 2. Net income algorithm
+      case 2:
+        totalWinAmount = this.currentPlayers.reduce((prev, next) => prev + next.win["USD"], 0);
+        if (totalWinAmount >= this.maxWinAmount) {
+          admin.algorithms[1].all_withdrawal_amount += win["USD"];
+          admin.algorithms[1].used_count++;
+          await admin.updateOne({ $set: { algorithms: admin.algorithms } });
+          this.loading();
+          return { message: "Вы выиграли" };
+        }
+        break;
+
+      // 7. Bet counts algorithm
+      case 7:
+        const winsCount = this.currentPlayers.filter(bet => {
+          return bet.win;
+        }).length;
+
+        if (winsCount >= this.totalWinsCount) {
+          admin.algorithms[6].all_withdrawal_amount += win["USD"];
+          admin.algorithms[6].used_count++;
+          await admin.updateOne({ $set: { algorithms: admin.algorithms } });
+          this.loading();
+          return { message: "Вы выиграли" };
+        }
+        break;
+
+      // 8. -------------
+      case 8:
+        totalWinAmount = this.currentPlayers.reduce((prev, next) => prev + next.win["USD"], 0);
+        if (totalWinAmount >= this.maxWinAmount) {
+          admin.algorithms[7].all_withdrawal_amount += win["USD"];
+          admin.algorithms[7].used_count++;
+          await admin.updateOne({ $set: { algorithms: admin.algorithms } });
+          this.loading();
+          return { message: "Вы выиграли" };
+        }
+        break;
+
+      // 9. -------------
+      case 9:
+        if (this.playedCount < this.maxGameCount / 2) {
+          this.totalWins += win["USD"];
+        } else {
+          const totalWinAmount = this.currentPlayers.reduce((prev, next) => prev + next.win["USD"], 0);
+
+          if (totalWinAmount >= this.partOfProfit) {
+            admin.algorithms[9].all_withdrawal_amount += win["USD"];
+            admin.algorithms[9].used_count++;
+            await admin.updateOne({ $set: { algorithms: admin.algorithms } });
+            this.loading();
+            return { message: "Вы выиграли" };
+          }
+        }
+        break;
+
+      default:
+        break;
     }
 
     return { message: "Вы выиграли" };
@@ -432,74 +430,87 @@ export class SocketService {
 
     await sleep(LOADING_MS);
 
-    //1. 3 player algorithm loading
-    if (this.algorithms[0]?.active) {
-      this.threePlayers = _.sampleSize(this.threePlayers, 3);
-      this.random = _.random(80, 110, true);
+    const excludedAlgorithmsId = [];
+
+    if (this.currentPlayers.length <= 3) {
+      excludedAlgorithmsId.push(1, 4);
     }
 
-    // 2. Net income algorithm loading
-    if (this.algorithms[1]?.active) {
-      const totalAmount = this.currentPlayers.reduce((prev, curr) => prev + curr.bet["USD"], 0);
-      this.maxWinAmount = (totalAmount * _.random(30, 100, true)) / 100;
-    }
+    const activeAlgorithms = this.algorithms.filter(alg => alg.active && !excludedAlgorithmsId.includes(alg.id));
 
-    // 3. 1-3 Coeff algorithm
-    if (this.algorithms[2]?.active) {
-      this.random = _.random(1, 3);
-    }
+    this.selectedAlgorithmId = _.sample(activeAlgorithms).id;
+    console.log(this.selectedAlgorithmId);
 
-    // 4. 1-3 Coeff algorithm
-    if (this.algorithms[3]?.active) {
-      this.random = _.random(2, 20);
-    }
+    let totalAmount: number;
+    switch (this.selectedAlgorithmId) {
+      //1. 3 player algorithm loading
+      case 1:
+        this.threePlayers = _.sampleSize(this.threePlayers, 3);
+        this.random = _.random(80, 110, true);
+        break;
 
-    // 5. 1-2 Coeff algorithm
-    if (this.algorithms[4]?.active) {
-      this.random = _.random(1, 2, true);
-    }
+      // 2. Net income algorithm loading
+      case 2:
+        totalAmount = this.currentPlayers.reduce((prev, curr) => prev + curr.bet["USD"], 0);
+        this.maxWinAmount = (totalAmount * _.random(30, 100, true)) / 100;
+        break;
 
-    // 7. Bet counts algorithm
-    if (this.algorithms[6]?.active) {
-      this.random = _.random(5, 10, true);
-      this.totalWinsCount = (this.currentPlayers.length * _.random(20, 70, true)) / 100;
-    }
+      // 3. 1-3 Coeff algorithm
+      case 3:
+        this.random = _.random(1, 3, true);
+        break;
 
-    // 8. --------
-    if (this.algorithms[7]?.active) {
-      const range = _.random(1, 3, true);
-      const totalAmount = this.currentPlayers.reduce((prev, curr) => prev + curr.bet["USD"], 0);
-      this.maxWinAmount = totalAmount * range;
-    }
+      // 4. 1-3 Coeff algorithm
+      case 4:
+        this.random = _.random(2, 20, true);
+        break;
 
-    // 9. ---------
-    if (this.algorithms[8]?.active) {
-      const randomCoeff = _.sample(this.randomCoeffs);
-      this.random = _.random(randomCoeff - 0.2, randomCoeff - 0.01);
-    }
+      // 5. 1-2 Coeff algorithm
+      case 5:
+        this.random = _.random(1, 2, true);
+        break;
 
-    if (this.algorithms[9]?.active) {
-      this.playedCount++;
-      if (this.playedCount < this.maxGameCount / 2) {
-        this.random = _.random(1.3, 1.8, true);
-        const totalAmount = this.currentPlayers.reduce((prev, curr) => prev + curr.bet["USD"], 0);
-        this.totalBets += totalAmount;
-      } else if (this.playedCount == this.maxGameCount / 2) {
-        const profit = this.totalBets - this.totalWins;
-        this.partOfProfit = profit / (this.maxGameCount / 2);
-        if (profit < 0) {
-          this.loading();
-          return (this.interval = setInterval(() => this.game(), 100));
+      // 7. Bet counts algorithm
+      case 7:
+        this.random = _.random(5, 10, true);
+        this.totalWinsCount = (this.currentPlayers.length * _.random(20, 70, true)) / 100;
+        break;
+
+      // 8. --------
+      case 8:
+        const range = _.random(1, 3, true);
+        totalAmount = this.currentPlayers.reduce((prev, curr) => prev + curr.bet["USD"], 0);
+        this.maxWinAmount = totalAmount * range;
+        break;
+
+      // 9. ---------
+      case 9:
+        const randomCoeff = _.sample(this.randomCoeffs);
+        this.random = _.random(randomCoeff - 0.2, randomCoeff - 0.01);
+        break;
+
+      // 10. --------
+      case 10:
+        this.playedCount++;
+        if (this.playedCount < this.maxGameCount / 2) {
+          this.random = _.random(1.3, 1.8, true);
+          const totalAmount = this.currentPlayers.reduce((prev, curr) => prev + curr.bet["USD"], 0);
+          this.totalBets += totalAmount;
+        } else if (this.playedCount == this.maxGameCount / 2) {
+          const profit = this.totalBets - this.totalWins;
+          this.partOfProfit = profit / (this.maxGameCount / 2);
+          if (profit < 0) {
+            this.loading();
+            return (this.interval = setInterval(() => this.game(), 100));
+          }
+        } else if (this.playedCount == this.maxGameCount) {
+          this.playedCount = 0;
+          this.totalBets = 0;
+          this.totalWins = 0;
         }
-      } else if (this.playedCount == this.maxGameCount) {
-        this.playedCount = 0;
-        this.totalBets = 0;
-        this.totalWins = 0;
-      }
-    }
-
-    if (this.algorithms[10]?.active) {
-      this.random = 1;
+        break;
+      default:
+        break;
     }
 
     this.stopped = false;

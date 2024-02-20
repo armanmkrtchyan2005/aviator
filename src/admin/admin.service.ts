@@ -40,7 +40,8 @@ export class AdminService {
     private convertService: ConvertService,
   ) {}
 
-  async adminDetails(account: Account) {
+  async adminDetails(account: AccountDocument) {
+    account = await account.populate("requisite");
     return account;
   }
 
