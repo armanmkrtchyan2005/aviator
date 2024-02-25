@@ -439,7 +439,6 @@ export class SocketService {
     const activeAlgorithms = this.algorithms.filter(alg => alg.active && !excludedAlgorithmsId.includes(alg.id));
 
     this.selectedAlgorithmId = _.sample(activeAlgorithms).id;
-    console.log(this.selectedAlgorithmId);
 
     let totalAmount: number;
     switch (this.selectedAlgorithmId) {

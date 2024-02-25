@@ -1,7 +1,8 @@
 import mongoose, { HydratedDocument } from "mongoose";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { ApiProperty } from "@nestjs/swagger";
-import { Requisite } from "./requisite.schema";
+import { Requisite, RequisiteDocument } from "./requisite.schema";
+import { AccountRequisite, AccountRequisiteDocument } from "./account-requisite.schema";
 
 export type AccountDocument = HydratedDocument<Account>;
 
@@ -32,7 +33,11 @@ export class Account {
   @ApiProperty()
   @ApiProperty()
   @Prop({ required: true, type: mongoose.Schema.Types.ObjectId, ref: Requisite.name })
-  requisite: Requisite;
+  requisite: RequisiteDocument;
+
+  @ApiProperty()
+  @Prop({ type: [{ type: mongoose.Schema.Types.ObjectId }], ref: AccountRequisite.name })
+  requisites: AccountRequisiteDocument[];
 }
 
 export const AccountSchema = SchemaFactory.createForClass(Account);

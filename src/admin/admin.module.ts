@@ -9,6 +9,7 @@ import { Replenishment, ReplenishmentSchema } from "src/replenishment/schemas/re
 import { ConvertModule } from "src/convert/convert.module";
 import { Withdrawal, WithdrawalSchema } from "src/withdrawal/schemas/withdrawal.schema";
 import { Account, AccountSchema } from "./schemas/account.schema";
+import { AccountRequisite, AccountRequisiteSchema } from "./schemas/account-requisite.schema";
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { Account, AccountSchema } from "./schemas/account.schema";
       { name: User.name, schema: UserSchema },
       { name: Replenishment.name, schema: ReplenishmentSchema },
       { name: Requisite.name, schema: RequisiteSchema },
+      { name: AccountRequisite.name, schema: AccountRequisiteSchema },
       { name: Withdrawal.name, schema: WithdrawalSchema },
     ]),
     ConvertModule,

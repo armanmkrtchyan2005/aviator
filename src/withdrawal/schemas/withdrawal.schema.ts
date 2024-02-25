@@ -1,6 +1,6 @@
 import mongoose, { HydratedDocument } from "mongoose";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { ApiProperty, getSchemaPath } from "@nestjs/swagger";
+import { ApiProperty } from "@nestjs/swagger";
 import { User, UserDocument } from "src/user/schemas/user.schema";
 import { Requisite, RequisiteDocument } from "src/admin/schemas/requisite.schema";
 import { Account } from "src/admin/schemas/account.schema";

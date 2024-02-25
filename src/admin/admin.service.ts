@@ -13,6 +13,7 @@ import { CancelReplenishmentDto } from "./dto/cancelReplenishment.dto";
 import { LimitQueryDto } from "./dto/limit-query.dto";
 import { Account, AccountDocument } from "./schemas/account.schema";
 import * as bcrypt from "bcrypt";
+import { AccountRequisite } from "./schemas/account-requisite.schema";
 
 function limitAndSkipPipelines(dto: LimitQueryDto) {
   const arrPipelines: PipelineStage[] = [];
@@ -35,6 +36,7 @@ export class AdminService {
     @InjectModel(Account.name) private accountModel: Model<Account>,
     @InjectModel(Replenishment.name) private replenishmentModel: Model<Replenishment>,
     @InjectModel(Requisite.name) private requisiteModel: Model<Requisite>,
+    @InjectModel(AccountRequisite.name) private accountRequisiteModel: Model<AccountRequisite>,
     @InjectModel(Withdrawal.name) private withdrawalModel: Model<Withdrawal>,
     private jwtService: JwtService,
     private convertService: ConvertService,
@@ -63,24 +65,53 @@ export class AdminService {
     return { token };
   }
 
-  // ????????????????????????????????????????
-  async createRequisite(dto: CreateRequisiteDto) {
-    const requisite = await this.requisiteModel.findOne({ requisite: dto.requisite });
+  async createRequisite(account: AccountDocument, dto: CreateRequisiteDto) {
+    account = await account.populate("requisites");
+    const isRequisiteFounded = account.requisites.some(requisite => requisite.requisite === dto.requisite);
 
-    if (requisite) {
+    if (isRequisiteFounded) {
       throw new BadRequestException("Такой реквизит уже существует");
     }
 
-    const newRequisite = await this.requisiteModel.create(dto);
+    const requisite = await this.accountRequisiteModel.create({ requisite: dto.requisite, account: account._id });
 
-    return newRequisite;
+    account.requisites.push(requisite);
+
+    await account.save();
+
+    return requisite;
   }
 
-  // ????????????????????????????????????????
-  async getRequisites() {
-    const requisites = await this.requisiteModel.find();
+  async getRequisites(account: AccountDocument) {
+    account = await account.populate("requisites");
 
-    return requisites;
+    return account.requisites;
+  }
+
+  async changeRequisite(account: AccountDocument, id: string) {
+    const requisite = await this.accountRequisiteModel.findOne({ _id: id, account: account._id });
+
+    if (!requisite) {
+      throw new NotFoundException("Реквизит не найден");
+    }
+
+    const activeCount = await this.accountRequisiteModel.count({ account: account._id, active: true });
+
+    if (requisite.active) {
+      // Deactivating a requisite
+      requisite.active = false;
+    } else {
+      // Activating a requisite
+      if (activeCount >= 5) {
+        throw new BadRequestException("Одновременна активных реквизитов может быть до 5 карт");
+      }
+
+      requisite.active = true;
+    }
+
+    await requisite.save();
+
+    return requisite;
   }
 
   async getReplenishments(account: Account, dto: LimitQueryDto) {
@@ -111,8 +142,10 @@ export class AdminService {
   }
 
   async confirmReplenishment(account: AccountDocument, id: string) {
+    account = await account.populate("requisite");
+
     const admin = await this.adminModel.findOne({}, ["manual_methods_balance"]);
-    const replenishment = await this.replenishmentModel.findOne({ _id: id, requisite: account.requisite }).populate(["user", "requisite"]);
+    const replenishment = await this.replenishmentModel.findOne({ _id: id, account: account._id }).populate(["user", "requisite"]);
 
     if (!replenishment) {
       throw new NotFoundException("Нет такой заявки");
@@ -132,7 +165,7 @@ export class AdminService {
 
     const requisiteAmount = replenishment.deduction["USDT"] + (replenishment.deduction["USDT"] * account.replenishmentBonus) / 100;
 
-    replenishment.requisite.balance -= requisiteAmount;
+    account.requisite.balance -= requisiteAmount;
     account.balance -= requisiteAmount;
     admin.manual_methods_balance -= requisiteAmount;
 

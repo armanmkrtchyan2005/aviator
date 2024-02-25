@@ -5,6 +5,7 @@ import { User, UserDocument } from "src/user/schemas/user.schema";
 import { Requisite, RequisiteDocument } from "src/admin/schemas/requisite.schema";
 import { IAmount } from "src/bets/schemas/bet.schema";
 import { Account } from "src/admin/schemas/account.schema";
+import { AccountRequisite, AccountRequisiteDocument } from "src/admin/schemas/account-requisite.schema";
 
 export type ReplenishmentDocument = HydratedDocument<Replenishment>;
 
@@ -47,9 +48,9 @@ export class Replenishment {
   @Prop({ required: true, default: false })
   isPayConfirmed: boolean;
 
-  @ApiProperty({ type: Requisite })
-  @Prop({ required: true, type: mongoose.Schema.Types.ObjectId, ref: Requisite.name })
-  requisite: RequisiteDocument;
+  @ApiProperty({ type: AccountRequisite })
+  @Prop({ required: true, type: mongoose.Schema.Types.ObjectId, ref: AccountRequisite.name })
+  requisite: AccountRequisiteDocument;
 
   @ApiProperty()
   @Prop({ required: true, default: Date.now() })

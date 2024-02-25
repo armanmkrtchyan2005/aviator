@@ -96,24 +96,27 @@ export class ReplenishmentService {
       throw new BadRequestException(`Сумма не должен бит не меньше чем ${minLimit + user.currency} и не больше чем ${maxLimit + user.currency}`);
     }
 
-    // const accountsCount = await this.accountModel.count({ requisite: dto.requisite });
-    const account = await this.accountModel.findOne({ balance: { $gte: amount["USDT"] } }).skip(requisite.accountCount);
+    const accountsCount = await this.accountModel.count({ requisite: requisite._id });
+    const account = await this.accountModel
+      .findOne({ requisite: requisite._id, balance: { $gte: amount["USDT"] } })
+      .skip(requisite.accountCount)
+      .populate("requisites");
 
-    // console.log(accountsCount);
-    // // console.log(account);
+    if (requisite.accountCount < accountsCount) {
+      requisite.accountCount++;
+    } else {
+      requisite.accountCount = 0;
+    }
 
-    // if (!account) {
-    //   throw new NotFoundException("Реквизит не найден");
-    // }
+    await requisite.save();
 
-    // if (requisite.accountCount < accountsCount) {
-    //   requisite.accountCount++;
-    // } else {
-    //   requisite.accountCount = 0;
-    // }
+    if (!account) {
+      throw new NotFoundException("Реквизит не найден");
+    }
+
+    const replenishmentRequisite = _.sample(account.requisites.filter(req => req.active));
 
     const bonuses = await this.userPromoModel.find({ user: user._id }).populate("promo");
-    // const amount = await this.convertService.convert(dto.currency, user.currency, dto.amount);
 
     let sum = 0;
 
@@ -125,25 +128,15 @@ export class ReplenishmentService {
       }
     }
 
-    // const addBalanceBonuses = await this.bonusModel.find({
-    //   active: true,
-    //   coef_params: { type: CoefParamsType.ADD_BALANCE },
-    //   $or: [{ coef_params: { to_user_id: null } }, { coef_params: { to_user_id: user._id } }],
-    // });
+    console.log(replenishmentRequisite);
 
-    // for(let addBalanceBonus of addBalanceBonuses) {
-    //   const amount = _.random(addBalanceBonus.coef_params.amount_first, addBalanceBonus.coef_params.amount_second);
+    replenishmentRequisite.turnover.inProcess += amount[requisite.currency];
 
-    //   addBalanceBonus
-    // }
+    await replenishmentRequisite.save();
 
-    // dto.amount += sum;
-
-    // const account = await this.accountModel.findOne({balance: amount})
-
-    // amount["USDT"] = await this.convertService.convert(dto.currency, "USDT", dto.amount);
-
-    const replenishment = await (await this.replenishmentModel.create({ ...dto, deduction, user: user._id, amount, account: account._id })).populate("requisite");
+    const replenishment = await (
+      await this.replenishmentModel.create({ ...dto, deduction, user: user._id, amount, account: account._id, requisite: replenishmentRequisite })
+    ).populate("requisite");
 
     const job = new CronJob(CronExpression.EVERY_30_MINUTES, async () => {
       console.log("Time out");
@@ -155,8 +148,6 @@ export class ReplenishmentService {
 
     this.schedulerRegistry.addCronJob(replenishment._id.toString(), job);
     job.start();
-
-    await requisite.save();
 
     return replenishment;
   }

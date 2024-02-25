@@ -10,10 +10,6 @@ export class Requisite {
   _id: mongoose.Types.ObjectId;
 
   @ApiProperty()
-  @Prop({ required: true })
-  requisite: string;
-
-  @ApiProperty()
   @Prop()
   name: string;
 
@@ -32,9 +28,6 @@ export class Requisite {
   @ApiProperty()
   @Prop({ required: true, default: false })
   active: boolean;
-
-  @Prop({ default: false })
-  isCreditCard: boolean;
 
   @ApiProperty()
   @Prop({ default: 0 })

@@ -14,6 +14,7 @@ import { Withdrawal } from "src/withdrawal/schemas/withdrawal.schema";
 import { CancelReplenishmentBadResponse, CancelReplenishmentResponse } from "src/replenishment/responses/replenishment.response";
 import { CancelWithdrawalBadResponse, CancelWithdrawalOkResponse } from "src/withdrawal/responses/cancelWithdrawal.response";
 import { LimitQueryDto } from "./dto/limit-query.dto";
+import { AccountRequisite } from "./schemas/account-requisite.schema";
 
 @ApiTags("Admin")
 @Controller("admin")
@@ -35,18 +36,26 @@ export class AdminController {
   }
 
   @AdminAuth()
-  @ApiOkResponse({ type: Requisite })
+  @ApiOkResponse({ type: AccountRequisite })
   @ApiBadRequestResponse({ type: CreateRequisiteBadResponse })
   @Post("/requisites")
-  createRequisite(@Body() dto: CreateRequisiteDto) {
-    return this.adminService.createRequisite(dto);
+  createRequisite(@Req() req: Request, @Body() dto: CreateRequisiteDto) {
+    return this.adminService.createRequisite(req["admin"], dto);
   }
 
   @AdminAuth()
-  @ApiOkResponse({ type: Requisite })
+  @ApiOkResponse({ type: AccountRequisite })
+  @ApiBadRequestResponse({ type: CreateRequisiteBadResponse })
+  @Put("/requisites/:id")
+  changeRequisite(@Req() req: Request, @Param("id") id: string) {
+    return this.adminService.changeRequisite(req["admin"], id);
+  }
+
+  @AdminAuth()
+  @ApiOkResponse({ type: [AccountRequisite] })
   @Get("/requisites")
-  getRequisites() {
-    return this.adminService.getRequisites();
+  getRequisites(@Req() req: Request) {
+    return this.adminService.getRequisites(req["admin"]);
   }
 
   @AdminAuth()

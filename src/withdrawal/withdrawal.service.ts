@@ -40,10 +40,6 @@ export class WithdrawalService {
       throw new NotFoundException({ message: "Реквизит не найден" });
     }
 
-    if (requisite.isCreditCard && !isCreditCard(dto.requisite)) {
-      throw new BadRequestException(["Реквизит должен быть кредитной картой"]);
-    }
-
     const amount: IAmount = {};
 
     for (const currency of admin.currencies) {
