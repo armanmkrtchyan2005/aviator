@@ -116,6 +116,12 @@ export class ReplenishmentService {
 
     const replenishmentRequisite = _.sample(account.requisites.filter(req => req.active));
 
+    if (!replenishmentRequisite) {
+      throw new NotFoundException("Реквизит не найден");
+    }
+
+    replenishmentRequisite.turnover.inProcess += amount[requisite.currency];
+
     const bonuses = await this.userPromoModel.find({ user: user._id }).populate("promo");
 
     let sum = 0;
@@ -127,10 +133,6 @@ export class ReplenishmentService {
         await bonus.save();
       }
     }
-
-    console.log(replenishmentRequisite);
-
-    replenishmentRequisite.turnover.inProcess += amount[requisite.currency];
 
     await replenishmentRequisite.save();
 
