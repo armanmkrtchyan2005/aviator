@@ -96,11 +96,10 @@ export class ReplenishmentService {
       throw new BadRequestException(`Сумма не должен бит не меньше чем ${minLimit + user.currency} и не больше чем ${maxLimit + user.currency}`);
     }
 
+    // add sequence
+
     const accountsCount = await this.accountModel.count({ requisite: requisite._id });
-    const account = await this.accountModel
-      .findOne({ requisite: requisite._id, balance: { $gte: amount["USDT"] } })
-      .skip(requisite.accountCount)
-      .populate("requisites");
+    const account = await this.accountModel.findOne({ requisite: requisite._id, balance: { $gte: amount["USDT"] } }).populate("requisites");
 
     if (requisite.accountCount < accountsCount) {
       requisite.accountCount++;

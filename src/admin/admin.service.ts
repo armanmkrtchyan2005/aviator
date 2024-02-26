@@ -66,14 +66,14 @@ export class AdminService {
   }
 
   async createRequisite(account: AccountDocument, dto: CreateRequisiteDto) {
-    account = await account.populate("requisites");
+    account = await account.populate(["requisites", "requisite"]);
     const isRequisiteFounded = account.requisites.some(requisite => requisite.requisite === dto.requisite);
 
     if (isRequisiteFounded) {
       throw new BadRequestException("Такой реквизит уже существует");
     }
 
-    const requisite = await this.accountRequisiteModel.create({ requisite: dto.requisite, account: account._id });
+    const requisite = await this.accountRequisiteModel.create({ requisite: dto.requisite, account: account._id, currency: account.requisite.currency });
 
     account.requisites.push(requisite);
 

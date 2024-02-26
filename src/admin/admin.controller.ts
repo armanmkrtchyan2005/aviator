@@ -15,6 +15,7 @@ import { CancelReplenishmentBadResponse, CancelReplenishmentResponse } from "src
 import { CancelWithdrawalBadResponse, CancelWithdrawalOkResponse } from "src/withdrawal/responses/cancelWithdrawal.response";
 import { LimitQueryDto } from "./dto/limit-query.dto";
 import { AccountRequisite } from "./schemas/account-requisite.schema";
+import { Account } from "./schemas/account.schema";
 
 @ApiTags("Admin")
 @Controller("admin")
@@ -22,7 +23,7 @@ export class AdminController {
   constructor(private adminService: AdminService) {}
 
   @AdminAuth()
-  @ApiOkResponse({ type: Requisite })
+  @ApiOkResponse({ type: Account })
   @Get("/")
   adminDetails(@Req() req: Request) {
     return this.adminService.adminDetails(req["admin"]);

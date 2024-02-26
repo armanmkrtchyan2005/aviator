@@ -30,12 +30,10 @@ export class Account {
   @Prop({ default: 0 })
   balance: number;
 
-  @ApiProperty()
-  @ApiProperty()
+  @ApiProperty({ type: Requisite })
   @Prop({ required: true, type: mongoose.Schema.Types.ObjectId, ref: Requisite.name })
   requisite: RequisiteDocument;
 
-  @ApiProperty()
   @Prop({ type: [{ type: mongoose.Schema.Types.ObjectId }], ref: AccountRequisite.name })
   requisites: AccountRequisiteDocument[];
 }

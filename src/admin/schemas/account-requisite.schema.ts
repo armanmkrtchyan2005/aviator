@@ -35,6 +35,10 @@ export class AccountRequisite {
   active: boolean;
 
   @ApiProperty()
+  @Prop()
+  currency: string;
+
+  @ApiProperty()
   @Prop({
     type: Turnover,
     default: {
