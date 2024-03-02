@@ -130,7 +130,7 @@ export class AdminService {
     const replenishments = await this.replenishmentModel
       .aggregate([
         { $match: match },
-        { $lookup: { from: "requisites", localField: "requisite", foreignField: "_id", as: "requisite" } },
+        { $lookup: { from: "accountrequisites", localField: "requisite", foreignField: "_id", as: "requisite" } },
         {
           $unwind: "$requisite",
         },

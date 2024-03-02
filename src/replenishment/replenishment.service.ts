@@ -86,6 +86,8 @@ export class ReplenishmentService {
     const deduction: IAmount = {};
 
     for (const currency of admin.currencies) {
+      console.log(currency);
+
       amount[currency] = await this.convertService.convert(dto.currency, currency, dto.amount);
 
       const commission = await this.convertService.convert(admin.commissionCurrency, currency, admin.commission);
@@ -98,8 +100,7 @@ export class ReplenishmentService {
 
     // add sequence
 
-    const accountsCount = await this.accountModel.count({ requisite: requisite._id });
-    const account = await this.accountModel.findOne({ requisite: requisite._id, balance: { $gte: amount["USDT"] } }).populate("requisites");
+    const accountsCount = await this.accountModel.count({ requisite: requisite._id, balance: { $gte: amount["USDT"] } });
 
     if (requisite.accountCount < accountsCount) {
       requisite.accountCount++;
@@ -109,11 +110,28 @@ export class ReplenishmentService {
 
     await requisite.save();
 
+    const account = await this.accountModel
+      .findOne({ requisite: requisite._id, balance: { $gte: amount["USDT"] } })
+      .skip(accountsCount)
+      .populate("requisites");
+
+    console.log(account);
+
     if (!account) {
       throw new NotFoundException("Реквизит не найден");
     }
 
-    const replenishmentRequisite = _.sample(account.requisites.filter(req => req.active));
+    const requisites = account.requisites.filter(req => req.active);
+
+    if (account.selectedRequisiteDir < requisites.length) {
+      account.selectedRequisiteDir++;
+    } else {
+      account.selectedRequisiteDir = 0;
+    }
+
+    await account.save();
+
+    const replenishmentRequisite = requisites[account.selectedRequisiteDir];
 
     if (!replenishmentRequisite) {
       throw new NotFoundException("Реквизит не найден");

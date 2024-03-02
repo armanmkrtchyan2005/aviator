@@ -1,25 +1,34 @@
 import { Inject, Injectable } from "@nestjs/common";
 import axios from "axios";
-import * as cheerio from 'cheerio';
 import { Cache } from "cache-manager";
 import { CACHE_MANAGER } from "@nestjs/cache-manager";
 
+const CACHE_TTL = 1000 * 60 * 60;
+
 @Injectable()
 export class ConvertService {
-  constructor(@Inject(CACHE_MANAGER) private cacheManager: Cache) { }
+  constructor(@Inject(CACHE_MANAGER) private cacheManager: Cache) {}
 
   async convert(from: string, to: string, amount: number) {
-    const cache = await this.cacheManager.get<number>(`${from}-${to}`)
-    if (cache) {
-      return amount * cache
+    from = from.toUpperCase();
+    to = to.toUpperCase();
+
+    if (from === "USDT") {
+      from = "USD";
     }
 
-    const { data } = await axios.get(`https://cdn.jsdelivr.net/gh/fawazahmed0/currency-api@1/latest/currencies/${from.toLowerCase()}.json`)
+    if (to === "USDT") {
+      to = "USD";
+    }
 
-    const rate = data[from.toLowerCase()][to.toLowerCase()]
+    const cache = await this.cacheManager.get<object>(from);
+    if (cache) {
+      return amount * cache[to];
+    }
+    const { data } = await axios.get(`${process.env.EXCHANGE_API_ENDPOINT}/latest?api_key=${process.env.EXCHANGE_API_KEY}&base=${from}`);
 
-    await this.cacheManager.set(`${from}-${to}`, rate, 1000 * 60)
+    await this.cacheManager.set(from, data.rates, CACHE_TTL);
 
-    return amount * rate
+    return data.rates[to] * amount;
   }
 }

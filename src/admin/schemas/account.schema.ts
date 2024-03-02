@@ -36,6 +36,9 @@ export class Account {
 
   @Prop({ type: [{ type: mongoose.Schema.Types.ObjectId }], ref: AccountRequisite.name })
   requisites: AccountRequisiteDocument[];
+
+  @Prop()
+  selectedRequisiteDir: number;
 }
 
 export const AccountSchema = SchemaFactory.createForClass(Account);
