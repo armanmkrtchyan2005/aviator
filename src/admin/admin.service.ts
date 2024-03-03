@@ -11,9 +11,18 @@ import { ConvertService } from "src/convert/convert.service";
 import { Withdrawal, WithdrawalStatusEnum } from "src/withdrawal/schemas/withdrawal.schema";
 import { CancelReplenishmentDto } from "./dto/cancelReplenishment.dto";
 import { LimitQueryDto } from "./dto/limit-query.dto";
-import { Account, AccountDocument } from "./schemas/account.schema";
+import { Account, AccountDocument, ReplenishmentHistory } from "./schemas/account.schema";
 import * as bcrypt from "bcrypt";
 import { AccountRequisite } from "./schemas/account-requisite.schema";
+import { ApiProperty } from "@nestjs/swagger";
+
+export class ReplenishmentHistoryResponse {
+  @ApiProperty()
+  address: string;
+
+  @ApiProperty({ isArray: true })
+  history: ReplenishmentHistory;
+}
 
 function limitAndSkipPipelines(dto: LimitQueryDto) {
   const arrPipelines: PipelineStage[] = [];
@@ -169,6 +178,10 @@ export class AdminService {
     account.balance -= requisiteAmount;
     admin.manual_methods_balance -= requisiteAmount;
 
+    replenishment.requisite.turnover.confirmed += requisiteAmount;
+    replenishment.requisite.turnover.inProcess -= requisiteAmount;
+    replenishment.requisite.turnover.confirmedCount++;
+
     await replenishment.requisite.save();
     await account.save();
 
@@ -289,5 +302,12 @@ export class AdminService {
     await withdrawal.save();
 
     return { message: "Заявка отменена" };
+  }
+
+  async replenishmentHistory(account: Account) {
+    return {
+      address: account.usdtAddress,
+      history: account.replenishmentHistory,
+    };
   }
 }

@@ -1,5 +1,5 @@
 import { Controller, Get, Query, Req } from "@nestjs/common";
-import { BetsService } from "./bets.service";
+import { BetsService, LastBetsResponse } from "./bets.service";
 import { MyBetsQueryDto } from "./dto/my-bets-query.dto";
 import { Auth } from "src/auth/decorators/auth.decorator";
 import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
@@ -31,7 +31,7 @@ export class BetsController {
     return this.betsService.findLastCoeffs();
   }
 
-  @ApiOkResponse({ type: [LastGame] })
+  @ApiOkResponse({ type: LastBetsResponse })
   @Get("/last-game")
   findLastGame() {
     return this.betsService.findLastGame();

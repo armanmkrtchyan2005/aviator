@@ -1,6 +1,5 @@
-import { CanActivate, ExecutionContext, Injectable } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { ThrottlerGuard } from "@nestjs/throttler";
-import { Observable } from "rxjs";
 
 @Injectable()
 export class ThrottlerProxyGuard extends ThrottlerGuard {

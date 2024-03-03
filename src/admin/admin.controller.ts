@@ -1,8 +1,8 @@
 import { Request } from "express";
 import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Put, Query, Req } from "@nestjs/common";
-import { AdminService } from "./admin.service";
+import { AdminService, ReplenishmentHistoryResponse } from "./admin.service";
 import { AdminLoginDto } from "./dto/adminLogin.dto";
-import { ApiBadRequestResponse, ApiOkResponse, ApiTags } from "@nestjs/swagger";
+import { ApiBadRequestResponse, ApiOkResponse, ApiTags, getSchemaPath } from "@nestjs/swagger";
 import { AdminAuth } from "./decorators/adminAuth.decorator";
 import { CreateRequisiteDto } from "./dto/createRequisite.dto";
 import { SignInOkResponse } from "src/auth/responses/sign-in.response";
@@ -15,7 +15,7 @@ import { CancelReplenishmentBadResponse, CancelReplenishmentResponse } from "src
 import { CancelWithdrawalBadResponse, CancelWithdrawalOkResponse } from "src/withdrawal/responses/cancelWithdrawal.response";
 import { LimitQueryDto } from "./dto/limit-query.dto";
 import { AccountRequisite } from "./schemas/account-requisite.schema";
-import { Account } from "./schemas/account.schema";
+import { Account, ReplenishmentHistory } from "./schemas/account.schema";
 
 @ApiTags("Admin")
 @Controller("admin")
@@ -110,5 +110,12 @@ export class AdminController {
   @Put("/withdrawals/:id/cancel")
   cancelWithdrawal(@Req() req: Request, @Param("id") id: string, @Body() dto: CancelReplenishmentDto) {
     return this.adminService.cancelWithdrawal(req["admin"], id, dto);
+  }
+
+  @AdminAuth()
+  @ApiOkResponse({ type: ReplenishmentHistoryResponse })
+  @Get("/replenishment-history")
+  replenishmentHistory(@Req() req: Request) {
+    return this.adminService.replenishmentHistory(req["admin"]);
   }
 }

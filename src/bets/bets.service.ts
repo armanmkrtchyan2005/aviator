@@ -4,9 +4,22 @@ import { DateSort, MyBetsQueryDto } from "./dto/my-bets-query.dto";
 import { InjectModel } from "@nestjs/mongoose";
 import { User } from "src/user/schemas/user.schema";
 import { Model } from "mongoose";
-import { Bet } from "./schemas/bet.schema";
+import { Bet, IAmount } from "./schemas/bet.schema";
 import { Coeff } from "./schemas/coeff.schema";
 import { LastGame } from "./schemas/lastGame.schema";
+import { Admin } from "src/admin/schemas/admin.schema";
+import { ApiProperty } from "@nestjs/swagger";
+
+export class LastBetsResponse {
+  @ApiProperty({ type: "object", properties: { USD: { type: "number" }, RUB: { type: "number" } } })
+  winAmount: IAmount;
+
+  @ApiProperty({ type: "object", properties: { USD: { type: "number" }, RUB: { type: "number" } } })
+  betAmount: IAmount;
+
+  @ApiProperty({ isArray: true })
+  bets: LastGame;
+}
 
 @Injectable()
 export class BetsService {
@@ -15,6 +28,7 @@ export class BetsService {
     @InjectModel(Bet.name) private betModel: Model<Bet>,
     @InjectModel(Coeff.name) private coeffModel: Model<Coeff>,
     @InjectModel(LastGame.name) private lastGameModel: Model<LastGame>,
+    @InjectModel(Admin.name) private adminModel: Model<Admin>,
   ) {}
 
   async topBets(query: MyBetsQueryDto) {
@@ -63,8 +77,51 @@ export class BetsService {
   }
 
   async findLastGame() {
-    const lastGame = await this.lastGameModel.find({});
+    const { currencies } = await this.adminModel.findOne();
 
-    return lastGame;
+    const winAmount = {
+      sum: {},
+      project: {},
+    };
+
+    const betAmount = {
+      sum: {},
+      project: {},
+    };
+
+    for (let currency of currencies) {
+      const winSumFieldName = `winAmount${currency}`;
+      winAmount.sum[winSumFieldName] = { $sum: `$win.${currency}` };
+      winAmount.project[currency] = "$" + winSumFieldName;
+
+      const betSumFieldName = `betAmount${currency}`;
+      betAmount.sum[betSumFieldName] = { $sum: `$bet.${currency}` };
+      betAmount.project[currency] = "$" + betSumFieldName;
+    }
+
+    const lastGame = await this.lastGameModel.aggregate([
+      {
+        $group: {
+          _id: null,
+          ...winAmount.sum,
+          ...betAmount.sum,
+          bets: { $push: "$$ROOT" },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          winAmount: {
+            ...winAmount.project,
+          },
+          betAmount: {
+            ...betAmount.project,
+          },
+          bets: 1,
+        },
+      },
+    ]);
+
+    return lastGame[0] || { winAmount: {}, betAmount: {}, bets: [] };
   }
 }

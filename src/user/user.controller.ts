@@ -49,7 +49,6 @@ import { FindReferralsByDayDto } from "./dto/findReferralsByDay.dto";
 import { GetPromosDto } from "./dto/getPromos.dto";
 import { Promo } from "./schemas/promo.schema";
 import { GameLimits } from "src/admin/schemas/admin.schema";
-import { SkipThrottle } from "@nestjs/throttler";
 import { SharpPipe } from "src/pipes/sharp.pipe";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 1mb
@@ -110,7 +109,6 @@ export class UserController {
     return this.userService.getPromo(req["user"], id);
   }
 
-  @SkipThrottle({ default: false })
   @ApiOkResponse({ type: ConfirmEmailSendCodeResponse })
   @HttpCode(HttpStatus.OK)
   @Post("confirm-email/send-code")
@@ -118,7 +116,6 @@ export class UserController {
     return this.userService.confirmEmailSendCode(req["user"]);
   }
 
-  @SkipThrottle({ default: false })
   @ApiOkResponse({ type: ConfirmEmailConfirmCodeResponse })
   @ApiBadRequestResponse({ type: ConfirmEmailConfirmCodeBadResponse })
   @HttpCode(HttpStatus.OK)
@@ -127,7 +124,6 @@ export class UserController {
     return this.userService.confirmEmailConfirmCode(req["user"], dto);
   }
 
-  @SkipThrottle({ default: false })
   @ApiOkResponse({ type: ConfirmEmailSendCodeResponse })
   @HttpCode(HttpStatus.OK)
   @Post("change-email/send-code")
@@ -135,7 +131,6 @@ export class UserController {
     return this.userService.changeEmailSendCode(dto, req["user"]);
   }
 
-  @SkipThrottle({ default: false })
   @ApiOkResponse({ type: ChangeEmailConfirmCodeResponse })
   @ApiBadRequestResponse({ type: ConfirmEmailConfirmCodeBadResponse })
   @HttpCode(HttpStatus.OK)
@@ -144,7 +139,6 @@ export class UserController {
     return this.userService.changeEmailConfirmCode(req["user"], dto);
   }
 
-  @SkipThrottle({ default: false })
   @ApiOkResponse({ type: SignInOkResponse })
   @ApiBadRequestResponse({ type: OldPasswordConfirmBadResponse })
   @HttpCode(HttpStatus.OK)
@@ -153,7 +147,6 @@ export class UserController {
     return this.userService.oldPasswordConfirm(dto, req["user"]);
   }
 
-  @SkipThrottle({ default: false })
   @ApiOkResponse({ type: ChangePasswordResponse })
   @ApiBadRequestResponse({ type: ChangePasswordBadResponse })
   @HttpCode(HttpStatus.OK)

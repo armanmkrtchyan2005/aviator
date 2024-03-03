@@ -54,12 +54,6 @@ import { memoryStorage } from "multer";
     LinksModule,
   ],
   controllers: [AppController],
-  providers: [
-    AppService,
-    {
-      provide: APP_GUARD,
-      useClass: ThrottlerProxyGuard,
-    },
-  ],
+  providers: [AppService],
 })
 export class AppModule {}

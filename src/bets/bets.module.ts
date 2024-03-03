@@ -6,6 +6,7 @@ import { User, UserSchema } from "src/user/schemas/user.schema";
 import { Bet, BetSchema } from "./schemas/bet.schema";
 import { Coeff, CoeffSchema } from "./schemas/coeff.schema";
 import { LastGame, LastGameSchema } from "./schemas/lastGame.schema";
+import { Admin, AdminSchema } from "src/admin/schemas/admin.schema";
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { LastGame, LastGameSchema } from "./schemas/lastGame.schema";
       { name: Bet.name, schema: BetSchema },
       { name: Coeff.name, schema: CoeffSchema },
       { name: LastGame.name, schema: LastGameSchema },
+      { name: Admin.name, schema: AdminSchema },
     ]),
   ],
   controllers: [BetsController],

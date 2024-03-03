@@ -3,9 +3,9 @@ import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Exclude, Type } from "class-transformer";
 import { ApiProperty } from "@nestjs/swagger";
 import { Promo } from "./promo.schema";
-import * as autoIncrement from 'mongoose-plugin-autoinc';
+import * as autoIncrement from "mongoose-plugin-autoinc";
 
-const START_AT = 100000
+const START_AT = 100000;
 
 export type UserDocument = HydratedDocument<User>;
 
@@ -23,7 +23,7 @@ export class Descendants {
   earnings: number;
 }
 
-@Schema()
+@Schema({ timestamps: { createdAt: true } })
 export class User {
   @ApiProperty({ type: String })
   _id: mongoose.Types.ObjectId;
@@ -79,11 +79,9 @@ export class User {
   socketId: string;
 }
 
-
 export const UserSchema = SchemaFactory.createForClass(User).plugin(autoIncrement.plugin, {
   model: User.name,
-  field: 'uid',
+  field: "uid",
   startAt: START_AT,
   incrementBy: 1,
 });
-

@@ -4,6 +4,16 @@ import { ApiProperty } from "@nestjs/swagger";
 import { Requisite, RequisiteDocument } from "./requisite.schema";
 import { AccountRequisite, AccountRequisiteDocument } from "./account-requisite.schema";
 
+@Schema({ timestamps: { createdAt: true } })
+export class ReplenishmentHistory {
+  @ApiProperty({ type: Date })
+  createdAt: Date;
+
+  @ApiProperty({ type: Number })
+  @Prop({ required: true })
+  balance: number;
+}
+
 export type AccountDocument = HydratedDocument<Account>;
 
 @Schema({ timestamps: true })
@@ -38,6 +48,12 @@ export class Account {
   requisites: AccountRequisiteDocument[];
 
   @Prop()
+  usdtAddress: string;
+
+  @Prop({ type: () => [ReplenishmentHistory], default: [] })
+  replenishmentHistory: ReplenishmentHistory[];
+
+  @Prop({ default: 0 })
   selectedRequisiteDir: number;
 }
 
