@@ -22,6 +22,8 @@ export interface IBet {
   coeff?: number;
   win?: IAmount;
   promo?: Promo;
+  user_balance: number;
+  game_coeff?: number;
 }
 
 @Schema()
@@ -61,6 +63,12 @@ export class Bet {
   @ApiProperty({ type: String })
   @Prop()
   profileImage: string;
+
+  @Prop({ required: true })
+  user_balance: number;
+
+  @Prop()
+  game_coeff: number;
 }
 
 export const BetSchema = SchemaFactory.createForClass(Bet);

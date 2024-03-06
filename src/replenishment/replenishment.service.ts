@@ -86,13 +86,12 @@ export class ReplenishmentService {
     const deduction: IAmount = {};
 
     for (const currency of admin.currencies) {
-      console.log(currency);
-
       amount[currency] = await this.convertService.convert(dto.currency, currency, dto.amount);
-
       const commission = await this.convertService.convert(admin.commissionCurrency, currency, admin.commission);
       deduction[currency] = amount[currency] + commission;
     }
+
+    console.log(amount);
 
     if (amount[user.currency] < minLimit && amount[user.currency] > maxLimit) {
       throw new BadRequestException(`Сумма не должен бит не меньше чем ${minLimit + user.currency} и не больше чем ${maxLimit + user.currency}`);
@@ -100,7 +99,7 @@ export class ReplenishmentService {
 
     // add sequence
 
-    const accountsCount = await this.accountModel.count({ requisite: requisite._id, balance: { $gte: amount["USDT"] } });
+    const accountsCount = (await this.accountModel.count({ requisite: requisite._id, balance: { $gte: amount["USDT"] } })) - 1;
 
     if (requisite.accountCount < accountsCount) {
       requisite.accountCount++;
@@ -114,8 +113,6 @@ export class ReplenishmentService {
       .findOne({ requisite: requisite._id, balance: { $gte: amount["USDT"] } })
       .skip(accountsCount)
       .populate("requisites");
-
-    console.log(account);
 
     if (!account) {
       throw new NotFoundException("Реквизит не найден");

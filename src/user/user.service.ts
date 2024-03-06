@@ -5,7 +5,7 @@ import { InjectModel } from "@nestjs/mongoose";
 import { User } from "./schemas/user.schema";
 import mongoose, { Model } from "mongoose";
 import { IAuthPayload } from "src/auth/auth.guard";
-import { generateCode, salt } from "src/auth/auth.service";
+import { salt } from "src/auth/auth.service";
 import { SendCodeDto } from "src/auth/dto/send-code.dto";
 import { ConfirmCodeDto } from "src/auth/dto/confirm-code.dto";
 import { JwtService } from "@nestjs/jwt";
@@ -23,6 +23,7 @@ import { UserPromo } from "./schemas/userPromo.schema";
 import { GetPromosDto } from "./dto/getPromos.dto";
 import * as url from "url";
 import * as path from "path";
+import { generateCode } from "src/admin/common/utils/generate-code";
 
 @Injectable()
 export class UserService {

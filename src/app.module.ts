@@ -16,6 +16,7 @@ import { APP_GUARD } from "@nestjs/core";
 import { ThrottlerProxyGuard } from "./pipes/throttler-proxy.guard";
 import { MulterModule } from "@nestjs/platform-express";
 import { memoryStorage } from "multer";
+import { TwoFaModule } from './two-fa/two-fa.module';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { memoryStorage } from "multer";
     ReplenishmentModule,
     WithdrawalModule,
     LinksModule,
+    TwoFaModule,
   ],
   controllers: [AppController],
   providers: [AppService],

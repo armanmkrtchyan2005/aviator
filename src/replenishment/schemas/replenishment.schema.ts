@@ -6,6 +6,7 @@ import { Requisite, RequisiteDocument } from "src/admin/schemas/requisite.schema
 import { IAmount } from "src/bets/schemas/bet.schema";
 import { Account } from "src/admin/schemas/account.schema";
 import { AccountRequisite, AccountRequisiteDocument } from "src/admin/schemas/account-requisite.schema";
+import * as autoIncrement from "mongoose-plugin-autoinc";
 
 export type ReplenishmentDocument = HydratedDocument<Replenishment>;
 
@@ -61,4 +62,9 @@ export class Replenishment {
   completedDate: Date;
 }
 
-export const ReplenishmentSchema = SchemaFactory.createForClass(Replenishment);
+export const ReplenishmentSchema = SchemaFactory.createForClass(Replenishment).plugin(autoIncrement.plugin, {
+  model: "replenishment-withdrawal",
+  field: "uid",
+  startAt: 1,
+  incrementBy: 1,
+});

@@ -9,17 +9,24 @@ export enum SendEmailType {
 }
 
 interface ISendEmail {
-  type: SendEmailType;
   email: string;
   code: number;
   login?: string;
+}
+
+interface ISendForgotEmail extends ISendEmail {
+  type: SendEmailType;
+}
+
+interface ISend2FAEmail extends ISendEmail {
+  message: string;
 }
 
 @Injectable()
 export class MailService {
   constructor(private mailerService: MailerService) {}
 
-  async sendUserForgotCode(options: ISendEmail) {
+  async sendUserForgotCode(options: ISendForgotEmail) {
     let html: string;
     if (options.type === SendEmailType.REGISTRATION) {
       html = `
@@ -61,6 +68,40 @@ export class MailService {
     await this.mailerService.sendMail({
       to: options.email,
       subject: "Password reset code",
+      text: "Confirmation code",
+      html,
+    });
+  }
+
+  async send2FASetCode(options: ISend2FAEmail) {
+    const html = `
+    <p>${options.message}: <b>${options.code}</b></p>
+    <p>Никому не сообщайте!</p>
+    <br />
+    <p>Ваш логин: <b>${options.login}</b></p>
+    <p>Если действие совершается не Вами, незамедлительно обратитесь в поддержку!</p>
+  `;
+
+    await this.mailerService.sendMail({
+      to: options.email,
+      subject: options.message,
+      text: "Confirmation code",
+      html,
+    });
+  }
+
+  async send2FACode(options: ISendEmail) {
+    const html = `
+    <p>Код подтверждения двухфакторной аутентификации в Aviator: <b>${options.code}</b></p>
+    <p>Никому не сообщайте!</p>
+    <br />
+    <p>Ваш логин: <b>${options.login}</b></p>
+    <p>Если действие совершается не Вами, незамедлительно обратитесь в поддержку!</p>
+  `;
+
+    await this.mailerService.sendMail({
+      to: options.email,
+      subject: "Код подтверждения двухфакторной аутентификации",
       text: "Confirmation code",
       html,
     });

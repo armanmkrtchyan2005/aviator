@@ -6,11 +6,12 @@ import { SendCodeDto } from "./dto/send-code.dto";
 import { ConfirmCodeDto } from "./dto/confirm-code.dto";
 import { ApiBadRequestResponse, ApiCreatedResponse, ApiOkResponse, ApiParam, ApiQuery, ApiTags } from "@nestjs/swagger";
 import { SignUpBadResponse, SignUpCreatedResponse } from "./responses/sign-up.response";
-import { SignInBadResponse, SignInOkResponse } from "./responses/sign-in.response";
+import { SignInBadResponse, SignInOkResponse, SignInTwoFAResponse } from "./responses/sign-in.response";
 import { SendCodeBadResponse, SendCodeOkResponse } from "./responses/send-code.response";
 import { ConfirmCodeBadResponse, ConfirmCodeOkResponse } from "./responses/confirm-code.response";
 import { ChangePasswordDto } from "./dto/change-password.dto";
 import { ChangePasswordBadResponse, ChangePasswordOkResponse } from "./responses/change-password.response";
+import { SignInVerifyDto } from "./dto/sign-in-verify.dto";
 
 @ApiTags("Authentication")
 @Controller("auth")
@@ -29,8 +30,16 @@ export class AuthController {
   @ApiBadRequestResponse({ description: "Login or password is wrong", type: SignInBadResponse })
   @HttpCode(HttpStatus.OK)
   @Post("login")
-  signIn(@Body() dto: SignInDto): Promise<SignInOkResponse> {
+  signIn(@Body() dto: SignInDto) {
     return this.authService.signIn(dto);
+  }
+
+  @ApiOkResponse({ schema: { type: "object", properties: { token: { type: "string" } } } })
+  @ApiBadRequestResponse({ schema: { type: "object", properties: { message: { type: "string" } } } })
+  @HttpCode(HttpStatus.OK)
+  @Post("login/verify")
+  signInVerify(@Body() dto: SignInVerifyDto) {
+    return this.authService.signInVerify(dto);
   }
 
   @ApiOkResponse({ description: "Code sended to your email", type: SendCodeOkResponse })

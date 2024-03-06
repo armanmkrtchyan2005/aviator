@@ -38,7 +38,6 @@ export class SocketService {
     private convertService: ConvertService,
   ) {}
 
-  private stopped = false;
   private currentPlayers: IBet[] = [];
   private betAmount: IAmount = {};
   private winAmount: IAmount = {};
@@ -171,8 +170,10 @@ export class SocketService {
       // currency: user.currency,
       bet,
       promo: userPromo?.promo,
+
       time: new Date(),
       betNumber: dto.betNumber,
+      user_balance: user.balance,
     };
 
     const betData = await this.betModel.create(betDataObject);
@@ -220,6 +221,8 @@ export class SocketService {
     if (!bet) {
       return new WsException("У вас нет такой ставки");
     }
+
+    await this.betModel.findByIdAndDelete(bet._id);
 
     user.balance += bet.bet[user.currency];
     admin.our_balance -= bet.bet["USD"];
@@ -277,6 +280,7 @@ export class SocketService {
 
     bet.win = win;
     bet.coeff = x;
+    bet.user_balance = user.balance;
 
     await bet.save();
 
@@ -393,11 +397,8 @@ export class SocketService {
   }
 
   private async loading() {
-    if (this.stopped) {
-      return;
-    }
     clearInterval(this.interval);
-    this.stopped = true;
+
     this.socket.emit("crash");
 
     await this.coeffModel.create({ coeff: +this.x.toFixed(2) });
@@ -511,8 +512,6 @@ export class SocketService {
       default:
         break;
     }
-
-    this.stopped = false;
 
     this.interval = setInterval(() => this.game(), 100);
   }

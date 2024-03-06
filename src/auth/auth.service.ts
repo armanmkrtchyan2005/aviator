@@ -1,6 +1,6 @@
 import * as bcrypt from "bcrypt";
 import { ConvertService } from "./../convert/convert.service";
-import { BadRequestException, Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
@@ -20,13 +20,11 @@ import { Bonus, CoefParamsType } from "src/user/schemas/bonus.schema";
 import * as _ from "lodash";
 import { Promo, PromoType } from "src/user/schemas/promo.schema";
 import { UserPromo } from "src/user/schemas/userPromo.schema";
+import { generateCode } from "src/admin/common/utils/generate-code";
+import { SignInVerifyDto } from "./dto/sign-in-verify.dto";
 
 const saltRounds = 10;
 export const salt = bcrypt.genSaltSync(saltRounds);
-
-export const generateCode = () => {
-  return Math.floor(100000 + Math.random() * 900000);
-};
 
 @Injectable()
 export class AuthService {
@@ -115,7 +113,7 @@ export class AuthService {
     };
   }
 
-  async signIn(dto: SignInDto): Promise<SignInOkResponse> {
+  async signIn(dto: SignInDto) {
     const user = await this.userModel.findOne({
       $or: [{ login: dto.login }, { email: dto.login }],
     });
@@ -130,9 +128,48 @@ export class AuthService {
       throw new BadRequestException("Неверный логин или пароль!");
     }
 
+    if (user.twoFA) {
+      const code = generateCode();
+
+      await this.mailService.send2FACode({ email: user.email, login: user.login, code });
+
+      const twoFAtoken = this.jwtService.sign({ id: user._id, code }, { expiresIn: process.env.TWO_FA_TOKEN_EXPIRATION });
+
+      user.twoFAToken = twoFAtoken;
+
+      await user.save();
+
+      return { twoFactorEnabled: true, message: "На ваш Email отправлен код" };
+    }
+
     const token = this.jwtService.sign({ id: user._id }, {});
 
-    return { token };
+    return { twoFactorEnabled: false, token, message: "Токен для авторизации" };
+  }
+
+  async signInVerify(dto: SignInVerifyDto) {
+    const user = await this.userModel.findOne({ login: dto.login });
+    if (!user) {
+      throw new BadRequestException("Неверный код");
+    }
+
+    if (!user.twoFAToken) {
+      throw new BadRequestException("Неверный код");
+    }
+
+    try {
+      const twoFAPayload = this.jwtService.verify(user.twoFAToken);
+
+      if (twoFAPayload.code !== dto.code) {
+        throw new BadRequestException("Неверный код");
+      }
+
+      const token = this.jwtService.sign({ id: user._id }, {});
+
+      return { token };
+    } catch (error) {
+      throw new BadRequestException("Неверный код");
+    }
   }
 
   async sendCode(dto: SendCodeDto): Promise<SendCodeOkResponse> {

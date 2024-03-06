@@ -5,6 +5,7 @@ import { User, UserDocument } from "src/user/schemas/user.schema";
 import { Requisite, RequisiteDocument } from "src/admin/schemas/requisite.schema";
 import { Account } from "src/admin/schemas/account.schema";
 import { IAmount } from "src/bets/schemas/bet.schema";
+import * as autoIncrement from "mongoose-plugin-autoinc";
 
 export type WithdrawalDocument = HydratedDocument<Withdrawal>;
 
@@ -56,4 +57,9 @@ export class Withdrawal {
   active: Account;
 }
 
-export const WithdrawalSchema = SchemaFactory.createForClass(Withdrawal);
+export const WithdrawalSchema = SchemaFactory.createForClass(Withdrawal).plugin(autoIncrement.plugin, {
+  model: "replenishment-withdrawal",
+  field: "uid",
+  startAt: 1,
+  incrementBy: 1,
+});
