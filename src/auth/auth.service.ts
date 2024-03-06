@@ -166,6 +166,9 @@ export class AuthService {
 
       const token = this.jwtService.sign({ id: user._id }, {});
 
+      user.twoFAToken = "";
+
+      await user.save();
       return { token };
     } catch (error) {
       throw new BadRequestException("Неверный код");
