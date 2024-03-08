@@ -176,7 +176,8 @@ export class SocketService {
       user_balance: user.balance,
     };
 
-    const betData = await this.betModel.create(betDataObject);
+    const betData = await this.betModel.create({ ...betDataObject, user_balance: user.balance });
+
     betDataObject._id = betData._id.toString();
     this.currentPlayers.push(betDataObject);
 
@@ -400,10 +401,17 @@ export class SocketService {
     clearInterval(this.interval);
 
     this.socket.emit("crash");
-
-    await this.coeffModel.create({ coeff: +this.x.toFixed(2) });
+    const game_coeff = +this.x.toFixed(2);
+    await this.coeffModel.create({ coeff: game_coeff });
     await this.lastGameModel.deleteMany();
     await this.lastGameModel.create(this.currentPlayers);
+    if (this.currentPlayers.length) {
+      const bets = await this.betModel.find().limit(this.currentPlayers.length).sort({ time: -1 }).select("_id");
+      const betsId = bets.map(bet => bet._id);
+      console.log(betsId);
+
+      await this.betModel.updateMany({ _id: { $in: betsId } }, { $set: { game_coeff } });
+    }
 
     this.x = 1;
     this.step = 0.0006;
@@ -430,6 +438,7 @@ export class SocketService {
     this.socket.emit("loading");
 
     await sleep(LOADING_MS);
+    this.isBetWait = true;
 
     const excludedAlgorithmsId = [];
 

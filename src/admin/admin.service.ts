@@ -213,6 +213,7 @@ export class AdminService {
   async getWithdrawals(account: Account, dto: LimitQueryDto) {
     const withdrawals = await this.withdrawalModel
       .aggregate([
+        { $match: { createdAt: { $gte: dto.startDate, $lte: dto.endDate } } },
         { $lookup: { from: "requisites", localField: "requisite", foreignField: "_id", as: "requisite" } },
         {
           $unwind: "$requisite",

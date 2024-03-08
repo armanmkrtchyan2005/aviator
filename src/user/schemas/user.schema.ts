@@ -22,7 +22,7 @@ export class Descendants {
   earnings: number;
 }
 
-@Schema({ timestamps: { createdAt: true } })
+@Schema({ timestamps: true })
 export class User {
   @ApiProperty({ type: String })
   _id: mongoose.Types.ObjectId;
