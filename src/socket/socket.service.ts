@@ -15,6 +15,7 @@ import { UserPromo } from "src/user/schemas/userPromo.schema";
 import * as _ from "lodash";
 import { Coeff } from "src/bets/schemas/coeff.schema";
 import { LastGame } from "src/bets/schemas/lastGame.schema";
+import { CurrentPlayer } from "src/bets/schemas/currentPlayers.schema";
 
 const STOP_DISABLE_MS = 2000;
 const LOADING_MS = 5000;
@@ -35,6 +36,7 @@ export class SocketService {
     @InjectModel(Referral.name) private referralModel: Model<Referral>,
     @InjectModel(Coeff.name) private coeffModel: Model<Coeff>,
     @InjectModel(LastGame.name) private lastGameModel: Model<LastGame>,
+    @InjectModel(CurrentPlayer.name) private currentPlayerModel: Model<CurrentPlayer>,
     private convertService: ConvertService,
   ) {}
 
@@ -89,7 +91,7 @@ export class SocketService {
     }
   }
 
-  handleStartGame() {
+  async handleStartGame() {
     this.interval = setInterval(() => this.game(), 100);
     // 6. random one hour algorithm
     this.randomOneHourAlgorithm();
@@ -181,9 +183,12 @@ export class SocketService {
     betDataObject._id = betData._id.toString();
     this.currentPlayers.push(betDataObject);
 
-    const currentPlayers = this.currentPlayers.map(({ _id, playerId, promo, ...bet }) => bet);
+    const currentPlayers = this.currentPlayers.map(({ _id, playerId, promo, ...bet }) => bet).sort((a, b) => b.bet["USD"] - a.bet["USD"]);
+    this.socket.emit("currentPlayers", { betAmount: this.betAmount, winAmount: this.winAmount, currentPlayers });
 
     admin.our_balance += bet["USD"];
+
+    await this.currentPlayerModel.create(betDataObject);
 
     await admin.save();
 
@@ -191,10 +196,8 @@ export class SocketService {
       this.betAmount[key] += bet[key];
     }
 
-    this.socket.emit("currentPlayers", { betAmount: this.betAmount, winAmount: this.winAmount, currentPlayers });
-
     const algorithms = admin.algorithms.map(algorithm => {
-      if (algorithm.active) {
+      if (this.selectedAlgorithmId == algorithm.id) {
         algorithm.all_bets_amount += betDataObject.bet["USD"];
       }
 
@@ -233,8 +236,9 @@ export class SocketService {
     }
 
     this.currentPlayers = this.currentPlayers.filter(player => player._id !== bet._id);
-
     this.socket.emit("currentPlayers", { betAmount: this.betAmount, winAmount: this.winAmount, currentPlayers: this.currentPlayers });
+
+    await this.currentPlayerModel.deleteOne({ _id: bet._id });
 
     return { message: "Ставка отменена" };
   }
@@ -293,13 +297,15 @@ export class SocketService {
       this.winAmount[key] += win[key];
     }
 
-    const currentPlayers = this.currentPlayers.map(({ _id, playerId, promo, ...bet }) => bet);
+    const currentPlayers = this.currentPlayers.map(({ _id, playerId, promo, ...bet }) => bet).sort((a, b) => b.bet["USD"] - a.bet["USD"]);
 
     this.socket.emit("currentPlayers", { betAmount: this.betAmount, winAmount: this.winAmount, currentPlayers });
 
     user.balance += win[user.currency];
 
     await user.save();
+
+    await this.currentPlayerModel.updateOne({ _id: bet._id.toString() }, { $set: this.currentPlayers[betIndex] });
 
     const leader = await this.userModel.findById(user.leader);
 
@@ -404,6 +410,7 @@ export class SocketService {
     const game_coeff = +this.x.toFixed(2);
     await this.coeffModel.create({ coeff: game_coeff });
     await this.lastGameModel.deleteMany();
+    await this.currentPlayerModel.deleteMany();
     await this.lastGameModel.create(this.currentPlayers);
     if (this.currentPlayers.length) {
       const bets = await this.betModel.find().limit(this.currentPlayers.length).sort({ time: -1 }).select("_id");

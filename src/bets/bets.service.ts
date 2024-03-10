@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { IAuthPayload } from "src/auth/auth.guard";
-import { DateSort, MyBetsQueryDto } from "./dto/my-bets-query.dto";
+import { MyBetsQueryDto } from "./dto/my-bets-query.dto";
 import { InjectModel } from "@nestjs/mongoose";
 import { User } from "src/user/schemas/user.schema";
 import { Model } from "mongoose";
@@ -9,6 +9,7 @@ import { Coeff } from "./schemas/coeff.schema";
 import { LastGame } from "./schemas/lastGame.schema";
 import { Admin } from "src/admin/schemas/admin.schema";
 import { ApiProperty } from "@nestjs/swagger";
+import { DateSort, TopBetsQueryDto } from "./dto/top-bets.query.dto";
 
 export class LastBetsResponse {
   @ApiProperty({ type: "object", properties: { USD: { type: "number" }, RUB: { type: "number" } } })
@@ -31,20 +32,24 @@ export class BetsService {
     @InjectModel(Admin.name) private adminModel: Model<Admin>,
   ) {}
 
-  async topBets(query: MyBetsQueryDto) {
+  async topBets(query: TopBetsQueryDto) {
     const current = new Date();
     let lastMonth = new Date();
+    let limit: number;
 
     if (query.dateSort === DateSort.DAY) {
       lastMonth.setDate(lastMonth.getDate() - 1);
+      limit = 30;
     }
 
     if (query.dateSort === DateSort.MONTH) {
       lastMonth.setMonth(lastMonth.getMonth() - 1);
+      limit = 60;
     }
 
     if (query.dateSort === DateSort.YEAR) {
       lastMonth.setFullYear(lastMonth.getFullYear() - 1);
+      limit = 100;
     }
 
     const bets = await this.betModel
@@ -58,8 +63,7 @@ export class BetsService {
         },
       })
       .sort({ "win.USD": -1, time: -1 })
-      .skip(query.skip)
-      .limit(query.limit);
+      .limit(limit);
 
     return bets;
   }

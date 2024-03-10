@@ -17,16 +17,14 @@ export interface IBet {
   playerLogin: string;
   profileImage: string;
   bet: IAmount;
-  // currency: string;
   time: Date;
   coeff?: number;
   win?: IAmount;
   promo?: Promo;
   user_balance: number;
-  game_coeff?: number;
 }
 
-@Schema()
+@Schema({ timestamps: { createdAt: true, updatedAt: "last_active_date" } })
 export class Bet {
   @ApiProperty({ type: "object", properties: { USD: { type: "number" }, RUB: { type: "number" } } })
   @Prop({ required: true, type: Object })
