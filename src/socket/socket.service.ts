@@ -1,5 +1,5 @@
 import { WsException } from "@nestjs/websockets";
-import { Injectable } from "@nestjs/common";
+import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { Socket } from "socket.io";
@@ -401,6 +401,23 @@ export class SocketService {
     }
 
     return { message: "Вы выиграли" };
+  }
+
+  async handleDrain(authPayload: IAuthPayload<number>) {
+    if (!authPayload?.isAdmin) {
+      throw new UnauthorizedException();
+    }
+
+    const admins = await this.adminModel.findOne();
+    const admin = admins.admin_panel_data.find(admin => admin.id === authPayload.id);
+
+    if (!admin) {
+      throw new UnauthorizedException();
+    }
+
+    this.loading();
+
+    return { message: "Игра остановлена" };
   }
 
   private async loading() {

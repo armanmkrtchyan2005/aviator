@@ -2,7 +2,7 @@ import { WebSocketGateway, SubscribeMessage, MessageBody, OnGatewayConnection, W
 import { Server, Socket } from "socket.io";
 import { SocketService } from "./socket.service";
 import { UseFilters, UseGuards, UsePipes, ValidationPipe } from "@nestjs/common";
-import { SocketAuthGuard } from "./socketAuth.guard";
+import { SocketAuthGuard } from "./guard/socketAuth.guard";
 import { BetDto } from "./dto/bet.dto";
 import { CashOutDto } from "./dto/cashOut.dto";
 import { SocketExceptionsFilter } from "./socket.exception";
@@ -39,5 +39,11 @@ export class SocketGateway implements OnGatewayInit, OnGatewayConnection, OnGate
   @SubscribeMessage("cash-out")
   handleCashOut(@ConnectedSocket() client: Socket, @MessageBody() dto: CashOutDto) {
     return this.socketService.handleCashOut(client["user"], dto);
+  }
+
+  @UseGuards(SocketAuthGuard)
+  @SubscribeMessage("drain")
+  handleDrain(@ConnectedSocket() client: Socket) {
+    return this.socketService.handleDrain(client["user"]);
   }
 }

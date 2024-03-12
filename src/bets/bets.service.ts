@@ -53,23 +53,43 @@ export class BetsService {
     }
 
     const bets = await this.betModel
-      .find({
-        time: {
-          $gte: new Date(lastMonth),
-          $lte: current,
+      .aggregate([
+        {
+          $match: {
+            time: {
+              $gte: new Date(lastMonth),
+              $lte: current,
+            },
+            win: {
+              $exists: true,
+            },
+          },
         },
-        win: {
-          $exists: true,
-        },
-      })
-      .sort({ "win.USD": -1, time: -1 })
+        { $lookup: { from: "users", localField: "playerId", foreignField: "_id", as: "player" } },
+        { $unwind: "$player" },
+        { $set: { profileImage: "$player.profileImage", playerLogin: "$player.login" } },
+        { $project: { player: 0 } },
+      ])
       .limit(limit);
 
     return bets;
   }
 
   async myBets(auth: IAuthPayload, query: MyBetsQueryDto) {
-    const bets = await this.betModel.find({ playerId: auth.id }).skip(query.skip).limit(query.limit).sort({ time: -1 });
+    // const bets = await this.betModel.find({ playerId: auth.id }).skip(query.skip).limit(query.limit).sort({ time: -1 });
+    const bets = await this.betModel
+      .aggregate([
+        {
+          $match: { playerId: auth.id },
+        },
+        { $lookup: { from: "users", localField: "playerId", foreignField: "_id", as: "player" } },
+        { $unwind: "$player" },
+        { $set: { profileImage: "$player.profileImage", playerLogin: "$player.login" } },
+        { $project: { player: 0 } },
+      ])
+      .skip(query.skip)
+      .limit(query.limit)
+      .sort({ time: -1 });
 
     return bets;
   }

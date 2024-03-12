@@ -58,10 +58,6 @@ export class Bet {
   @Prop({ require: true })
   playerLogin: string;
 
-  @ApiProperty({ type: String })
-  @Prop()
-  profileImage: string;
-
   @Prop({ required: true })
   user_balance: number;
 

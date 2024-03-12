@@ -3,9 +3,15 @@ import { JwtService } from "@nestjs/jwt";
 import { JwtPayload } from "jsonwebtoken";
 import { Request } from "express";
 
-export interface IAuthPayload extends JwtPayload {
-  id: string;
-}
+// export interface IAuthPayload extends JwtPayload {
+//   id: string;
+//   isAdmin?: boolean;
+// }
+
+export type IAuthPayload<T = string> = {
+  id: T;
+  isAdmin?: boolean;
+};
 
 @Injectable()
 export class AuthGuard implements CanActivate {
