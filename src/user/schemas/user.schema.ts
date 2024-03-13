@@ -74,6 +74,7 @@ export class User {
   @Prop()
   codeToken: string;
 
+  @ApiProperty()
   @Prop({ default: false })
   twoFA: boolean;
 

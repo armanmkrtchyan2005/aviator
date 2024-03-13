@@ -55,6 +55,9 @@ export class Withdrawal {
   @ApiProperty({ type: String })
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: Account.name })
   active: Account;
+
+  @ApiProperty()
+  uid: number;
 }
 
 export const WithdrawalSchema = SchemaFactory.createForClass(Withdrawal).plugin(autoIncrement.plugin, {

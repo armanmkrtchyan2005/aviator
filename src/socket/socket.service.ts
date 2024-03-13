@@ -99,10 +99,9 @@ export class SocketService {
 
   async game() {
     this.x += this.step;
-    this.x = +this.x.toFixed(2);
     this.step += 0.0006;
 
-    this.socket.emit("game", { x: this.x });
+    this.socket.emit("game", { x: +this.x.toFixed(2) });
 
     // 4. ----------
     if (this.selectedAlgorithmId === 4) {
@@ -425,6 +424,7 @@ export class SocketService {
 
     this.socket.emit("crash");
     const game_coeff = +this.x.toFixed(2);
+
     await this.coeffModel.create({ coeff: game_coeff });
     await this.lastGameModel.deleteMany();
     await this.currentPlayerModel.deleteMany();
@@ -448,6 +448,7 @@ export class SocketService {
     this.currentPlayers = [];
     this.betAmount = {};
     this.winAmount = {};
+
     for (const currency of admin.currencies) {
       this.betAmount[currency] = 0;
       this.winAmount[currency] = 0;

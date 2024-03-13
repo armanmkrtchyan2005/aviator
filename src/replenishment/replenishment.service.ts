@@ -170,7 +170,7 @@ export class ReplenishmentService {
 
   async cancelReplenishment(dto: CancelReplenishmentDto) {
     const replenishment = await this.replenishmentModel.findById(dto.id);
-    if (!replenishment.isPayConfirmed) {
+    if (replenishment.isPayConfirmed) {
       return { message: "Вы уже подтвердили оплату" };
     }
     replenishment.status = ReplenishmentStatusEnum.CANCELED;
@@ -186,11 +186,11 @@ export class ReplenishmentService {
   async confirmReplenishment(dto: ConfirmReplenishmentDto) {
     const replenishment = await this.replenishmentModel.findById(dto.id).populate("requisite");
 
-    if (replenishment.status === ReplenishmentStatusEnum.PENDING) {
+    if (replenishment.status !== ReplenishmentStatusEnum.PENDING) {
       throw new BadRequestException("Эту заявку вы уже подтвердили");
     }
 
-    replenishment.status = ReplenishmentStatusEnum.PENDING;
+    replenishment.status = ReplenishmentStatusEnum.PROCESSING;
     replenishment.isPayConfirmed = true;
 
     await replenishment.save();

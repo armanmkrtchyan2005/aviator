@@ -40,7 +40,7 @@ export class UserService {
   ) {}
 
   async findMe(auth: IAuthPayload) {
-    const user = await this.userModel.findById(auth.id, { telegramId: true, login: true, email: true, profileImage: true });
+    const user = await this.userModel.findById(auth.id, { uid: true, telegramId: true, login: true, email: true, profileImage: true, twoFA: true });
 
     return user;
   }

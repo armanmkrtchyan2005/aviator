@@ -60,6 +60,9 @@ export class Replenishment {
   @ApiProperty()
   @Prop()
   completedDate: Date;
+
+  @ApiProperty()
+  uid: number;
 }
 
 export const ReplenishmentSchema = SchemaFactory.createForClass(Replenishment).plugin(autoIncrement.plugin, {

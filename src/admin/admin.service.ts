@@ -12,7 +12,6 @@ import { Withdrawal, WithdrawalStatusEnum } from "src/withdrawal/schemas/withdra
 import { CancelReplenishmentDto } from "./dto/cancelReplenishment.dto";
 import { LimitQueryDto } from "./dto/limit-query.dto";
 import { Account, AccountDocument, ReplenishmentHistory } from "./schemas/account.schema";
-import * as bcrypt from "bcrypt";
 import { AccountRequisite } from "./schemas/account-requisite.schema";
 import { ApiProperty } from "@nestjs/swagger";
 
@@ -63,7 +62,7 @@ export class AdminService {
       throw new BadRequestException("Неправильный логин или пароль");
     }
 
-    const isEqual = bcrypt.compareSync(dto.password, account.password);
+    const isEqual = dto.password === account.password;
 
     if (!isEqual) {
       throw new BadRequestException("Неправильный логин или пароль");
