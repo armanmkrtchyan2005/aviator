@@ -74,9 +74,6 @@ export class Admin {
   currencies: string[];
 
   @Prop({ default: 0 })
-  manual_methods_balance: number;
-
-  @Prop({ default: 0 })
   our_balance: number;
 }
 

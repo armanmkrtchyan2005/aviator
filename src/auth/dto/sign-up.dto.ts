@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsISO4217CurrencyCode, IsAlphanumeric, IsEmail, MinLength, MaxLength, IsNotEmpty, IsNumber, IsString, IsOptional } from "class-validator";
+import { IsISO4217CurrencyCode, IsAlphanumeric, IsEmail, MinLength, MaxLength, IsNotEmpty, IsNumber, IsString, IsOptional, Matches } from "class-validator";
 import { Match } from "../decorators/match.decorator";
 
 export const PASSWORD_MIN_LENGTH = 8;
@@ -10,7 +10,7 @@ export class SignUpDto {
     example: "RUB",
   })
   @IsNotEmpty({
-    message: "Поле обзательно для заполнения",
+    message: "Поле обязательно для заполнения",
   })
   @IsISO4217CurrencyCode()
   currency: string;
@@ -19,10 +19,11 @@ export class SignUpDto {
     example: "test1234",
   })
   @IsNotEmpty({
-    message: "Поле обзательно для заполнения",
+    message: "Поле обязательно для заполнения",
   })
-  @IsAlphanumeric("en-US", {
-    message: "Логин может содержать символы A-Z и цифры, максимум 20 символов",
+  @MaxLength(20, { message: "Логин может содержать символы A-Z, цифры и _, максимум 20 символов" })
+  @Matches(/^[A-Za-z0-9_]+$/, {
+    message: "Логин может содержать символы A-Z, цифры и _, максимум 20 символов",
   })
   login: string;
 
@@ -32,10 +33,10 @@ export class SignUpDto {
     maxLength: PASSWORD_MAX_LENGTH,
   })
   @IsNotEmpty({
-    message: "Поле обзательно для заполнения",
+    message: "Поле обязательно для заполнения",
   })
-  @MinLength(6, { message: `Пароль может содержать латинские буквы и цифры, минимум ${PASSWORD_MIN_LENGTH} символов` })
-  @MaxLength(30, { message: `Пароль может содержать латинские буквы и цифры, максимум ${PASSWORD_MAX_LENGTH} символов` })
+  @MinLength(PASSWORD_MIN_LENGTH, { message: `Пароль может содержать латинские буквы и цифры, минимум ${PASSWORD_MIN_LENGTH} символов` })
+  @MaxLength(PASSWORD_MAX_LENGTH, { message: `Пароль может содержать латинские буквы и цифры, максимум ${PASSWORD_MAX_LENGTH} символов` })
   password: string;
 
   @ApiProperty({
@@ -70,12 +71,12 @@ export class SignUpDto {
   })
   @IsString({ message: "promocode должно быть текстовое" })
   @IsOptional()
-  promocode: string
+  promocode: string;
 
   @ApiProperty({
     example: "test123",
     required: false,
   })
-  @IsString({ message: "from должно быть текстовое" })
-  from: string;
+  @IsNumber({ allowInfinity: false, allowNaN: false }, { message: "from должно быть число" })
+  from: number;
 }

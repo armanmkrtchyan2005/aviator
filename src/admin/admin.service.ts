@@ -175,7 +175,6 @@ export class AdminService {
 
     account.requisite.balance -= requisiteAmount;
     account.balance -= requisiteAmount;
-    admin.manual_methods_balance -= requisiteAmount;
 
     replenishment.requisite.turnover.confirmed += requisiteAmount;
     replenishment.requisite.turnover.inProcess -= requisiteAmount;
@@ -264,7 +263,6 @@ export class AdminService {
 
     withdrawal.requisite.balance += requisiteAmount;
     account.balance += requisiteAmount;
-    admin.manual_methods_balance += requisiteAmount;
 
     await withdrawal.requisite.save();
     await account.save();

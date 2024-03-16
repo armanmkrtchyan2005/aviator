@@ -13,6 +13,9 @@ export class Descendants {
   _id: string;
 
   @ApiProperty()
+  uid: number;
+
+  @ApiProperty()
   createdAt: Date;
 
   @ApiProperty()
@@ -29,7 +32,7 @@ export class User {
 
   @ApiProperty()
   @Prop({ type: Number, unique: true })
-  uid: Number;
+  uid: number;
 
   @ApiProperty()
   @Prop()
@@ -80,6 +83,9 @@ export class User {
 
   @Prop()
   twoFAToken: string;
+
+  @Prop({ default: false })
+  isEmailUpdated: boolean;
 
   @Prop()
   socketId: string;

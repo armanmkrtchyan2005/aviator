@@ -14,7 +14,6 @@ import { Account, AccountSchema } from "src/admin/schemas/account.schema";
 
 @Module({
   imports: [
-    ScheduleModule.forRoot(),
     MongooseModule.forFeature([
       { name: Admin.name, schema: AdminSchema },
       { name: User.name, schema: UserSchema },

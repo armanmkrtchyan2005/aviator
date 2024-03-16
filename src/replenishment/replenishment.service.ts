@@ -185,6 +185,7 @@ export class ReplenishmentService {
 
   async confirmReplenishment(dto: ConfirmReplenishmentDto) {
     const replenishment = await this.replenishmentModel.findById(dto.id).populate("requisite");
+    console.log(replenishment);
 
     if (replenishment.status !== ReplenishmentStatusEnum.PENDING) {
       throw new BadRequestException("Эту заявку вы уже подтвердили");

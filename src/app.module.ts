@@ -12,14 +12,14 @@ import { ReplenishmentModule } from "./replenishment/replenishment.module";
 import { WithdrawalModule } from "./withdrawal/withdrawal.module";
 import { LinksModule } from "./links/links.module";
 import { ThrottlerModule } from "@nestjs/throttler";
-import { APP_GUARD } from "@nestjs/core";
-import { ThrottlerProxyGuard } from "./pipes/throttler-proxy.guard";
 import { MulterModule } from "@nestjs/platform-express";
 import { memoryStorage } from "multer";
-import { TwoFaModule } from './two-fa/two-fa.module';
+import { TwoFaModule } from "./two-fa/two-fa.module";
+import { ScheduleModule } from "@nestjs/schedule";
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([
       {
         name: "short",

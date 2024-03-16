@@ -24,6 +24,8 @@ import { GetPromosDto } from "./dto/getPromos.dto";
 import * as url from "url";
 import * as path from "path";
 import { generateCode } from "src/admin/common/utils/generate-code";
+import { CronJob } from "cron";
+import { CronExpression, SchedulerRegistry } from "@nestjs/schedule";
 
 @Injectable()
 export class UserService {
@@ -37,6 +39,7 @@ export class UserService {
     private jwtService: JwtService,
     private mailService: MailService,
     private convertService: ConvertService,
+    private schedulerRegistry: SchedulerRegistry,
   ) {}
 
   async findMe(auth: IAuthPayload) {
@@ -106,6 +109,10 @@ export class UserService {
 
   async confirmEmailSendCode(userPayload: IAuthPayload) {
     const user = await this.userModel.findById(userPayload.id);
+    if (user.isEmailUpdated) {
+      throw new BadRequestException("Невозможно выполнить действие. Попробуйте позже.");
+    }
+
     const code = generateCode();
     const token = this.jwtService.sign({ id: user._id, code }, { expiresIn: 60 * 60 * 4 });
     user.codeToken = token;
@@ -141,6 +148,11 @@ export class UserService {
     }
 
     const user = await this.userModel.findById(userPayload.id);
+
+    if (user.isEmailUpdated) {
+      throw new BadRequestException("Невозможно выполнить действие. Попробуйте позже.");
+    }
+
     const code = generateCode();
     const token = this.jwtService.sign({ id: user._id, code, email: dto.email }, { expiresIn: 60 * 60 * 4 });
     user.codeToken = token;
@@ -161,9 +173,20 @@ export class UserService {
       }
 
       user.email = payload.email;
+      user.isEmailUpdated = true;
       user.codeToken = "";
 
       await user.save();
+
+      const job = new CronJob("* * */2 * *", async () => {
+        console.log("Time out");
+        user.isEmailUpdated = true;
+
+        await user.save();
+      });
+
+      this.schedulerRegistry.addCronJob(user._id.toString(), job);
+      job.start();
 
       return { message: "Ваш email успешно изменен" };
     } catch (error) {

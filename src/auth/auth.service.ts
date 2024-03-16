@@ -61,26 +61,16 @@ export class AuthService {
       throw new BadRequestException("Промокод не найден");
     }
 
-    // if (dto.email) {
-    //   const code = generateCode();
-
-    //   // user.codeToken = this.jwtService.sign({ code }, { expiresIn: 60 * 60 * 2 });
-
-    //   this.mailService.sendUserForgotCode({ code, email: dto.email, type: SendEmailType.REGISTRATION });
-
-    //   return;
-    // }
-
     const newUsersBonuses = await this.bonusModel.find({ active: true, coef_params: { type: CoefParamsType.NEW_USERS } });
 
     const hashedPassword = bcrypt.hashSync(dto.password, salt);
 
-    const leader = await this.userModel.findOne({ login: dto.from });
+    const leader = await this.userModel.findOne({ uid: dto.from });
 
     const newUser = await this.userModel.create({ ...dto, password: hashedPassword, leader });
 
     if (leader) {
-      leader.descendants.push({ _id: newUser._id.toString(), createdAt: new Date(), updatedUt: new Date(), earnings: 0 });
+      leader.descendants.push({ _id: newUser._id.toString(), uid: newUser.uid, createdAt: new Date(), updatedUt: new Date(), earnings: 0 });
 
       await leader.save();
     }
@@ -97,7 +87,7 @@ export class AuthService {
 
     await newUser.save();
     if (promo) {
-      const newUserPromo = await this.userPromoModel.create({ user: newUser._id, promo: promo?._id });
+      const newUserPromo = await this.userPromoModel.create({ user: newUser._id, promo: promo._id });
 
       if (promo.type === PromoType.ADD_BALANCE) {
         newUserPromo.limit = await this.convertService.convert(promo.currency, newUser.currency, promo.limit);
@@ -184,6 +174,10 @@ export class AuthService {
       throw new BadRequestException("Такой пользователь не найден");
     }
 
+    if (user.isEmailUpdated) {
+      throw new BadRequestException("Невозможно выполнить действие. Попробуйте позже.");
+    }
+
     const code = generateCode();
 
     user.codeToken = this.jwtService.sign({ code }, { expiresIn: 60 * 60 * 2 });
@@ -198,6 +192,7 @@ export class AuthService {
   async confirmCode(dto: ConfirmCodeDto): Promise<ConfirmCodeOkResponse> {
     try {
       const user = await this.userModel.findOne({ email: dto.email });
+
       const payload: { code: number } = await this.jwtService.verifyAsync(user.codeToken);
 
       if (payload?.code !== dto.code) {

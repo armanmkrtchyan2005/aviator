@@ -3,7 +3,7 @@ import { IAuthPayload } from "src/auth/auth.guard";
 import { MyBetsQueryDto } from "./dto/my-bets-query.dto";
 import { InjectModel } from "@nestjs/mongoose";
 import { User } from "src/user/schemas/user.schema";
-import { Model } from "mongoose";
+import mongoose, { Model } from "mongoose";
 import { Bet, IAmount } from "./schemas/bet.schema";
 import { Coeff } from "./schemas/coeff.schema";
 import { LastGame } from "./schemas/lastGame.schema";
@@ -80,11 +80,11 @@ export class BetsService {
     const bets = await this.betModel
       .aggregate([
         {
-          $match: { playerId: auth.id },
+          $match: { playerId: new mongoose.Types.ObjectId(auth.id) },
         },
         { $lookup: { from: "users", localField: "playerId", foreignField: "_id", as: "player" } },
         { $unwind: "$player" },
-        { $set: { profileImage: "$player.profileImage", playerLogin: "$player.login" } },
+        { $set: { profileImage: "$player.profileImage" } },
         { $project: { player: 0 } },
       ])
       .skip(query.skip)

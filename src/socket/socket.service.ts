@@ -16,6 +16,7 @@ import * as _ from "lodash";
 import { Coeff } from "src/bets/schemas/coeff.schema";
 import { LastGame } from "src/bets/schemas/lastGame.schema";
 import { CurrentPlayer } from "src/bets/schemas/currentPlayers.schema";
+import { Replenishment, ReplenishmentStatusEnum } from "src/replenishment/schemas/replenishment.schema";
 
 const STOP_DISABLE_MS = 2000;
 const LOADING_MS = 5000;
@@ -37,6 +38,7 @@ export class SocketService {
     @InjectModel(Coeff.name) private coeffModel: Model<Coeff>,
     @InjectModel(LastGame.name) private lastGameModel: Model<LastGame>,
     @InjectModel(CurrentPlayer.name) private currentPlayerModel: Model<CurrentPlayer>,
+    @InjectModel(Replenishment.name) private replenishmentModel: Model<Replenishment>,
     private convertService: ConvertService,
   ) {}
 
@@ -182,6 +184,10 @@ export class SocketService {
     betDataObject._id = betData._id.toString();
     this.currentPlayers.push(betDataObject);
 
+    for (let key in this.betAmount) {
+      this.betAmount[key] += bet[key];
+    }
+
     const currentPlayers = this.currentPlayers.map(({ _id, playerId, promo, ...bet }) => bet).sort((a, b) => b.bet["USD"] - a.bet["USD"]);
     this.socket.emit("currentPlayers", { betAmount: this.betAmount, winAmount: this.winAmount, currentPlayers });
 
@@ -190,10 +196,6 @@ export class SocketService {
     await this.currentPlayerModel.create(betDataObject);
 
     await admin.save();
-
-    for (let key in this.betAmount) {
-      this.betAmount[key] += bet[key];
-    }
 
     const algorithms = admin.algorithms.map(algorithm => {
       if (this.selectedAlgorithmId == algorithm.id) {
@@ -246,13 +248,11 @@ export class SocketService {
     const x = this.x;
 
     const user = await this.userModel.findById(userPayload.id);
-    const admin = await this.adminModel.findOne({}, ["algorithms", "currencies", "our_balance"]);
+    const admin = await this.adminModel.findOne({}, ["algorithms", "currencies", "our_balance", "gameLimits"]);
 
     const betIndex = this.currentPlayers.findIndex(b => {
       return b.playerId == userPayload?.id && dto.betNumber === b.betNumber;
     });
-
-    // console.log(this.currentPlayers);
 
     if (betIndex == -1) {
       return new WsException("У вас нет такой ставки");
@@ -266,13 +266,17 @@ export class SocketService {
     if (betData.promo && this.x < betData?.promo?.coef) {
       return new WsException(`Вы не можете выиграть до ${betData.promo.coef}x`);
     }
+
     const win: IAmount = {};
     for (const currency of admin.currencies) {
       win[currency] = +(x * betData.bet[currency]).toFixed(2);
     }
 
-    // const betAmount = await this.convertService.convert("USD", user.currency, betData.bet);
-    // const win = +(x * betAmount).toFixed(2);
+    if (win[admin.gameLimits.currency] > admin.gameLimits.maxWin) {
+      for (const currency of admin.currencies) {
+        win[currency] = await this.convertService.convert(admin.gameLimits.currency, currency, admin.gameLimits.maxWin);
+      }
+    }
 
     this.currentPlayers[betIndex] = {
       ...betData,
@@ -432,7 +436,6 @@ export class SocketService {
     if (this.currentPlayers.length) {
       const bets = await this.betModel.find().limit(this.currentPlayers.length).sort({ time: -1 }).select("_id");
       const betsId = bets.map(bet => bet._id);
-      console.log(betsId);
 
       await this.betModel.updateMany({ _id: { $in: betsId } }, { $set: { game_coeff } });
     }
