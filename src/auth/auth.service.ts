@@ -147,7 +147,7 @@ export class AuthService {
   }
 
   async signInVerify(dto: SignInVerifyDto) {
-    const user = await this.userModel.findOne({ login: dto.login });
+    const user = await this.userModel.findOne({ $or: [{ login: dto.login }, { email: dto.login }] });
     if (!user) {
       throw new BadRequestException("Неверный код");
     }
