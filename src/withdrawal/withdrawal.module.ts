@@ -7,6 +7,7 @@ import { Requisite, RequisiteSchema } from "src/admin/schemas/requisite.schema";
 import { Withdrawal, WithdrawalSchema } from "./schemas/withdrawal.schema";
 import { Admin, AdminSchema } from "src/admin/schemas/admin.schema";
 import { ConvertModule } from "src/convert/convert.module";
+import { Session, SessionSchema } from "src/user/schemas/session.schema";
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { ConvertModule } from "src/convert/convert.module";
       { name: User.name, schema: UserSchema },
       { name: Requisite.name, schema: RequisiteSchema },
       { name: Withdrawal.name, schema: WithdrawalSchema },
+      { name: Session.name, schema: SessionSchema },
     ]),
     ConvertModule,
   ],

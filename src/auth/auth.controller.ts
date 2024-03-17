@@ -12,6 +12,7 @@ import { ConfirmCodeBadResponse, ConfirmCodeOkResponse } from "./responses/confi
 import { ChangePasswordDto } from "./dto/change-password.dto";
 import { ChangePasswordBadResponse, ChangePasswordOkResponse } from "./responses/change-password.response";
 import { SignInVerifyDto } from "./dto/sign-in-verify.dto";
+import { SignOutDto } from "./dto/sign-out.dto";
 
 @ApiTags("Authentication")
 @Controller("auth")
@@ -32,6 +33,13 @@ export class AuthController {
   @Post("login")
   signIn(@Body() dto: SignInDto) {
     return this.authService.signIn(dto);
+  }
+
+  @ApiOkResponse({ schema: { type: "object", properties: { message: { type: "string" } } } })
+  @HttpCode(HttpStatus.OK)
+  @Post("sign-out")
+  signOut(@Body() dto: SignOutDto) {
+    return this.authService.signOut(dto);
   }
 
   @ApiOkResponse({ schema: { type: "object", properties: { token: { type: "string" } } } })

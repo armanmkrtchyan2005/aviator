@@ -8,6 +8,7 @@ import { Coeff, CoeffSchema } from "./schemas/coeff.schema";
 import { LastGame, LastGameSchema } from "./schemas/lastGame.schema";
 import { Admin, AdminSchema } from "src/admin/schemas/admin.schema";
 import { CurrentPlayer, CurrentPlayerSchema } from "./schemas/currentPlayers.schema";
+import { Session, SessionSchema } from "src/user/schemas/session.schema";
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { CurrentPlayer, CurrentPlayerSchema } from "./schemas/currentPlayers.sch
       { name: LastGame.name, schema: LastGameSchema },
       { name: Admin.name, schema: AdminSchema },
       { name: CurrentPlayer.name, schema: CurrentPlayerSchema },
+      { name: Session.name, schema: SessionSchema },
     ]),
   ],
   controllers: [BetsController],

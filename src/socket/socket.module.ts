@@ -13,6 +13,7 @@ import { Coeff, CoeffSchema } from "src/bets/schemas/coeff.schema";
 import { LastGame, LastGameSchema } from "src/bets/schemas/lastGame.schema";
 import { CurrentPlayer, CurrentPlayerSchema } from "src/bets/schemas/currentPlayers.schema";
 import { Replenishment, ReplenishmentSchema } from "src/replenishment/schemas/replenishment.schema";
+import { Session, SessionSchema } from "src/user/schemas/session.schema";
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { Replenishment, ReplenishmentSchema } from "src/replenishment/schemas/re
       { name: LastGame.name, schema: LastGameSchema },
       { name: CurrentPlayer.name, schema: CurrentPlayerSchema },
       { name: Replenishment.name, schema: ReplenishmentSchema },
+      { name: Session.name, schema: SessionSchema },
     ]),
     ConvertModule,
   ],

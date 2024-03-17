@@ -11,7 +11,6 @@ import { MailService, SendEmailType } from "src/mail/mail.service";
 import { SendCodeDto } from "./dto/send-code.dto";
 import { ConfirmCodeDto } from "./dto/confirm-code.dto";
 import { SignUpCreatedResponse } from "./responses/sign-up.response";
-import { SignInOkResponse } from "./responses/sign-in.response";
 import { SendCodeOkResponse } from "./responses/send-code.response";
 import { ConfirmCodeOkResponse } from "./responses/confirm-code.response";
 import { ChangePasswordDto } from "./dto/change-password.dto";
@@ -22,6 +21,8 @@ import { Promo, PromoType } from "src/user/schemas/promo.schema";
 import { UserPromo } from "src/user/schemas/userPromo.schema";
 import { generateCode } from "src/admin/common/utils/generate-code";
 import { SignInVerifyDto } from "./dto/sign-in-verify.dto";
+import { Session } from "src/user/schemas/session.schema";
+import { SignOutDto } from "./dto/sign-out.dto";
 
 const saltRounds = 10;
 export const salt = bcrypt.genSaltSync(saltRounds);
@@ -34,6 +35,7 @@ export class AuthService {
     @InjectModel(Bonus.name) private bonusModel: Model<Bonus>,
     @InjectModel(Promo.name) private promoModel: Model<Promo>,
     @InjectModel(UserPromo.name) private userPromoModel: Model<UserPromo>,
+    @InjectModel(Session.name) private sessionModel: Model<Session>,
     private mailService: MailService,
     private convertService: ConvertService,
   ) {}
@@ -86,6 +88,7 @@ export class AuthService {
     newUser.balance = balance;
 
     await newUser.save();
+
     if (promo) {
       const newUserPromo = await this.userPromoModel.create({ user: newUser._id, promo: promo._id });
 
@@ -97,6 +100,8 @@ export class AuthService {
     }
 
     const token = this.jwtService.sign({ id: newUser._id }, {});
+
+    await this.sessionModel.create({ token, user: newUser._id });
 
     return {
       token,
@@ -132,7 +137,11 @@ export class AuthService {
       return { twoFactorEnabled: true, message: "На ваш Email отправлен код" };
     }
 
+    await user.save();
+
     const token = this.jwtService.sign({ id: user._id }, {});
+
+    await this.sessionModel.create({ token, user: user._id });
 
     return { twoFactorEnabled: false, token, message: "Токен для авторизации" };
   }
@@ -163,6 +172,14 @@ export class AuthService {
     } catch (error) {
       throw new BadRequestException("Неверный код");
     }
+  }
+
+  async signOut(dto: SignOutDto) {
+    await this.sessionModel.findOneAndDelete({ token: dto.token });
+
+    return {
+      message: "Вы вышли из системы",
+    };
   }
 
   async sendCode(dto: SendCodeDto): Promise<SendCodeOkResponse> {

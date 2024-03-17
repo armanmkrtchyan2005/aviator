@@ -2,6 +2,9 @@ import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from
 import { JwtService } from "@nestjs/jwt";
 import { JwtPayload } from "jsonwebtoken";
 import { Request } from "express";
+import { InjectModel } from "@nestjs/mongoose";
+import { Session } from "src/user/schemas/session.schema";
+import { Model } from "mongoose";
 
 // export interface IAuthPayload extends JwtPayload {
 //   id: string;
@@ -15,7 +18,7 @@ export type IAuthPayload<T = string> = {
 
 @Injectable()
 export class AuthGuard implements CanActivate {
-  constructor(private jwtService: JwtService) {}
+  constructor(private jwtService: JwtService, @InjectModel(Session.name) private sessionModel: Model<Session>) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
@@ -25,11 +28,9 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException();
     }
     try {
-      const payload = await this.jwtService.verifyAsync<IAuthPayload>(token, {
-        secret: process.env.JWT_SECRET,
-      });
+      const { user } = await this.sessionModel.findOne({ token });
 
-      request["user"] = payload;
+      request["user"] = { id: user };
     } catch {
       throw new UnauthorizedException();
     }

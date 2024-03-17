@@ -434,7 +434,8 @@ export class SocketService {
     await this.currentPlayerModel.deleteMany();
     await this.lastGameModel.create(this.currentPlayers);
     if (this.currentPlayers.length) {
-      const bets = await this.betModel.find().limit(this.currentPlayers.length).sort({ time: -1 }).select("_id");
+      const bets = await this.betModel.find().limit(this.currentPlayers.length).sort({ time: -1 });
+
       const betsId = bets.map(bet => bet._id);
 
       await this.betModel.updateMany({ _id: { $in: betsId } }, { $set: { game_coeff } });

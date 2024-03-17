@@ -11,6 +11,7 @@ import { ScheduleModule } from "@nestjs/schedule";
 import { UserPromo, UserPromoSchema } from "src/user/schemas/userPromo.schema";
 import { Bonus, BonusSchema } from "src/user/schemas/bonus.schema";
 import { Account, AccountSchema } from "src/admin/schemas/account.schema";
+import { Session, SessionSchema } from "src/user/schemas/session.schema";
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { Account, AccountSchema } from "src/admin/schemas/account.schema";
       { name: UserPromo.name, schema: UserPromoSchema },
       { name: Bonus.name, schema: BonusSchema },
       { name: Account.name, schema: AccountSchema },
+      { name: Session.name, schema: SessionSchema },
     ]),
     ConvertModule,
   ],

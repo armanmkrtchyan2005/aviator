@@ -10,6 +10,7 @@ import { Admin, AdminSchema } from "src/admin/schemas/admin.schema";
 import { Referral, ReferralSchema } from "./schemas/referral.schema";
 import { Promo, PromoSchema } from "./schemas/promo.schema";
 import { UserPromo, UserPromoSchema } from "./schemas/userPromo.schema";
+import { Session, SessionSchema } from "./schemas/session.schema";
 
 @Module({
   imports: [
@@ -21,10 +22,11 @@ import { UserPromo, UserPromoSchema } from "./schemas/userPromo.schema";
       { name: Requisite.name, schema: RequisiteSchema },
       { name: Admin.name, schema: AdminSchema },
       { name: Referral.name, schema: ReferralSchema },
+      { name: Session.name, schema: SessionSchema },
     ]),
     MailModule,
   ],
   controllers: [UserController],
   providers: [UserService],
 })
-export class UserModule { }
+export class UserModule {}

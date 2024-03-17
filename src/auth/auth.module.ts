@@ -9,6 +9,7 @@ import { ConvertModule } from "src/convert/convert.module";
 import { Bonus, BonusSchema } from "src/user/schemas/bonus.schema";
 import { Promo, PromoSchema } from "src/user/schemas/promo.schema";
 import { UserPromo, UserPromoSchema } from "src/user/schemas/userPromo.schema";
+import { Session, SessionSchema } from "src/user/schemas/session.schema";
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { UserPromo, UserPromoSchema } from "src/user/schemas/userPromo.schema";
       { name: Bonus.name, schema: BonusSchema },
       { name: Promo.name, schema: PromoSchema },
       { name: UserPromo.name, schema: UserPromoSchema },
+      { name: Session.name, schema: SessionSchema },
     ]),
     MailModule,
     ConvertModule,
@@ -35,4 +37,4 @@ import { UserPromo, UserPromoSchema } from "src/user/schemas/userPromo.schema";
   controllers: [AuthController],
   providers: [AuthService],
 })
-export class AuthModule { }
+export class AuthModule {}
