@@ -7,8 +7,8 @@ import { Socket } from "socket.io";
 import { Session } from "src/user/schemas/session.schema";
 
 @Injectable()
-export class SocketAuthGuard implements CanActivate {
-  constructor(@InjectModel(Session.name) private sessionModel: Model<Session>) {}
+export class SocketAdminAuthGuard implements CanActivate {
+  constructor(private jwtService: JwtService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     try {
@@ -22,9 +22,10 @@ export class SocketAuthGuard implements CanActivate {
       }
 
       try {
-        const { user } = await this.sessionModel.findOne({ token });
-
-        client["user"] = { id: user };
+        const adminPayload = this.jwtService.verify<{ isAdmin: boolean }>(token);
+        if (!adminPayload?.isAdmin) {
+          throw new WsException("Пользователь не авторизован");
+        }
       } catch {
         throw new WsException("Пользователь не авторизован");
       }

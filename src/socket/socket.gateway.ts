@@ -6,6 +6,7 @@ import { SocketAuthGuard } from "./guard/socketAuth.guard";
 import { BetDto } from "./dto/bet.dto";
 import { CashOutDto } from "./dto/cashOut.dto";
 import { SocketExceptionsFilter } from "./socket.exception";
+import { SocketAdminAuthGuard } from "./guard/socketAdminAuth.guard";
 
 @WebSocketGateway({ cors: true })
 @UseFilters(SocketExceptionsFilter)
@@ -41,9 +42,9 @@ export class SocketGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     return this.socketService.handleCashOut(client["user"], dto);
   }
 
-  @UseGuards(SocketAuthGuard)
+  @UseGuards(SocketAdminAuthGuard)
   @SubscribeMessage("drain")
-  handleDrain(@ConnectedSocket() client: Socket) {
-    return this.socketService.handleDrain(client["user"]);
+  handleDrain() {
+    return this.socketService.handleDrain();
   }
 }

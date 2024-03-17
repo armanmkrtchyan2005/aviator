@@ -18,7 +18,7 @@ export type IAuthPayload<T = string> = {
 
 @Injectable()
 export class AuthGuard implements CanActivate {
-  constructor(private jwtService: JwtService, @InjectModel(Session.name) private sessionModel: Model<Session>) {}
+  constructor(@InjectModel(Session.name) private sessionModel: Model<Session>) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
