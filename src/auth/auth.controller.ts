@@ -13,6 +13,7 @@ import { ChangePasswordDto } from "./dto/change-password.dto";
 import { ChangePasswordBadResponse, ChangePasswordOkResponse } from "./responses/change-password.response";
 import { SignInVerifyDto } from "./dto/sign-in-verify.dto";
 import { SignOutDto } from "./dto/sign-out.dto";
+import { Request } from "express";
 
 @ApiTags("Authentication")
 @Controller("auth")
@@ -54,8 +55,8 @@ export class AuthController {
   @ApiBadRequestResponse({ description: "User from this email not founded", type: SendCodeBadResponse })
   @HttpCode(HttpStatus.OK)
   @Post("forgot/send-code")
-  sendCode(@Body() dto: SendCodeDto): Promise<SendCodeOkResponse> {
-    return this.authService.sendCode(dto);
+  sendCode(@Req() req: Request, @Body() dto: SendCodeDto): Promise<SendCodeOkResponse> {
+    return this.authService.sendCode(req, dto);
   }
 
   @ApiOkResponse({ description: "Right code", type: ConfirmCodeOkResponse })

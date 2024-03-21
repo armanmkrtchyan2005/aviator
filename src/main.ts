@@ -5,15 +5,18 @@ import * as session from "express-session";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { NestExpressApplication } from "@nestjs/platform-express";
 import { join } from "path";
+import * as fs from "fs";
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  app.enableCors({ origin: ["http://localhost:5173", "https://avibet.io"] });
   app.useStaticAssets(join(__dirname, "..", "uploads"), { prefix: "/uploads" });
-  app.enableCors({ origin: "*" });
   const port = process.env.PORT || 8080;
 
   const config = new DocumentBuilder().setTitle("Aviator").setDescription("Aviator API документация").setVersion("1.0").build();
   const document = SwaggerModule.createDocument(app, config);
+
+  // fs.writeFileSync("./swagger-spec.json", JSON.stringify(document));
 
   SwaggerModule.setup("docs", app, document);
 

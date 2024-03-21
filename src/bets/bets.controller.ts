@@ -4,8 +4,8 @@ import { MyBetsQueryDto } from "./dto/my-bets-query.dto";
 import { Auth } from "src/auth/decorators/auth.decorator";
 import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
 import { Bet } from "./schemas/bet.schema";
-import { Coeff } from "./schemas/coeff.schema";
 import { TopBetsQueryDto } from "./dto/top-bets.query.dto";
+import { Game } from "./schemas/game.schema";
 
 @ApiTags("Bets")
 @Controller("bets")
@@ -25,7 +25,7 @@ export class BetsController {
     return this.betsService.myBets(req["user"], query);
   }
 
-  @ApiOkResponse({ type: [Coeff] })
+  @ApiOkResponse({ type: [Game] })
   @Get("/coeffs")
   findLastCoeffs() {
     return this.betsService.findLastCoeffs();

@@ -5,11 +5,10 @@ import { InjectModel } from "@nestjs/mongoose";
 import { User } from "src/user/schemas/user.schema";
 import mongoose, { Model } from "mongoose";
 import { Bet, IAmount } from "./schemas/bet.schema";
-import { Coeff } from "./schemas/coeff.schema";
-import { LastGame } from "./schemas/lastGame.schema";
 import { Admin } from "src/admin/schemas/admin.schema";
 import { ApiProperty } from "@nestjs/swagger";
 import { DateSort, TopBetsQueryDto } from "./dto/top-bets.query.dto";
+import { Game } from "./schemas/game.schema";
 
 export class LastBetsResponse {
   @ApiProperty({ type: "object", properties: { USD: { type: "number" }, RUB: { type: "number" } } })
@@ -19,7 +18,7 @@ export class LastBetsResponse {
   betAmount: IAmount;
 
   @ApiProperty({ isArray: true })
-  bets: LastGame;
+  bets: Bet;
 }
 
 @Injectable()
@@ -27,9 +26,8 @@ export class BetsService {
   constructor(
     @InjectModel(User.name) private userModel: Model<User>,
     @InjectModel(Bet.name) private betModel: Model<Bet>,
-    @InjectModel(Coeff.name) private coeffModel: Model<Coeff>,
-    @InjectModel(LastGame.name) private lastGameModel: Model<LastGame>,
     @InjectModel(Admin.name) private adminModel: Model<Admin>,
+    @InjectModel(Game.name) private gameModel: Model<Game>,
   ) {}
 
   async topBets(query: TopBetsQueryDto) {
@@ -95,7 +93,10 @@ export class BetsService {
   }
 
   async findLastCoeffs() {
-    const coeffs = await this.coeffModel.find({}).sort({ createdAt: -1 }).limit(30);
+    const coeffs = await this.gameModel
+      .find({ game_coeff: { $exists: true } })
+      .sort({ createdAt: -1 })
+      .limit(30);
 
     return coeffs;
   }
@@ -123,7 +124,15 @@ export class BetsService {
       betAmount.project[currency] = "$" + betSumFieldName;
     }
 
-    const lastGame = await this.lastGameModel.aggregate([
+    // ----------------------------GREL-----------------
+
+    const lastGame = await this.gameModel.findOne().sort({ createdAt: -1 }).skip(1);
+
+    const lastBets = await this.betModel.aggregate([
+      { $lookup: { from: "games", localField: "game", foreignField: "_id", as: "game" } },
+      { $unwind: "$game" },
+      { $match: { "game._id": lastGame?._id } },
+      { $sort: { createdAt: -1 } },
       {
         $group: {
           _id: null,
@@ -144,8 +153,9 @@ export class BetsService {
           bets: 1,
         },
       },
+      { $limit: 1 },
     ]);
 
-    return lastGame[0] || { winAmount: {}, betAmount: {}, bets: [] };
+    return lastBets[0] || { winAmount: {}, betAmount: {}, bets: [] };
   }
 }

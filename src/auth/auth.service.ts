@@ -23,6 +23,7 @@ import { generateCode } from "src/admin/common/utils/generate-code";
 import { SignInVerifyDto } from "./dto/sign-in-verify.dto";
 import { Session } from "src/user/schemas/session.schema";
 import { SignOutDto } from "./dto/sign-out.dto";
+import { Request } from "express";
 
 const saltRounds = 10;
 export const salt = bcrypt.genSaltSync(saltRounds);
@@ -165,6 +166,8 @@ export class AuthService {
 
       const token = this.jwtService.sign({ id: user._id }, {});
 
+      await this.sessionModel.create({ token, user: user._id });
+
       user.twoFAToken = "";
 
       await user.save();
@@ -182,10 +185,20 @@ export class AuthService {
     };
   }
 
-  async sendCode(dto: SendCodeDto): Promise<SendCodeOkResponse> {
+  async sendCode(req: Request, dto: SendCodeDto): Promise<SendCodeOkResponse> {
+    const token = req.headers.authorization.split(" ")[1];
+
+    const session = await this.sessionModel.findOne({ token });
+
     const user = await this.userModel.findOne({
       email: dto.email,
     });
+
+    let type = SendEmailType.FORGOT;
+
+    if (user._id.toString() == session.user.toString()) {
+      type = SendEmailType.RESET;
+    }
 
     if (!user) {
       throw new BadRequestException("Такой пользователь не найден");
@@ -199,7 +212,7 @@ export class AuthService {
 
     user.codeToken = this.jwtService.sign({ code }, { expiresIn: 60 * 60 * 2 });
 
-    await this.mailService.sendUserForgotCode({ code, email: dto.email, login: user.login, type: SendEmailType.FORGOT });
+    await this.mailService.sendUserForgotCode({ code, email: dto.email, login: user.login, type });
 
     await user.save();
 

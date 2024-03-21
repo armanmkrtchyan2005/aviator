@@ -180,7 +180,7 @@ export class UserService {
 
       const job = new CronJob("* * */2 * *", async () => {
         console.log("Time out");
-        user.isEmailUpdated = true;
+        user.isEmailUpdated = false;
 
         await user.save();
       });

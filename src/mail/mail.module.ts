@@ -18,7 +18,7 @@ import { ConfigService } from "@nestjs/config";
           },
         },
         defaults: {
-          from: `"No Reply" <${process.env.MAIL_FROM}>`,
+          from: `Aviator <${process.env.MAIL_FROM}>`,
         },
       }),
       inject: [ConfigService],

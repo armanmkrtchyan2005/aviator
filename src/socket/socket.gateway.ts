@@ -17,7 +17,7 @@ export class SocketGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
   afterInit(server: any) {
     this.socketService.socket = server;
-    this.socketService.handleStartGame();
+    this.socketService.init();
   }
 
   handleConnection(client: Socket) {}

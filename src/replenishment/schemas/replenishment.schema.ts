@@ -71,6 +71,6 @@ export class Replenishment {
 export const ReplenishmentSchema = SchemaFactory.createForClass(Replenishment).plugin(autoIncrement.plugin, {
   model: "replenishment-withdrawal",
   field: "uid",
-  startAt: 1,
+  startAt: 10000,
   incrementBy: 1,
 });

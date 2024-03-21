@@ -63,6 +63,6 @@ export class Withdrawal {
 export const WithdrawalSchema = SchemaFactory.createForClass(Withdrawal).plugin(autoIncrement.plugin, {
   model: "replenishment-withdrawal",
   field: "uid",
-  startAt: 1,
+  startAt: 10000,
   incrementBy: 1,
 });

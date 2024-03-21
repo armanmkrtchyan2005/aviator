@@ -3,6 +3,7 @@ import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { User } from "../../user/schemas/user.schema";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Promo } from "src/user/schemas/promo.schema";
+import { Game } from "./game.schema";
 
 export type BetDocument = HydratedDocument<Bet>;
 
@@ -22,6 +23,7 @@ export interface IBet {
   win?: IAmount;
   promo?: Promo;
   user_balance: number;
+  game: Game;
 }
 
 @Schema({ timestamps: { createdAt: true, updatedAt: "last_active_date" } })
@@ -29,10 +31,6 @@ export class Bet {
   @ApiProperty({ type: "object", properties: { USD: { type: "number" }, RUB: { type: "number" } } })
   @Prop({ required: true, type: Object })
   bet: IAmount;
-
-  // @ApiProperty({ example: "USD" })
-  // @Prop({ required: true })
-  // currency: string;
 
   @ApiProperty()
   @Prop({ required: true })
@@ -61,8 +59,9 @@ export class Bet {
   @Prop({ required: true })
   user_balance: number;
 
-  @Prop()
-  game_coeff: number;
+  @ApiProperty()
+  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: Game.name })
+  game: Game;
 }
 
 export const BetSchema = SchemaFactory.createForClass(Bet);

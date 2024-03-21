@@ -9,11 +9,9 @@ import { Admin, AdminSchema } from "src/admin/schemas/admin.schema";
 import { Referral, ReferralSchema } from "src/user/schemas/referral.schema";
 import { Promo, PromoSchema } from "src/user/schemas/promo.schema";
 import { UserPromo, UserPromoSchema } from "src/user/schemas/userPromo.schema";
-import { Coeff, CoeffSchema } from "src/bets/schemas/coeff.schema";
-import { LastGame, LastGameSchema } from "src/bets/schemas/lastGame.schema";
-import { CurrentPlayer, CurrentPlayerSchema } from "src/bets/schemas/currentPlayers.schema";
 import { Replenishment, ReplenishmentSchema } from "src/replenishment/schemas/replenishment.schema";
 import { Session, SessionSchema } from "src/user/schemas/session.schema";
+import { Game, GameSchema } from "src/bets/schemas/game.schema";
 
 @Module({
   imports: [
@@ -24,11 +22,9 @@ import { Session, SessionSchema } from "src/user/schemas/session.schema";
       { name: Bet.name, schema: BetSchema },
       { name: Admin.name, schema: AdminSchema },
       { name: Referral.name, schema: ReferralSchema },
-      { name: Coeff.name, schema: CoeffSchema },
-      { name: LastGame.name, schema: LastGameSchema },
-      { name: CurrentPlayer.name, schema: CurrentPlayerSchema },
       { name: Replenishment.name, schema: ReplenishmentSchema },
       { name: Session.name, schema: SessionSchema },
+      { name: Game.name, schema: GameSchema },
     ]),
     ConvertModule,
   ],
