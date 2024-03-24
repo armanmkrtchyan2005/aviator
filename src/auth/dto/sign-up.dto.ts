@@ -78,5 +78,6 @@ export class SignUpDto {
     required: false,
   })
   @IsNumber({ allowInfinity: false, allowNaN: false }, { message: "from должно быть число" })
+  @IsOptional()
   from: number;
 }

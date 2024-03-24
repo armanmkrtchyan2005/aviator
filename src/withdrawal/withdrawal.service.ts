@@ -10,6 +10,7 @@ import { Admin } from "src/admin/schemas/admin.schema";
 import { ConvertService } from "src/convert/convert.service";
 import { isCreditCard } from "class-validator";
 import { IAmount } from "src/bets/schemas/bet.schema";
+import { Replenishment, ReplenishmentStatusEnum } from "src/replenishment/schemas/replenishment.schema";
 
 @Injectable()
 export class WithdrawalService {
@@ -18,6 +19,7 @@ export class WithdrawalService {
     @InjectModel(User.name) private userModel: Model<User>,
     @InjectModel(Requisite.name) private requisiteModel: Model<Requisite>,
     @InjectModel(Withdrawal.name) private withdrawalModel: Model<Withdrawal>,
+    @InjectModel(Replenishment.name) private replenishmentModel: Model<Replenishment>,
     private convertService: ConvertService,
   ) {}
 
@@ -39,6 +41,25 @@ export class WithdrawalService {
     if (!requisite) {
       throw new NotFoundException({ message: "Реквизит не найден" });
     }
+
+    const [{ total }] = await this.replenishmentModel.aggregate([
+      { $match: { user: user._id, status: ReplenishmentStatusEnum.COMPLETED } },
+      { $group: { _id: null, total: { $sum: `$amount.${user.currency}` } } },
+      {
+        $project: {
+          total: { $divide: ["$total", 2] },
+        },
+      },
+    ]);
+
+    const betAmount = total - user.playedAmount;
+
+    if (!user.isWithdrawalAllowed && betAmount > 0) {
+      throw new BadRequestException(`Для вывода денег вы должны делать ставку как минимум ${betAmount} ${user.currency}`);
+    }
+
+    user.isWithdrawalAllowed = true;
+    user.playedAmount = 0;
 
     const amount: IAmount = {};
 

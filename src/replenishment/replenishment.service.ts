@@ -97,8 +97,6 @@ export class ReplenishmentService {
       throw new BadRequestException(`Сумма не должен бит не меньше чем ${minLimit + user.currency} и не больше чем ${maxLimit + user.currency}`);
     }
 
-    // add sequence
-
     const accountsCount = (await this.accountModel.count({ requisite: requisite._id, balance: { $gte: amount["USDT"] } })) - 1;
 
     if (requisite.accountCount < accountsCount) {

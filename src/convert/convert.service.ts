@@ -22,6 +22,7 @@ export class ConvertService {
     }
 
     const cache = await this.cacheManager.get<object>(from);
+
     if (cache) {
       return amount * cache[to];
     }

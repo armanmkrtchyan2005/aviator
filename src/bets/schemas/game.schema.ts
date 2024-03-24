@@ -2,6 +2,7 @@ import mongoose, { HydratedDocument } from "mongoose";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { ApiProperty } from "@nestjs/swagger";
 import * as autoIncrement from "mongoose-plugin-autoinc";
+import { Exclude } from "class-transformer";
 
 export type GameDocument = HydratedDocument<Game>;
 
@@ -24,6 +25,10 @@ export class Game {
   @ApiProperty()
   @Prop()
   endedAt: Date;
+
+  @Prop()
+  @Exclude()
+  algorithm_id: number;
 }
 
 export const GameSchema = SchemaFactory.createForClass(Game).plugin(autoIncrement.plugin, {

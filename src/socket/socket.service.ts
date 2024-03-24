@@ -15,6 +15,7 @@ import { UserPromo } from "src/user/schemas/userPromo.schema";
 import * as _ from "lodash";
 import { Replenishment, ReplenishmentStatusEnum } from "src/replenishment/schemas/replenishment.schema";
 import { Game, GameDocument } from "src/bets/schemas/game.schema";
+import { Session } from "src/user/schemas/session.schema";
 
 const STOP_DISABLE_MS = 2000;
 const LOADING_MS = 5000;
@@ -73,12 +74,42 @@ export class SocketService {
     @InjectModel(Referral.name) private referralModel: Model<Referral>,
     @InjectModel(Replenishment.name) private replenishmentModel: Model<Replenishment>,
     @InjectModel(Game.name) private gameModel: Model<Game>,
+    @InjectModel(Session.name) private sessionModel: Model<Session>,
     private convertService: ConvertService,
   ) {}
 
-  async handleConnection(client: Socket) {}
+  async handleConnection(client: Socket) {
+    const token = client.handshake?.auth?.token;
 
-  handleDisconnect(socket: Socket): void {}
+    const session = await this.sessionModel.findOne({ token }).populate("user");
+
+    if (!session?.user) {
+      return;
+    }
+
+    const user = await this.userModel.findById(session.user);
+
+    user.active = true;
+
+    await user.save();
+  }
+
+  async handleDisconnect(client: Socket) {
+    const token = client.handshake?.auth?.token;
+
+    const session = await this.sessionModel.findOne({ token }).populate("user");
+
+    if (!session?.user) {
+      return;
+    }
+
+    const user = await this.userModel.findById(session.user);
+
+    user.active = false;
+    user.lastActiveDate = new Date();
+
+    await user.save();
+  }
 
   private async randomOneHourAlgorithm() {
     const admin = await this.adminModel.findOne();
@@ -97,67 +128,67 @@ export class SocketService {
   }
 
   async handleStartGame() {
-    const watcher = this.betModel.watch();
+    // const watcher = this.betModel.watch();
 
-    watcher.on("change", async next => {
-      if (!/insert|update|delete/.test(next.operationType)) {
-        return;
-      }
+    // watcher.on("change", async next => {
+    //   if (!/insert|update|delete/.test(next.operationType)) {
+    //     return;
+    //   }
 
-      const { currencies } = await this.adminModel.findOne();
+    //   const { currencies } = await this.adminModel.findOne();
 
-      const winAmount = {
-        sum: {},
-        project: {},
-      };
+    //   const winAmount = {
+    //     sum: {},
+    //     project: {},
+    //   };
 
-      const betAmount = {
-        sum: {},
-        project: {},
-      };
+    //   const betAmount = {
+    //     sum: {},
+    //     project: {},
+    //   };
 
-      for (let currency of currencies) {
-        const winSumFieldName = `winAmount${currency}`;
-        winAmount.sum[winSumFieldName] = { $sum: `$win.${currency}` };
-        winAmount.project[currency] = "$" + winSumFieldName;
+    //   for (let currency of currencies) {
+    //     const winSumFieldName = `winAmount${currency}`;
+    //     winAmount.sum[winSumFieldName] = { $sum: `$win.${currency}` };
+    //     winAmount.project[currency] = "$" + winSumFieldName;
 
-        const betSumFieldName = `betAmount${currency}`;
-        betAmount.sum[betSumFieldName] = { $sum: `$bet.${currency}` };
-        betAmount.project[currency] = "$" + betSumFieldName;
-      }
+    //     const betSumFieldName = `betAmount${currency}`;
+    //     betAmount.sum[betSumFieldName] = { $sum: `$bet.${currency}` };
+    //     betAmount.project[currency] = "$" + betSumFieldName;
+    //   }
 
-      const bets = await this.betModel.aggregate([
-        { $match: { game: this.betGame._id } },
-        { $lookup: { from: "games", as: "game", localField: "game", foreignField: "_id" } },
-        { $unwind: "$game" },
-        { $sort: { createdAt: -1, "bet.USD": 1 } },
-        {
-          $group: {
-            _id: null,
-            ...winAmount.sum,
-            ...betAmount.sum,
-            currentPlayers: { $push: "$$ROOT" },
-          },
-        },
-        {
-          $project: {
-            _id: 0,
-            winAmount: {
-              ...winAmount.project,
-            },
-            betAmount: {
-              ...betAmount.project,
-            },
-            currentPlayers: 1,
-          },
-        },
-        { $limit: 1 },
-      ]);
+    //   const bets = await this.betModel.aggregate([
+    //     { $match: { game: this.betGame._id } },
+    //     { $lookup: { from: "games", as: "game", localField: "game", foreignField: "_id" } },
+    //     { $unwind: "$game" },
+    //     { $sort: { createdAt: -1, "bet.USD": 1 } },
+    //     {
+    //       $group: {
+    //         _id: null,
+    //         ...winAmount.sum,
+    //         ...betAmount.sum,
+    //         currentPlayers: { $push: "$$ROOT" },
+    //       },
+    //     },
+    //     {
+    //       $project: {
+    //         _id: 0,
+    //         winAmount: {
+    //           ...winAmount.project,
+    //         },
+    //         betAmount: {
+    //           ...betAmount.project,
+    //         },
+    //         currentPlayers: 1,
+    //       },
+    //     },
+    //     { $limit: 1 },
+    //   ]);
 
-      const currentPlayers = bets[0] || { betAmount: {}, winAmount: {}, currentPlayers: [] };
+    //   const currentPlayers = bets[0] || { betAmount: {}, winAmount: {}, currentPlayers: [] };
 
-      this.socket.emit("currentPlayers", currentPlayers);
-    });
+    //   this.socket.emit("currentPlayers", currentPlayers);
+    // });
 
     this.interval = setInterval(() => this.game(), 100);
 
@@ -189,7 +220,7 @@ export class SocketService {
       return new WsException("Ставки сейчас не применяются");
     }
 
-    const user = await this.userModel.findById(userPayload?.id, ["currency", "balance", "bonuses", "login", "profileImage"]);
+    const user = await this.userModel.findById(userPayload?.id, ["currency", "balance", "bonuses", "login", "profileImage", "playedAmount"]);
     const admin = await this.adminModel.findOne({}, ["gameLimits", "algorithms", "currencies", "our_balance"]);
 
     if (!user) {
@@ -221,6 +252,8 @@ export class SocketService {
       }
 
       user.balance -= bet[user.currency];
+
+      user.playedAmount += bet[user.currency];
 
       await user.save();
     } else {
@@ -254,8 +287,8 @@ export class SocketService {
       this.betAmount[key] += bet[key];
     }
 
-    // const currentPlayers = this.currentPlayers.map(({ _id, playerId, promo, ...bet }) => bet).sort((a, b) => b.bet["USD"] - a.bet["USD"]);
-    // this.socket.emit("currentPlayers", { betAmount: this.betAmount, winAmount: this.winAmount, currentPlayers });
+    const currentPlayers = this.currentPlayers.map(({ _id, playerId, promo, ...bet }) => bet).sort((a, b) => b.bet["USD"] - a.bet["USD"]);
+    this.socket.emit("currentPlayers", { betAmount: this.betAmount, winAmount: this.winAmount, currentPlayers });
 
     admin.our_balance += bet["USD"];
 
@@ -294,14 +327,18 @@ export class SocketService {
     await this.betModel.findByIdAndDelete(bet._id);
 
     user.balance += bet.bet[user.currency];
+    user.playedAmount -= bet.bet[user.currency];
+    await user.save();
+
     admin.our_balance -= bet.bet["USD"];
+    await admin.save();
 
     for (let key in this.betAmount) {
       this.betAmount[key] -= bet[key];
     }
 
     this.currentPlayers = this.currentPlayers.filter(player => player._id !== bet._id);
-    // this.socket.emit("currentPlayers", { betAmount: this.betAmount, winAmount: this.winAmount, currentPlayers: this.currentPlayers });
+    this.socket.emit("currentPlayers", { betAmount: this.betAmount, winAmount: this.winAmount, currentPlayers: this.currentPlayers });
 
     return { message: "Ставка отменена" };
   }
@@ -319,7 +356,6 @@ export class SocketService {
     if (betIndex == -1) {
       return new WsException("У вас нет такой ставки");
     }
-    2;
 
     const betData = this.currentPlayers[betIndex];
     if (betData.win) {
@@ -363,11 +399,15 @@ export class SocketService {
       this.winAmount[key] += win[key];
     }
 
-    // const currentPlayers = this.currentPlayers.map(({ _id, playerId, promo, ...bet }) => bet).sort((a, b) => b.bet["USD"] - a.bet["USD"]);
+    const currentPlayers = this.currentPlayers.map(({ _id, playerId, promo, ...bet }) => bet).sort((a, b) => b.bet["USD"] - a.bet["USD"]);
 
-    // this.socket.emit("currentPlayers", { betAmount: this.betAmount, winAmount: this.winAmount, currentPlayers });
+    this.socket.emit("currentPlayers", { betAmount: this.betAmount, winAmount: this.winAmount, currentPlayers });
 
     user.balance += win[user.currency];
+
+    if (x < 1.2) {
+      user.playedAmount -= betData.bet[user.currency];
+    }
 
     await user.save();
 
@@ -535,6 +575,10 @@ export class SocketService {
     const activeAlgorithms = this.algorithms.filter(alg => alg.active && !excludedAlgorithmsId.includes(alg.id));
 
     this.selectedAlgorithmId = _.sample(activeAlgorithms).id;
+
+    this.betGame.algorithm_id = this.selectedAlgorithmId;
+
+    await this.betGame.save();
 
     let totalAmount: number;
     switch (this.selectedAlgorithmId) {

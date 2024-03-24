@@ -30,9 +30,6 @@ export class Replenishment {
   @Prop({ required: true, type: Object })
   amount: IAmount;
 
-  @Prop({ default: false })
-  isWithdrawalAllow: boolean;
-
   @ApiProperty({ properties: { USD: { example: 110 } } })
   @Prop({ required: true, type: Object })
   deduction: IAmount;

@@ -8,6 +8,7 @@ import { Withdrawal, WithdrawalSchema } from "./schemas/withdrawal.schema";
 import { Admin, AdminSchema } from "src/admin/schemas/admin.schema";
 import { ConvertModule } from "src/convert/convert.module";
 import { Session, SessionSchema } from "src/user/schemas/session.schema";
+import { Replenishment, ReplenishmentSchema } from "src/replenishment/schemas/replenishment.schema";
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { Session, SessionSchema } from "src/user/schemas/session.schema";
       { name: User.name, schema: UserSchema },
       { name: Requisite.name, schema: RequisiteSchema },
       { name: Withdrawal.name, schema: WithdrawalSchema },
+      { name: Replenishment.name, schema: ReplenishmentSchema },
       { name: Session.name, schema: SessionSchema },
     ]),
     ConvertModule,

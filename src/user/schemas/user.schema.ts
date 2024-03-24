@@ -57,6 +57,9 @@ export class User {
   @Prop({ required: true, default: 0 })
   balance: number;
 
+  @Prop({ default: 0 })
+  playedAmount: number;
+
   @Prop({ required: true, default: 0 })
   referralBalance: number;
 
@@ -87,8 +90,17 @@ export class User {
   @Prop({ default: false })
   isEmailUpdated: boolean;
 
+  @Prop({ default: true })
+  active: boolean;
+
+  @Prop()
+  lastActiveDate: Date;
+
   @Prop()
   socketId: string;
+
+  @Prop({ default: false })
+  isWithdrawalAllowed: boolean;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User).plugin(autoIncrement.plugin, {
