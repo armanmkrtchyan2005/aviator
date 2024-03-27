@@ -14,6 +14,7 @@ import { ChangePasswordBadResponse, ChangePasswordOkResponse } from "./responses
 import { SignInVerifyDto } from "./dto/sign-in-verify.dto";
 import { SignOutDto } from "./dto/sign-out.dto";
 import { Request } from "express";
+import { SignUpConfirmDto } from "./dto/sign-up-confirm.dto";
 
 @ApiTags("Authentication")
 @Controller("auth")
@@ -26,6 +27,14 @@ export class AuthController {
   @Post("registration")
   signUp(@Body() dto: SignUpDto): Promise<SignUpCreatedResponse> {
     return this.authService.signUp(dto);
+  }
+
+  @ApiCreatedResponse({ description: "User created", type: SignUpCreatedResponse })
+  @ApiBadRequestResponse({ schema: { type: "object", properties: { message: { type: "string" } } } })
+  @HttpCode(HttpStatus.CREATED)
+  @Post("registration/confirm")
+  signUpConfirm(@Body() dto: SignUpConfirmDto): Promise<SignUpCreatedResponse> {
+    return this.authService.signUpConfirm(dto);
   }
 
   @ApiOkResponse({ description: "User successfully logged in", type: SignInOkResponse })

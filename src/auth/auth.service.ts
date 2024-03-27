@@ -24,6 +24,7 @@ import { SignInVerifyDto } from "./dto/sign-in-verify.dto";
 import { Session } from "src/user/schemas/session.schema";
 import { SignOutDto } from "./dto/sign-out.dto";
 import { Request } from "express";
+import { SignUpConfirmDto } from "./dto/sign-up-confirm.dto";
 
 const saltRounds = 10;
 export const salt = bcrypt.genSaltSync(saltRounds);
@@ -41,7 +42,7 @@ export class AuthService {
     private convertService: ConvertService,
   ) {}
 
-  async signUp(dto: SignUpDto): Promise<SignUpCreatedResponse> {
+  async signUp(dto: SignUpDto, isEmailConfirmed?: boolean): Promise<SignUpCreatedResponse> {
     const userEmail = await this.userModel.findOne({
       email: dto.email,
     });
@@ -58,6 +59,19 @@ export class AuthService {
 
     if (userLogin) {
       throw new BadRequestException("Данный логин уже зарегистрирован");
+    }
+
+    if (dto.email && !isEmailConfirmed) {
+      const code = generateCode();
+
+      const token = this.jwtService.sign({ code, email: dto.email }, { expiresIn: 60 * 60 * 2 });
+
+      await this.mailService.sendUserForgotCode({ code, email: dto.email, type: SendEmailType.REGISTRATION });
+
+      return {
+        isEmailToken: true,
+        token,
+      };
     }
 
     if (dto.promocode && !promo) {
@@ -105,8 +119,23 @@ export class AuthService {
     await this.sessionModel.create({ token, user: newUser._id });
 
     return {
+      isEmailToken: false,
       token,
     };
+  }
+
+  async signUpConfirm(dto: SignUpConfirmDto): Promise<SignUpCreatedResponse> {
+    const payload: { code: number; email: string } = this.jwtService.verify(dto.token);
+
+    if (dto.email !== payload.email) {
+      throw new BadRequestException("Неверный код");
+    }
+
+    if (dto.code !== payload.code) {
+      throw new BadRequestException("Неверный код");
+    }
+
+    return await this.signUp(dto, true);
   }
 
   async signIn(dto: SignInDto) {
