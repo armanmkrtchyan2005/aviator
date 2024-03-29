@@ -13,8 +13,7 @@ import { Requisite } from "src/admin/schemas/requisite.schema";
 import { SchedulerRegistry, CronExpression } from "@nestjs/schedule";
 import { CronJob } from "cron";
 import { UserPromo } from "src/user/schemas/userPromo.schema";
-import { PromoType } from "src/user/schemas/promo.schema";
-import { Bonus, CoefParamsType } from "src/user/schemas/bonus.schema";
+import { Bonus } from "src/user/schemas/bonus.schema";
 import * as _ from "lodash";
 import { IAmount } from "src/bets/schemas/bet.schema";
 import { Account } from "src/admin/schemas/account.schema";
@@ -54,11 +53,33 @@ export class ReplenishmentService {
   }
 
   async findAll(userPayload: IAuthPayload) {
-    const replenishments = await this.replenishmentModel
-      .find({
-        user: userPayload.id,
-      })
-      .populate("requisite");
+    // const replenishments = await this.replenishmentModel
+    //   .find({
+    //     user: userPayload.id,
+    //   })
+    //   .populate("requisite");
+
+    const replenishments = await this.replenishmentModel.aggregate([
+      {
+        $match: { user: userPayload.id },
+      },
+      {
+        $lookup: {
+          localField: "account",
+          foreignField: "_id",
+          from: "accounts",
+          as: "account",
+          pipeline: [{ $lookup: { localField: "requisite", foreignField: "_id", from: "requisites", as: "requisite" } }, { $unwind: "$requisite" }],
+        },
+      },
+      { $unwind: "$account" },
+      {
+        $set: {
+          requisite: "$account.requisite",
+        },
+      },
+      { $project: { account: 0 } },
+    ]);
 
     return replenishments;
   }
