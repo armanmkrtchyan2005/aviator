@@ -188,7 +188,7 @@ export class UserController {
     @Req() req: Request,
     @UploadedFile(
       new ParseFilePipe({
-        validators: [new FileTypeValidator({ fileType: /(jpg|jpeg|png|webp|pdf)$/ }), new MaxFileSizeValidator({ maxSize: MAX_FILE_SIZE })],
+        validators: [new FileTypeValidator({ fileType: /(jpg|jpeg|png|webp)$/ }), new MaxFileSizeValidator({ maxSize: MAX_FILE_SIZE })],
         fileIsRequired: true,
       }),
       ProfileImageSharpPipe,
