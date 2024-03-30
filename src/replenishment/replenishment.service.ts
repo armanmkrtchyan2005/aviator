@@ -85,9 +85,32 @@ export class ReplenishmentService {
   }
 
   async findOne(id: string) {
-    const replenishment = await this.replenishmentModel.findById(id).populate("requisite");
+    // const replenishment = await this.replenishmentModel.findById(id).populate("requisite")
 
-    return replenishment;
+    const replenishment = await this.replenishmentModel.aggregate([
+      {
+        $match: { _id: new mongoose.Types.ObjectId(id) },
+      },
+      {
+        $lookup: {
+          localField: "account",
+          foreignField: "_id",
+          from: "accounts",
+          as: "account",
+          pipeline: [{ $lookup: { localField: "requisite", foreignField: "_id", from: "requisites", as: "requisite" } }, { $unwind: "$requisite" }],
+        },
+      },
+      { $unwind: "$account" },
+      {
+        $set: {
+          requisite: "$account.requisite",
+        },
+      },
+      { $project: { account: 0 } },
+      { $limit: 1 },
+    ]);
+
+    return replenishment[0];
   }
 
   async createReplenishment(userPayload: IAuthPayload, dto: CreateReplenishmentDto) {
@@ -111,8 +134,6 @@ export class ReplenishmentService {
       const commission = await this.convertService.convert(admin.commissionCurrency, currency, admin.commission);
       deduction[currency] = amount[currency] + commission;
     }
-
-    console.log(amount);
 
     if (amount[user.currency] < minLimit && amount[user.currency] > maxLimit) {
       throw new BadRequestException(`Сумма не должен бит не меньше чем ${minLimit + user.currency} и не больше чем ${maxLimit + user.currency}`);
@@ -197,14 +218,15 @@ export class ReplenishmentService {
 
     await replenishment.save();
 
-    this.schedulerRegistry.deleteCronJob(dto.id);
+    try {
+      this.schedulerRegistry.deleteCronJob(dto.id);
+    } catch (error) {}
 
     return { message: "Пополнение отменена" };
   }
 
   async confirmReplenishment(dto: ConfirmReplenishmentDto) {
     const replenishment = await this.replenishmentModel.findById(dto.id).populate("requisite");
-    console.log(replenishment);
 
     if (replenishment.status !== ReplenishmentStatusEnum.PENDING) {
       throw new BadRequestException("Эту заявку вы уже подтвердили");
@@ -215,7 +237,9 @@ export class ReplenishmentService {
 
     await replenishment.save();
 
-    this.schedulerRegistry.deleteCronJob(dto.id);
+    try {
+      this.schedulerRegistry.deleteCronJob(dto.id);
+    } catch (error) {}
 
     return { message: "Оплата подтверждена" };
   }

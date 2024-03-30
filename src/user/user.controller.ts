@@ -49,7 +49,7 @@ import { FindReferralsByDayDto } from "./dto/findReferralsByDay.dto";
 import { GetPromosDto } from "./dto/getPromos.dto";
 import { Promo } from "./schemas/promo.schema";
 import { GameLimits } from "src/admin/schemas/admin.schema";
-import { SharpPipe } from "src/pipes/sharp.pipe";
+import { ProfileImageSharpPipe } from "src/pipes/profile-image-sharp.pipe";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 1mb
 
@@ -188,10 +188,10 @@ export class UserController {
     @Req() req: Request,
     @UploadedFile(
       new ParseFilePipe({
-        validators: [new FileTypeValidator({ fileType: /(jpg|jpeg|png|webp)$/ }), new MaxFileSizeValidator({ maxSize: MAX_FILE_SIZE })],
+        validators: [new FileTypeValidator({ fileType: /(jpg|jpeg|png|webp|pdf)$/ }), new MaxFileSizeValidator({ maxSize: MAX_FILE_SIZE })],
         fileIsRequired: true,
       }),
-      SharpPipe,
+      ProfileImageSharpPipe,
     )
     file: string,
   ) {

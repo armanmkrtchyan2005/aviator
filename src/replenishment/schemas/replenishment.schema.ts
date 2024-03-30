@@ -51,7 +51,7 @@ export class Replenishment {
 
   @ApiProperty({ type: AccountRequisite })
   @Prop({ required: true, type: mongoose.Schema.Types.ObjectId, ref: AccountRequisite.name })
-  requisite: AccountRequisiteDocument;
+  requisite: AccountRequisiteDocument | any;
 
   @ApiProperty()
   @Prop({ required: true, default: Date.now() })
