@@ -1,5 +1,5 @@
 import { WsException } from "@nestjs/websockets";
-import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { Socket } from "socket.io";
@@ -13,9 +13,10 @@ import { Admin, IAlgorithms } from "src/admin/schemas/admin.schema";
 import { Referral } from "src/user/schemas/referral.schema";
 import { UserPromo } from "src/user/schemas/userPromo.schema";
 import * as _ from "lodash";
-import { Replenishment, ReplenishmentStatusEnum } from "src/replenishment/schemas/replenishment.schema";
 import { Game, GameDocument } from "src/bets/schemas/game.schema";
 import { Session } from "src/user/schemas/session.schema";
+import { generateUsername } from "unique-username-generator";
+import { SchedulerRegistry } from "@nestjs/schedule";
 
 const STOP_DISABLE_MS = 2000;
 const LOADING_MS = 5000;
@@ -28,6 +29,8 @@ function sleep(ms: number = 0) {
 
 @Injectable()
 export class SocketService {
+  private npcLength: number;
+
   private betGame: GameDocument = null;
 
   private currentPlayers: IBet[] = [];
@@ -72,13 +75,16 @@ export class SocketService {
     @InjectModel(UserPromo.name) private userPromoModel: Model<UserPromo>,
     @InjectModel(Admin.name) private adminModel: Model<Admin>,
     @InjectModel(Referral.name) private referralModel: Model<Referral>,
-    @InjectModel(Replenishment.name) private replenishmentModel: Model<Replenishment>,
     @InjectModel(Game.name) private gameModel: Model<Game>,
     @InjectModel(Session.name) private sessionModel: Model<Session>,
+    private schedulerRegistry: SchedulerRegistry,
     private convertService: ConvertService,
   ) {}
 
   async handleConnection(client: Socket) {
+    const currentPlayers = this.currentPlayers.map(({ _id, playerId, promo, ...bet }) => bet).sort((a, b) => b.bet["USD"] - a.bet["USD"]);
+    this.socket.emit("currentPlayers", { betAmount: this.betAmount, winAmount: this.winAmount, currentPlayers });
+
     const token = client.handshake?.auth?.token;
 
     const session = await this.sessionModel.findOne({ token }).populate("user");
@@ -128,68 +134,6 @@ export class SocketService {
   }
 
   async handleStartGame() {
-    // const watcher = this.betModel.watch();
-
-    // watcher.on("change", async next => {
-    //   if (!/insert|update|delete/.test(next.operationType)) {
-    //     return;
-    //   }
-
-    //   const { currencies } = await this.adminModel.findOne();
-
-    //   const winAmount = {
-    //     sum: {},
-    //     project: {},
-    //   };
-
-    //   const betAmount = {
-    //     sum: {},
-    //     project: {},
-    //   };
-
-    //   for (let currency of currencies) {
-    //     const winSumFieldName = `winAmount${currency}`;
-    //     winAmount.sum[winSumFieldName] = { $sum: `$win.${currency}` };
-    //     winAmount.project[currency] = "$" + winSumFieldName;
-
-    //     const betSumFieldName = `betAmount${currency}`;
-    //     betAmount.sum[betSumFieldName] = { $sum: `$bet.${currency}` };
-    //     betAmount.project[currency] = "$" + betSumFieldName;
-    //   }
-
-    //   const bets = await this.betModel.aggregate([
-    //     { $match: { game: this.betGame._id } },
-    //     { $lookup: { from: "games", as: "game", localField: "game", foreignField: "_id" } },
-    //     { $unwind: "$game" },
-    //     { $sort: { createdAt: -1, "bet.USD": 1 } },
-    //     {
-    //       $group: {
-    //         _id: null,
-    //         ...winAmount.sum,
-    //         ...betAmount.sum,
-    //         currentPlayers: { $push: "$$ROOT" },
-    //       },
-    //     },
-    //     {
-    //       $project: {
-    //         _id: 0,
-    //         winAmount: {
-    //           ...winAmount.project,
-    //         },
-    //         betAmount: {
-    //           ...betAmount.project,
-    //         },
-    //         currentPlayers: 1,
-    //       },
-    //     },
-    //     { $limit: 1 },
-    //   ]);
-
-    //   const currentPlayers = bets[0] || { betAmount: {}, winAmount: {}, currentPlayers: [] };
-
-    //   this.socket.emit("currentPlayers", currentPlayers);
-    // });
-
     this.interval = setInterval(() => this.game(), 100);
 
     // 6. random one hour algorithm
@@ -516,6 +460,12 @@ export class SocketService {
   private async loading() {
     clearInterval(this.interval);
 
+    for (let i = 0; i < this.npcLength; i++) {
+      try {
+        this.schedulerRegistry.deleteInterval(`bot-${i}`);
+      } catch (error) {}
+    }
+
     this.socket.emit("crash");
     const game_coeff = +this.x.toFixed(2);
 
@@ -562,6 +512,59 @@ export class SocketService {
     this.isBetWait = false;
 
     this.socket.emit("loading");
+    this.npcLength = _.random(admin.bots.count.min, admin.bots.count.max); // stanal tvery bazaic
+    for (let i = 0; i < this.npcLength; i++) {
+      setTimeout(async () => {
+        const bet: IAmount = {};
+
+        for (const currency of admin.currencies) {
+          bet[currency] = await this.convertService.convert("USD", currency, _.random(admin.bots.betAmount.min, admin.bots.betAmount.max)); // stanal tvery bazaic
+        }
+        const bot: IBet = {
+          bet,
+          betNumber: 1,
+          game: this.betGame,
+          playerId: "",
+          playerLogin: generateUsername("", 4, 30),
+          profileImage: "",
+          time: new Date(),
+          user_balance: 0,
+        };
+        this.currentPlayers.push(bot);
+
+        for (let key in this.betAmount) {
+          this.betAmount[key] += bet[key];
+        }
+
+        const currentPlayers = this.currentPlayers.map(({ _id, playerId, promo, ...bet }) => bet).sort((a, b) => b.bet["USD"] - a.bet["USD"]);
+        for (let key in this.betAmount) {
+          this.betAmount[key] += bet[key];
+        }
+
+        const winCoeff = _.random(admin.bots.coeff.min, admin.bots.coeff.max, true);
+
+        const intervalId = setInterval(() => {
+          if (this.x >= winCoeff) {
+            bot.coeff = this.x;
+            bot.win = {};
+
+            for (let key in this.betAmount) {
+              bot.win[key] = bet[key] * this.x;
+              this.winAmount[key] += bot.win[key];
+            }
+
+            const currentPlayers = this.currentPlayers.map(({ _id, playerId, promo, ...bet }) => bet).sort((a, b) => b.bet["USD"] - a.bet["USD"]);
+            this.socket.emit("currentPlayers", { betAmount: this.betAmount, winAmount: this.winAmount, currentPlayers });
+
+            this.schedulerRegistry.deleteInterval(`bot-${i}`);
+          }
+        }, 100);
+
+        this.schedulerRegistry.addInterval(`bot-${i}`, intervalId);
+
+        this.socket.emit("currentPlayers", { betAmount: this.betAmount, winAmount: this.winAmount, currentPlayers });
+      }, 50 * i);
+    }
 
     await sleep(LOADING_MS);
     this.isBetWait = true;

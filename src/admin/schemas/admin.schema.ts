@@ -12,6 +12,21 @@ export interface IAlgorithms {
   used_count: number;
 }
 
+interface IBots {
+  count: {
+    min: number;
+    max: number;
+  };
+  betAmount: {
+    min: number;
+    max: number;
+  };
+  coeff: {
+    min: number;
+    max: number;
+  };
+}
+
 interface IAdmin_panel_data {
   id: number;
   login: string;
@@ -75,6 +90,9 @@ export class Admin {
 
   @Prop({ default: 0 })
   our_balance: number;
+
+  @Prop({ required: true, type: Object })
+  bots: IBots;
 }
 
 export const AdminSchema = SchemaFactory.createForClass(Admin);
