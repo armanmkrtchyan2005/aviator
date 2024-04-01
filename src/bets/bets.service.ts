@@ -64,8 +64,10 @@ export class BetsService {
           },
         },
         { $lookup: { from: "users", localField: "playerId", foreignField: "_id", as: "player" } },
-        { $unwind: "$player" },
-        { $set: { profileImage: "$player.profileImage", playerLogin: "$player.login" } },
+        { $unwind: { path: "$player", preserveNullAndEmptyArrays: true } },
+        { $lookup: { from: "games", localField: "game", foreignField: "_id", as: "game" } },
+        { $unwind: "$game" },
+        { $set: { profileImage: "$player.profileImage", game_coeff: "$game.game_coeff" } },
         { $project: { player: 0 } },
       ])
       .limit(limit);

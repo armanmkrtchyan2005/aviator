@@ -152,7 +152,6 @@ export class AdminService {
   async confirmReplenishment(account: AccountDocument, id: string) {
     account = await account.populate("requisite");
 
-    const admin = await this.adminModel.findOne({}, ["manual_methods_balance"]);
     const replenishment = await this.replenishmentModel.findOne({ _id: id, account: account._id }).populate(["user", "requisite"]);
 
     if (!replenishment) {
@@ -183,13 +182,11 @@ export class AdminService {
     await replenishment.requisite.save();
     await account.save();
 
-    await admin.save();
-
     return { message: "Заявка подтверждена" };
   }
 
   async cancelReplenishment(account: Account, id: string, dto: CancelReplenishmentDto) {
-    const replenishment = await this.replenishmentModel.findOne({ _id: id, requisite: account.requisite }).populate("user");
+    const replenishment = await this.replenishmentModel.findOne({ _id: id, account: account._id }).populate("user");
 
     if (!replenishment) {
       throw new NotFoundException("Нет такой заявки");

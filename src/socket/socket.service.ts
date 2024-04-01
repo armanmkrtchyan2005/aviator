@@ -1,7 +1,7 @@
 import { WsException } from "@nestjs/websockets";
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import { Model } from "mongoose";
+import mongoose, { Model } from "mongoose";
 import { Socket } from "socket.io";
 import { IAuthPayload } from "src/auth/auth.guard";
 import { ConvertService } from "src/convert/convert.service";
@@ -12,11 +12,11 @@ import { CashOutDto } from "./dto/cashOut.dto";
 import { Admin, IAlgorithms } from "src/admin/schemas/admin.schema";
 import { Referral } from "src/user/schemas/referral.schema";
 import { UserPromo } from "src/user/schemas/userPromo.schema";
-import * as _ from "lodash";
 import { Game, GameDocument } from "src/bets/schemas/game.schema";
 import { Session } from "src/user/schemas/session.schema";
 import { generateUsername } from "unique-username-generator";
 import { SchedulerRegistry } from "@nestjs/schedule";
+import * as _ from "lodash";
 
 const STOP_DISABLE_MS = 2000;
 const LOADING_MS = 5000;
@@ -149,7 +149,7 @@ export class SocketService {
     // 4. ----------
     if (this.selectedAlgorithmId === 4) {
       if (this.x > 1.9 && this.x < 2.2) {
-        this.threePlayers = _.sampleSize(this.threePlayers, 3);
+        this.threePlayers = _.sampleSize(this.currentPlayers, 3);
         this.random = _.random(110, true);
       }
     }
@@ -520,16 +520,20 @@ export class SocketService {
         for (const currency of admin.currencies) {
           bet[currency] = await this.convertService.convert("USD", currency, _.random(admin.bots.betAmount.min, admin.bots.betAmount.max)); // stanal tvery bazaic
         }
+
         const bot: IBet = {
           bet,
           betNumber: 1,
           game: this.betGame,
-          playerId: "",
+          playerId: new mongoose.Types.ObjectId().toString(),
           playerLogin: generateUsername("", 4, 30),
           profileImage: "",
           time: new Date(),
           user_balance: 0,
         };
+
+        const botBet = await this.betModel.create(bot);
+
         this.currentPlayers.push(bot);
 
         for (let key in this.betAmount) {
@@ -543,8 +547,10 @@ export class SocketService {
 
         const winCoeff = _.random(admin.bots.coeff.min, admin.bots.coeff.max, true);
 
-        const intervalId = setInterval(() => {
+        const intervalId = setInterval(async () => {
           if (this.x >= winCoeff) {
+            this.schedulerRegistry.deleteInterval(`bot-${i}`);
+
             bot.coeff = this.x;
             bot.win = {};
 
@@ -556,7 +562,10 @@ export class SocketService {
             const currentPlayers = this.currentPlayers.map(({ _id, playerId, promo, ...bet }) => bet).sort((a, b) => b.bet["USD"] - a.bet["USD"]);
             this.socket.emit("currentPlayers", { betAmount: this.betAmount, winAmount: this.winAmount, currentPlayers });
 
-            this.schedulerRegistry.deleteInterval(`bot-${i}`);
+            botBet.coeff = bot.coeff;
+            botBet.win = bot.win;
+
+            await botBet.save();
           }
         }, 100);
 
@@ -579,6 +588,8 @@ export class SocketService {
 
     this.selectedAlgorithmId = _.sample(activeAlgorithms).id;
 
+    console.log(this.selectedAlgorithmId);
+
     this.betGame.algorithm_id = this.selectedAlgorithmId;
 
     await this.betGame.save();
@@ -587,7 +598,8 @@ export class SocketService {
     switch (this.selectedAlgorithmId) {
       //1. 3 player algorithm loading
       case 1:
-        this.threePlayers = _.sampleSize(this.threePlayers, 3);
+        this.threePlayers = _.sampleSize(this.currentPlayers, 3);
+
         this.random = _.random(80, 110, true);
         break;
 
