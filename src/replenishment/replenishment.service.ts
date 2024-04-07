@@ -8,7 +8,6 @@ import { Admin } from "src/admin/schemas/admin.schema";
 import { IAuthPayload } from "src/auth/auth.guard";
 import { ConvertService } from "src/convert/convert.service";
 import { CancelReplenishmentDto } from "./dto/cancel-replenishment.dto";
-import { ConfirmReplenishmentDto } from "./dto/confirm-replenishment.dto";
 import { Requisite } from "src/admin/schemas/requisite.schema";
 import { SchedulerRegistry, CronExpression } from "@nestjs/schedule";
 import { CronJob } from "cron";
@@ -17,6 +16,9 @@ import { Bonus } from "src/user/schemas/bonus.schema";
 import * as _ from "lodash";
 import { IAmount } from "src/bets/schemas/bet.schema";
 import { Account } from "src/admin/schemas/account.schema";
+import { Request } from "express";
+import { ReplenishmentFilePipe } from "./pipes/replenishment-file.pipe";
+import { AccountRequisiteDocument } from "src/admin/schemas/account-requisite.schema";
 
 @Injectable()
 export class ReplenishmentService {
@@ -32,13 +34,12 @@ export class ReplenishmentService {
     private convertService: ConvertService,
   ) {}
 
-  async findLimits(userPayload: IAuthPayload) {
+  async findLimits(userPayload: IAuthPayload, id: string) {
+    const requisite = await this.requisiteModel.findById(id);
     const user = await this.userModel.findById(userPayload.id, ["currency"]);
 
-    const admin = await this.adminModel.findOne({}, ["minLimit", "maxLimit"]);
-
-    const minLimit = await this.convertService.convert(admin.minLimit.currency, user.currency, admin.minLimit.amount);
-    const maxLimit = await this.convertService.convert(admin.maxLimit.currency, user.currency, admin.maxLimit.amount);
+    const minLimit = requisite.replenishmentLimit.min[user.currency];
+    const maxLimit = requisite.replenishmentLimit.min[user.currency];
 
     return { minLimit, maxLimit, currency: user.currency };
   }
@@ -53,64 +54,64 @@ export class ReplenishmentService {
   }
 
   async findAll(userPayload: IAuthPayload) {
-    // const replenishments = await this.replenishmentModel
-    //   .find({
-    //     user: userPayload.id,
-    //   })
-    //   .populate("requisite");
-
-    const replenishments = await this.replenishmentModel.aggregate([
-      {
-        $match: { user: userPayload.id },
-      },
-      {
-        $lookup: {
-          localField: "account",
-          foreignField: "_id",
-          from: "accounts",
-          as: "account",
-          pipeline: [{ $lookup: { localField: "requisite", foreignField: "_id", from: "requisites", as: "requisite" } }, { $unwind: "$requisite" }],
-        },
-      },
-      { $unwind: "$account" },
-      {
-        $set: {
-          requisite: "$account.requisite",
-        },
-      },
-      { $project: { account: 0 } },
-    ]);
+    const replenishments = await this.replenishmentModel
+      .find({
+        user: userPayload.id,
+      })
+      .populate(["requisite", "method"]);
 
     return replenishments;
+
+    // const replenishments = await this.replenishmentModel.aggregate([
+    //   {
+    //     $match: { user: userPayload.id },
+    //   },
+    //   {
+    //     $lookup: {
+    //       localField: "account",
+    //       foreignField: "_id",
+    //       from: "accounts",
+    //       as: "account",
+    //       pipeline: [{ $lookup: { localField: "requisite", foreignField: "_id", from: "requisites", as: "requisite" } }, { $unwind: "$requisite" }],
+    //     },
+    //   },
+    //   { $unwind: "$account" },
+    //   {
+    //     $set: {
+    //       method: "$account.requisite",
+    //     },
+    //   },
+    //   { $project: { account: 0 } },
+    // ]);
   }
 
   async findOne(id: string) {
-    // const replenishment = await this.replenishmentModel.findById(id).populate("requisite")
+    const replenishment = await this.replenishmentModel.findById(id).populate(["requisite", "method"]);
 
-    const replenishment = await this.replenishmentModel.aggregate([
-      {
-        $match: { _id: new mongoose.Types.ObjectId(id) },
-      },
-      {
-        $lookup: {
-          localField: "account",
-          foreignField: "_id",
-          from: "accounts",
-          as: "account",
-          pipeline: [{ $lookup: { localField: "requisite", foreignField: "_id", from: "requisites", as: "requisite" } }, { $unwind: "$requisite" }],
-        },
-      },
-      { $unwind: "$account" },
-      {
-        $set: {
-          requisite: "$account.requisite",
-        },
-      },
-      { $project: { account: 0 } },
-      { $limit: 1 },
-    ]);
+    return replenishment;
 
-    return replenishment[0];
+    // const replenishment = await this.replenishmentModel.aggregate([
+    //   {
+    //     $match: { _id: new mongoose.Types.ObjectId(id) },
+    //   },
+    //   {
+    //     $lookup: {
+    //       localField: "account",
+    //       foreignField: "_id",
+    //       from: "accounts",
+    //       as: "account",
+    //       pipeline: [{ $lookup: { localField: "requisite", foreignField: "_id", from: "requisites", as: "requisite" } }, { $unwind: "$requisite" }],
+    //     },
+    //   },
+    //   { $unwind: "$account" },
+    //   {
+    //     $set: {
+    //       requisite: "$account.requisite",
+    //     },
+    //   },
+    //   { $project: { account: 0 } },
+    //   { $limit: 1 },
+    // ]);
   }
 
   async createReplenishment(userPayload: IAuthPayload, dto: CreateReplenishmentDto) {
@@ -123,8 +124,8 @@ export class ReplenishmentService {
       throw new NotFoundException("Реквизит не найден");
     }
 
-    const minLimit = await this.convertService.convert(admin.minLimit.currency, user.currency, admin.minLimit.amount);
-    const maxLimit = await this.convertService.convert(admin.maxLimit.currency, user.currency, admin.maxLimit.amount);
+    const minLimit = requisite.replenishmentLimit.min[user.currency];
+    const maxLimit = requisite.replenishmentLimit.max[user.currency];
 
     const amount: IAmount = {};
     const deduction: IAmount = {};
@@ -191,8 +192,8 @@ export class ReplenishmentService {
     await replenishmentRequisite.save();
 
     const replenishment = await (
-      await this.replenishmentModel.create({ ...dto, deduction, user: user._id, amount, account: account._id, requisite: replenishmentRequisite })
-    ).populate("requisite");
+      await this.replenishmentModel.create({ ...dto, deduction, user: user._id, amount, account: account._id, requisite: replenishmentRequisite, method: requisite })
+    ).populate(["requisite", "method"]);
 
     const job = new CronJob(CronExpression.EVERY_30_MINUTES, async () => {
       console.log("Time out");
@@ -225,22 +226,59 @@ export class ReplenishmentService {
     return { message: "Пополнение отменена" };
   }
 
-  async confirmReplenishment(dto: ConfirmReplenishmentDto) {
-    const replenishment = await this.replenishmentModel.findById(dto.id).populate("requisite");
+  async confirmReplenishment(id: string, receiptFile: Express.Multer.File) {
+    const replenishment = await this.replenishmentModel.findById(id).populate("requisite");
+
+    const requisite = replenishment.requisite as AccountRequisiteDocument;
 
     if (replenishment.status !== ReplenishmentStatusEnum.PENDING) {
       throw new BadRequestException("Эту заявку вы уже подтвердили");
     }
 
+    if (requisite.isReceiptFileRequired && !receiptFile) {
+      throw new BadRequestException("квитанция об оплате обязательна");
+    }
+
+    if (requisite.isCardFileRequired && !replenishment.card) {
+      throw new BadRequestException("Карта обязательна");
+    }
+
+    let receipt = await new ReplenishmentFilePipe().transform(receiptFile);
+
     replenishment.status = ReplenishmentStatusEnum.PROCESSING;
     replenishment.isPayConfirmed = true;
+    replenishment.receipt = receipt;
 
     await replenishment.save();
 
     try {
-      this.schedulerRegistry.deleteCronJob(dto.id);
+      this.schedulerRegistry.deleteCronJob(id);
     } catch (error) {}
 
     return { message: "Оплата подтверждена" };
+  }
+
+  async verifyReplenishment(id: string, cardFile: Express.Multer.File) {
+    const replenishment = await this.replenishmentModel.findById(id).populate("requisite");
+
+    const requisite = replenishment.requisite as AccountRequisiteDocument;
+
+    if (!requisite.isCardFileRequired) {
+      return { message: "" };
+    }
+
+    if (!cardFile) {
+      throw new BadRequestException("Карта обязательна");
+    }
+
+    const card = await new ReplenishmentFilePipe().transform(cardFile);
+
+    replenishment.card = card;
+
+    replenishment.createdAt = new Date();
+
+    await replenishment.save();
+
+    return { message: "Карта добавлена" };
   }
 }

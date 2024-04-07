@@ -1,6 +1,7 @@
 import mongoose, { HydratedDocument } from "mongoose";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { ApiProperty } from "@nestjs/swagger";
+import { IAmount } from "src/bets/schemas/bet.schema";
 
 export type AdminDocument = HydratedDocument<Admin>;
 
@@ -25,6 +26,7 @@ interface IBots {
     min: number;
     max: number;
   };
+  active: boolean;
 }
 
 interface IAdmin_panel_data {
@@ -33,23 +35,15 @@ interface IAdmin_panel_data {
   password: string;
 }
 
-interface IReplenishmentLimit {
-  amount: number;
-  currency: string;
-}
-
 export class GameLimits {
   @ApiProperty()
-  min: number;
+  min: IAmount;
 
   @ApiProperty()
-  max: number;
+  max: IAmount;
 
   @ApiProperty()
-  maxWin: number;
-
-  @ApiProperty({ example: "UZS" })
-  currency: string;
+  maxWin: IAmount;
 }
 
 @Schema()
@@ -63,12 +57,6 @@ export class Admin {
 
   @Prop({ default: [] })
   algorithms: IAlgorithms[];
-
-  @Prop({ type: Object, required: true, default: { amount: 10_000, currency: "UZS" } })
-  minLimit: IReplenishmentLimit;
-
-  @Prop({ type: Object, required: true, default: { amount: 2_000_000, currency: "UZS" } })
-  maxLimit: IReplenishmentLimit;
 
   @Prop({ required: true, default: 1000 * 60 * 30 })
   timeForPay: number;

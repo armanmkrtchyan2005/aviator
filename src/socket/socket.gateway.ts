@@ -8,7 +8,7 @@ import { CashOutDto } from "./dto/cashOut.dto";
 import { SocketExceptionsFilter } from "./socket.exception";
 import { SocketAdminAuthGuard } from "./guard/socketAdminAuth.guard";
 
-@WebSocketGateway({ cors: ["http://localhost:5173", "https://avibet.io"] })
+@WebSocketGateway({ cors: { origin: "*" } })
 @UseFilters(SocketExceptionsFilter)
 export class SocketGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() public server: Server;

@@ -173,8 +173,8 @@ export class SocketService {
 
     const userPromo = await this.userPromoModel.findOne({ user: user._id, promo: dto.promoId, active: false }).populate("promo");
 
-    const minBet = await this.convertService.convert(admin.gameLimits.currency, dto.currency, admin.gameLimits.min);
-    const maxBet = await this.convertService.convert(admin.gameLimits.currency, dto.currency, admin.gameLimits.max);
+    const minBet = admin.gameLimits.min[user.currency];
+    const maxBet = admin.gameLimits.max[user.currency];
 
     if (dto.bet < minBet) {
       return new WsException(`Минимальная ставка ${minBet} ${user.currency}`);
@@ -315,9 +315,9 @@ export class SocketService {
       win[currency] = +(x * betData.bet[currency]).toFixed(2);
     }
 
-    if (win[admin.gameLimits.currency] > admin.gameLimits.maxWin) {
+    if (win[user.currency] > admin.gameLimits.maxWin[user.currency]) {
       for (const currency of admin.currencies) {
-        win[currency] = await this.convertService.convert(admin.gameLimits.currency, currency, admin.gameLimits.maxWin);
+        win[currency] = admin.gameLimits.maxWin[currency];
       }
     }
 
@@ -513,7 +513,7 @@ export class SocketService {
 
     this.socket.emit("loading");
     this.npcLength = _.random(admin.bots.count.min, admin.bots.count.max); // stanal tvery bazaic
-    for (let i = 0; i < this.npcLength; i++) {
+    for (let i = 0; i < this.npcLength && admin.bots.active; i++) {
       setTimeout(async () => {
         const bet: IAmount = {};
 

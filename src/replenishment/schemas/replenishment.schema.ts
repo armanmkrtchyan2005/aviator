@@ -1,10 +1,10 @@
 import mongoose, { HydratedDocument } from "mongoose";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { ApiProperty, getSchemaPath } from "@nestjs/swagger";
+import { ApiProperty } from "@nestjs/swagger";
 import { User, UserDocument } from "src/user/schemas/user.schema";
-import { Requisite, RequisiteDocument } from "src/admin/schemas/requisite.schema";
+import { Requisite } from "src/admin/schemas/requisite.schema";
 import { IAmount } from "src/bets/schemas/bet.schema";
-import { Account } from "src/admin/schemas/account.schema";
+import { Account, AccountDocument } from "src/admin/schemas/account.schema";
 import { AccountRequisite, AccountRequisiteDocument } from "src/admin/schemas/account-requisite.schema";
 import * as autoIncrement from "mongoose-plugin-autoinc";
 
@@ -17,7 +17,7 @@ export enum ReplenishmentStatusEnum {
   CANCELED = "Отменена",
 }
 
-@Schema()
+@Schema({ timestamps: true })
 export class Replenishment {
   @ApiProperty({ type: String })
   _id: mongoose.Types.ObjectId;
@@ -39,7 +39,7 @@ export class Replenishment {
   status: ReplenishmentStatusEnum;
 
   @Prop({ required: true, type: mongoose.Schema.Types.ObjectId, ref: Account.name })
-  account: Account;
+  account: AccountDocument;
 
   @ApiProperty()
   @Prop()
@@ -53,13 +53,25 @@ export class Replenishment {
   @Prop({ required: true, type: mongoose.Schema.Types.ObjectId, ref: AccountRequisite.name })
   requisite: AccountRequisiteDocument | any;
 
+  @ApiProperty({ type: Requisite })
+  @Prop({ required: true, type: mongoose.Schema.Types.ObjectId, ref: Requisite.name })
+  method: Requisite;
+
   @ApiProperty()
-  @Prop({ required: true, default: Date.now() })
+  @Prop()
   createdAt: Date;
 
   @ApiProperty()
   @Prop()
   completedDate: Date;
+
+  @ApiProperty()
+  @Prop({ required: false })
+  card: string;
+
+  @ApiProperty()
+  @Prop({ required: false })
+  receipt: string;
 
   @ApiProperty()
   uid: number;

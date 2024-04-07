@@ -52,9 +52,9 @@ export class UserService {
     const user = await this.userModel.findById(authPayload.id);
 
     const { gameLimits } = await this.adminModel.findOne({}, ["gameLimits"]);
-    const min = await this.convertService.convert(gameLimits.currency, user.currency, gameLimits.min);
-    const max = await this.convertService.convert(gameLimits.currency, user.currency, gameLimits.max);
-    const maxWin = await this.convertService.convert(gameLimits.currency, user.currency, gameLimits.maxWin);
+    const min = gameLimits.min[user.currency];
+    const max = gameLimits.max[user.currency];
+    const maxWin = gameLimits.maxWin[user.currency];
 
     return { min, max, maxWin, currency: user.currency };
   }

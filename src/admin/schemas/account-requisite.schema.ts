@@ -54,6 +54,14 @@ export class AccountRequisite {
 
   @ApiProperty()
   updatedAt: Date;
+
+  @ApiProperty()
+  @Prop({ default: false })
+  isCardFileRequired: boolean;
+
+  @ApiProperty()
+  @Prop({ default: false })
+  isReceiptFileRequired: boolean;
 }
 
 export const AccountRequisiteSchema = SchemaFactory.createForClass(AccountRequisite);

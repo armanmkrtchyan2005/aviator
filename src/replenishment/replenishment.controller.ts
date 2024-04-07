@@ -1,15 +1,17 @@
-import { Controller, Get, Post, Body, Param, Req, Put } from "@nestjs/common";
+import { Controller, Get, Post, Body, Param, Req, Put, UseInterceptors, UploadedFile, ParseFilePipe, FileTypeValidator, MaxFileSizeValidator } from "@nestjs/common";
 import { ReplenishmentService } from "./replenishment.service";
 import { CreateReplenishmentDto } from "./dto/create-replenishment.dto";
 import { Auth } from "src/auth/decorators/auth.decorator";
 import { Request } from "express";
 import { CancelReplenishmentDto } from "./dto/cancel-replenishment.dto";
-import { ConfirmReplenishmentDto } from "./dto/confirm-replenishment.dto";
-import { ApiBadRequestResponse, ApiCreatedResponse, ApiOkResponse, ApiTags, getSchemaPath } from "@nestjs/swagger";
+import { ApiBadRequestResponse, ApiBody, ApiConsumes, ApiCreatedResponse, ApiOkResponse, ApiTags, getSchemaPath } from "@nestjs/swagger";
 import { Replenishment } from "./schemas/replenishment.schema";
 import { CancelReplenishmentBadResponse, CancelReplenishmentResponse, ConfirmReplenishmentResponse } from "./responses/replenishment.response";
 import { LimitsOkResponse } from "./responses/limits.response";
 import { CommissionOkResponse } from "./responses/commission.response";
+import { FileInterceptor } from "@nestjs/platform-express";
+
+const MAX_FILE_SIZE = 1024 * 1024 * 3; // 3mb
 
 @Auth()
 @ApiTags("Replenishments")
@@ -20,9 +22,9 @@ export class ReplenishmentController {
   @ApiOkResponse({
     type: LimitsOkResponse,
   })
-  @Get("/limits")
-  findLimits(@Req() req: Request) {
-    return this.replenishmentService.findLimits(req["user"]);
+  @Get("/limits/:id")
+  findLimits(@Param("id") id: string, @Req() req: Request) {
+    return this.replenishmentService.findLimits(req["user"], id);
   }
 
   @ApiOkResponse({ type: CommissionOkResponse })
@@ -61,8 +63,60 @@ export class ReplenishmentController {
   }
 
   @ApiOkResponse({ type: ConfirmReplenishmentResponse })
+  @ApiConsumes("multipart/form-data")
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: {
+        receipt: {
+          type: "string",
+          format: "binary",
+        },
+      },
+    },
+  })
+  @UseInterceptors(FileInterceptor("receipt"))
   @Put("/confirm/:id")
-  confirm(@Param() dto: ConfirmReplenishmentDto) {
-    return this.replenishmentService.confirmReplenishment(dto);
+  async confirm(
+    @Param("id") id: string,
+    @UploadedFile(
+      "receipt",
+      new ParseFilePipe({
+        validators: [new FileTypeValidator({ fileType: /(jpg|jpeg|png|webp|pdf)$/ }), new MaxFileSizeValidator({ maxSize: MAX_FILE_SIZE })],
+        fileIsRequired: false,
+      }),
+    )
+    receiptFile?: Express.Multer.File,
+  ) {
+    return this.replenishmentService.confirmReplenishment(id, receiptFile);
+  }
+
+  @ApiOkResponse({ schema: { type: "object", properties: { message: { type: "string" } } } })
+  @ApiConsumes("multipart/form-data")
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: {
+        card: {
+          type: "string",
+          format: "binary",
+        },
+      },
+    },
+  })
+  @UseInterceptors(FileInterceptor("card"))
+  @Put("/verify/:id")
+  async verify(
+    @Param("id") id: string,
+    @UploadedFile(
+      "receipt",
+      new ParseFilePipe({
+        validators: [new FileTypeValidator({ fileType: /(jpg|jpeg|png|webp|pdf)$/ }), new MaxFileSizeValidator({ maxSize: MAX_FILE_SIZE })],
+        fileIsRequired: false,
+      }),
+    )
+    cardFile?: Express.Multer.File,
+  ) {
+    return this.replenishmentService.verifyReplenishment(id, cardFile);
   }
 }

@@ -7,7 +7,6 @@ import {
   Post,
   Query,
   Req,
-  Session,
   HttpCode,
   Put,
   Param,
@@ -51,7 +50,7 @@ import { Promo } from "./schemas/promo.schema";
 import { GameLimits } from "src/admin/schemas/admin.schema";
 import { ProfileImageSharpPipe } from "src/pipes/profile-image-sharp.pipe";
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 1mb
+const MAX_FILE_SIZE = 1024 * 1024 * 1; // 1mb
 
 @ApiTags("User")
 @Auth()
