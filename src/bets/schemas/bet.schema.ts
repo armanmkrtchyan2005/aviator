@@ -24,6 +24,7 @@ export interface IBet {
   promo?: Promo;
   user_balance: number;
   game: Game;
+  isBot?: boolean;
 }
 
 @Schema({ timestamps: { createdAt: true, updatedAt: "last_active_date" } })
@@ -62,6 +63,9 @@ export class Bet {
   @ApiProperty()
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: Game.name })
   game: Game;
+
+  @Prop({ default: false })
+  isBot: boolean;
 }
 
 export const BetSchema = SchemaFactory.createForClass(Bet);

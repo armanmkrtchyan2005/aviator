@@ -53,6 +53,20 @@ export class AdminController {
   }
 
   @AdminAuth()
+  @ApiOkResponse({ type: AccountRequisite })
+  @Put("/requisites/:id/verify/card")
+  changeRequisiteVerifyCard(@Req() req: Request, @Param("id") id: string) {
+    return this.adminService.changeRequisiteVerifyCard(req["admin"], id);
+  }
+
+  @AdminAuth()
+  @ApiOkResponse({ type: AccountRequisite })
+  @Put("/requisites/:id/verify/receipt")
+  changeRequisiteVerifyReceipt(@Req() req: Request, @Param("id") id: string) {
+    return this.adminService.changeRequisiteVerifyReceipt(req["admin"], id);
+  }
+
+  @AdminAuth()
   @ApiOkResponse({ type: [AccountRequisite] })
   @Get("/requisites")
   getRequisites(@Req() req: Request) {

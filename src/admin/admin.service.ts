@@ -122,6 +122,26 @@ export class AdminService {
     return requisite;
   }
 
+  async changeRequisiteVerifyCard(account: AccountDocument, id: string) {
+    const requisite = await this.accountRequisiteModel.findOne({ _id: id, account: account._id });
+
+    requisite.isCardFileRequired = !requisite.isCardFileRequired;
+
+    await requisite.save();
+
+    return requisite;
+  }
+
+  async changeRequisiteVerifyReceipt(account: AccountDocument, id: string) {
+    const requisite = await this.accountRequisiteModel.findOne({ _id: id, account: account._id });
+
+    requisite.isReceiptFileRequired = !requisite.isReceiptFileRequired;
+
+    await requisite.save();
+
+    return requisite;
+  }
+
   async getReplenishments(account: Account, dto: LimitQueryDto) {
     const match: any = { account: account._id };
 

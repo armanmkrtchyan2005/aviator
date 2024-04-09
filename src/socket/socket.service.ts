@@ -34,6 +34,7 @@ export class SocketService {
   private betGame: GameDocument = null;
 
   private currentPlayers: IBet[] = [];
+  private currentPlayersWithoutBots: IBet[] = [];
   private betAmount: IAmount = {};
   private winAmount: IAmount = {};
 
@@ -390,7 +391,7 @@ export class SocketService {
 
       // 2. Net income algorithm
       case 2:
-        totalWinAmount = this.currentPlayers.reduce((prev, next) => prev + next.win["USD"], 0);
+        totalWinAmount = this.currentPlayersWithoutBots.reduce((prev, next) => prev + next.win["USD"], 0);
         if (totalWinAmount >= this.maxWinAmount) {
           admin.algorithms[1].all_withdrawal_amount += win["USD"];
           admin.algorithms[1].used_count++;
@@ -402,7 +403,7 @@ export class SocketService {
 
       // 7. Bet counts algorithm
       case 7:
-        const winsCount = this.currentPlayers.filter(bet => {
+        const winsCount = this.currentPlayersWithoutBots.filter(bet => {
           return bet.win;
         }).length;
 
@@ -417,7 +418,7 @@ export class SocketService {
 
       // 8. -------------
       case 8:
-        totalWinAmount = this.currentPlayers.reduce((prev, next) => prev + next.win["USD"], 0);
+        totalWinAmount = this.currentPlayersWithoutBots.reduce((prev, next) => prev + next.win["USD"], 0);
         if (totalWinAmount >= this.maxWinAmount) {
           admin.algorithms[7].all_withdrawal_amount += win["USD"];
           admin.algorithms[7].used_count++;
@@ -432,7 +433,7 @@ export class SocketService {
         if (this.playedCount < this.maxGameCount / 2) {
           this.totalWins += win["USD"];
         } else {
-          const totalWinAmount = this.currentPlayers.reduce((prev, next) => prev + next.win["USD"], 0);
+          const totalWinAmount = this.currentPlayersWithoutBots.reduce((prev, next) => prev + next.win["USD"], 0);
 
           if (totalWinAmount >= this.partOfProfit) {
             admin.algorithms[9].all_withdrawal_amount += win["USD"];
@@ -530,6 +531,7 @@ export class SocketService {
           profileImage: "",
           time: new Date(),
           user_balance: 0,
+          isBot: true,
         };
 
         const botBet = await this.betModel.create(bot);
@@ -540,10 +542,12 @@ export class SocketService {
           this.betAmount[key] += bet[key];
         }
 
-        const currentPlayers = this.currentPlayers.map(({ _id, playerId, promo, ...bet }) => bet).sort((a, b) => b.bet["USD"] - a.bet["USD"]);
+        let currentPlayers = this.currentPlayers.flatMap(({ _id, playerId, promo, ...bet }) => bet).sort((a, b) => b.bet["USD"] - a.bet["USD"]);
         for (let key in this.betAmount) {
           this.betAmount[key] += bet[key];
         }
+
+        this.socket.emit("currentPlayers", { betAmount: this.betAmount, winAmount: this.winAmount, currentPlayers });
 
         const winCoeff = _.random(admin.bots.coeff.min, admin.bots.coeff.max, true);
 
@@ -559,7 +563,7 @@ export class SocketService {
               this.winAmount[key] += bot.win[key];
             }
 
-            const currentPlayers = this.currentPlayers.map(({ _id, playerId, promo, ...bet }) => bet).sort((a, b) => b.bet["USD"] - a.bet["USD"]);
+            currentPlayers = this.currentPlayers.flatMap(({ _id, playerId, promo, ...bet }) => bet).sort((a, b) => b.bet["USD"] - a.bet["USD"]);
             this.socket.emit("currentPlayers", { betAmount: this.betAmount, winAmount: this.winAmount, currentPlayers });
 
             botBet.coeff = bot.coeff;
@@ -570,8 +574,6 @@ export class SocketService {
         }, 100);
 
         this.schedulerRegistry.addInterval(`bot-${i}`, intervalId);
-
-        this.socket.emit("currentPlayers", { betAmount: this.betAmount, winAmount: this.winAmount, currentPlayers });
       }, 50 * i);
     }
 
@@ -579,8 +581,8 @@ export class SocketService {
     this.isBetWait = true;
 
     const excludedAlgorithmsId = [];
-
-    if (this.currentPlayers.length <= 3) {
+    this.currentPlayersWithoutBots = this.currentPlayers.filter(bet => !bet.isBot);
+    if (this.currentPlayersWithoutBots.length <= 3) {
       excludedAlgorithmsId.push(1, 4);
     }
 
@@ -598,14 +600,14 @@ export class SocketService {
     switch (this.selectedAlgorithmId) {
       //1. 3 player algorithm loading
       case 1:
-        this.threePlayers = _.sampleSize(this.currentPlayers, 3);
+        this.threePlayers = _.sampleSize(this.currentPlayersWithoutBots, 3);
 
         this.random = _.random(80, 110, true);
         break;
 
       // 2. Net income algorithm loading
       case 2:
-        totalAmount = this.currentPlayers.reduce((prev, curr) => prev + curr.bet["USD"], 0);
+        totalAmount = this.currentPlayersWithoutBots.reduce((prev, curr) => prev + curr.bet["USD"], 0);
         this.maxWinAmount = (totalAmount * _.random(30, 100, true)) / 100;
         break;
 
@@ -627,13 +629,13 @@ export class SocketService {
       // 7. Bet counts algorithm
       case 7:
         this.random = _.random(5, 10, true);
-        this.totalWinsCount = (this.currentPlayers.length * _.random(20, 70, true)) / 100;
+        this.totalWinsCount = (this.currentPlayersWithoutBots.length * _.random(20, 70, true)) / 100;
         break;
 
       // 8. --------
       case 8:
         const range = _.random(1, 3, true);
-        totalAmount = this.currentPlayers.reduce((prev, curr) => prev + curr.bet["USD"], 0);
+        totalAmount = this.currentPlayersWithoutBots.reduce((prev, curr) => prev + curr.bet["USD"], 0);
         this.maxWinAmount = totalAmount * range;
         break;
 
@@ -648,7 +650,7 @@ export class SocketService {
         this.playedCount++;
         if (this.playedCount < this.maxGameCount / 2) {
           this.random = _.random(1.3, 1.8, true);
-          const totalAmount = this.currentPlayers.reduce((prev, curr) => prev + curr.bet["USD"], 0);
+          const totalAmount = this.currentPlayersWithoutBots.reduce((prev, curr) => prev + curr.bet["USD"], 0);
           this.totalBets += totalAmount;
         } else if (this.playedCount == this.maxGameCount / 2) {
           const profit = this.totalBets - this.totalWins;
