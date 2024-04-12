@@ -12,6 +12,7 @@ import { UserPromo, UserPromoSchema } from "src/user/schemas/userPromo.schema";
 import { Replenishment, ReplenishmentSchema } from "src/replenishment/schemas/replenishment.schema";
 import { Session, SessionSchema } from "src/user/schemas/session.schema";
 import { Game, GameSchema } from "src/bets/schemas/game.schema";
+import { IdentityCounter, IdentityCounterSchema } from "src/admin/schemas/identity-counter.schema";
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { Game, GameSchema } from "src/bets/schemas/game.schema";
       { name: Replenishment.name, schema: ReplenishmentSchema },
       { name: Session.name, schema: SessionSchema },
       { name: Game.name, schema: GameSchema },
+      { name: IdentityCounter.name, schema: IdentityCounterSchema },
     ]),
     ConvertModule,
   ],

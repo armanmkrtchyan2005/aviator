@@ -128,13 +128,15 @@ export class BetsService {
 
     // ----------------------------GREL-----------------
 
-    const lastGame = await this.gameModel.findOne().sort({ createdAt: -1 }).skip(1);
+    const game = await this.gameModel.findOne({}).sort({ createdAt: -1 });
+
+    const lastGame = await this.gameModel.findOne({ endedAt: { $exists: true } }).sort({ createdAt: -1 });
 
     const lastBets = await this.betModel.aggregate([
+      { $match: { game: lastGame._id } },
+      { $sort: { createdAt: -1 } },
       { $lookup: { from: "games", localField: "game", foreignField: "_id", as: "game" } },
       { $unwind: "$game" },
-      { $match: { "game._id": lastGame?._id } },
-      { $sort: { createdAt: -1 } },
       {
         $group: {
           _id: null,

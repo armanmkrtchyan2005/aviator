@@ -16,6 +16,7 @@ import { MulterModule } from "@nestjs/platform-express";
 import { memoryStorage } from "multer";
 import { TwoFaModule } from "./two-fa/two-fa.module";
 import { ScheduleModule } from "@nestjs/schedule";
+import { PaymentModule } from './payment/payment.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { ScheduleModule } from "@nestjs/schedule";
     WithdrawalModule,
     LinksModule,
     TwoFaModule,
+    PaymentModule,
   ],
   controllers: [AppController],
   providers: [AppService],

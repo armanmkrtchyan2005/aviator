@@ -17,6 +17,7 @@ import { Session } from "src/user/schemas/session.schema";
 import { generateUsername } from "unique-username-generator";
 import { SchedulerRegistry } from "@nestjs/schedule";
 import * as _ from "lodash";
+import { IdentityCounter } from "src/admin/schemas/identity-counter.schema";
 
 const STOP_DISABLE_MS = 2000;
 const LOADING_MS = 5000;
@@ -78,6 +79,7 @@ export class SocketService {
     @InjectModel(Referral.name) private referralModel: Model<Referral>,
     @InjectModel(Game.name) private gameModel: Model<Game>,
     @InjectModel(Session.name) private sessionModel: Model<Session>,
+    @InjectModel(IdentityCounter.name) private identityCounterModel: Model<IdentityCounter>,
     private schedulerRegistry: SchedulerRegistry,
     private convertService: ConvertService,
   ) {}
@@ -479,7 +481,14 @@ export class SocketService {
       throw new WsException(e.message);
     }
 
-    this.betGame = await this.gameModel.create({});
+    const gameFined = await this.gameModel.findOne({ uid: this.betGame.uid + 1 });
+
+    if (gameFined) {
+      this.betGame = gameFined;
+      await this.identityCounterModel.findOneAndUpdate({ model: Game.name }, { $set: { count: this.betGame.uid } });
+    } else {
+      this.betGame = await this.gameModel.create({});
+    }
 
     if (this.currentPlayers.length) {
       const bets = await this.betModel.find().limit(this.currentPlayers.length).sort({ time: -1 });
@@ -579,6 +588,12 @@ export class SocketService {
 
     await sleep(LOADING_MS);
     this.isBetWait = true;
+
+    if (this.betGame.game_coeff) {
+      this.random = this.betGame.game_coeff;
+      this.interval = setInterval(() => this.game(), 100);
+      return;
+    }
 
     const excludedAlgorithmsId = [];
     this.currentPlayersWithoutBots = this.currentPlayers.filter(bet => !bet.isBot);
