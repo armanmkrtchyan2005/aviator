@@ -6,21 +6,10 @@ import { Admin } from "src/admin/schemas/admin.schema";
 @Injectable()
 export class LinksService {
   constructor(@InjectModel(Admin.name) private adminSchema: Model<Admin>) {}
-  async support() {
-    const { support } = await this.adminSchema.findOne({}, ["support"]);
 
-    return { link: support };
-  }
+  async links() {
+    const links = await this.adminSchema.findOne({}, ["support", "news", "chat"]);
 
-  async news() {
-    const { news } = await this.adminSchema.findOne({}, ["news"]);
-
-    return { link: news };
-  }
-
-  async chat() {
-    const { chat } = await this.adminSchema.findOne({}, ["chat"]);
-
-    return { link: chat };
+    return links;
   }
 }

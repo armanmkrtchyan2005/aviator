@@ -1,27 +1,16 @@
 import { Controller, Get } from "@nestjs/common";
 import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
 import { LinksService } from "./links.service";
+import { LinksResponse } from "./responses/links.response";
 
 @ApiTags("Links")
 @Controller("links")
 export class LinksController {
   constructor(private linksService: LinksService) {}
 
-  @ApiOkResponse({ schema: { type: "object", properties: { link: { type: "string", example: "https://example.com" } } } })
-  @Get("/support")
-  support() {
-    return this.linksService.support();
-  }
-
-  @ApiOkResponse({ schema: { type: "object", properties: { link: { type: "string", example: "https://example.com" } } } })
-  @Get("/news")
-  news() {
-    return this.linksService.news();
-  }
-
-  @ApiOkResponse({ schema: { type: "object", properties: { link: { type: "string", example: "https://example.com" } } } })
-  @Get("/chat")
-  chat() {
-    return this.linksService.chat();
+  @ApiOkResponse({ type: LinksResponse })
+  @Get("/")
+  links() {
+    return this.linksService.links();
   }
 }
