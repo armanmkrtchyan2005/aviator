@@ -53,7 +53,7 @@ export class AuthService {
 
     const promo = await this.promoModel.findOne({ name: dto.promocode }, ["type", "will_finish", "coef", "amount", "currency", "limit"]);
 
-    if (userEmail) {
+    if (dto.email && userEmail) {
       throw new BadRequestException("Невозможно привязать данный Email");
     }
 

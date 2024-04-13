@@ -12,4 +12,16 @@ export class LinksController {
   support() {
     return this.linksService.support();
   }
+
+  @ApiOkResponse({ schema: { type: "object", properties: { link: { type: "string", example: "https://example.com" } } } })
+  @Get("/news")
+  news() {
+    return this.linksService.news();
+  }
+
+  @ApiOkResponse({ schema: { type: "object", properties: { link: { type: "string", example: "https://example.com" } } } })
+  @Get("/chat")
+  chat() {
+    return this.linksService.chat();
+  }
 }

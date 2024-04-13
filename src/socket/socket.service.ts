@@ -18,6 +18,7 @@ import { generateUsername } from "unique-username-generator";
 import { SchedulerRegistry } from "@nestjs/schedule";
 import * as _ from "lodash";
 import { IdentityCounter } from "src/admin/schemas/identity-counter.schema";
+import Big from "big.js";
 
 const STOP_DISABLE_MS = 2000;
 const LOADING_MS = 5000;
@@ -45,6 +46,7 @@ export class SocketService {
 
   private x = 1;
   private step = 0.0006;
+  private ms = 100;
   private isBetWait = true;
 
   private interval: string | number | NodeJS.Timeout;
@@ -137,21 +139,21 @@ export class SocketService {
   }
 
   async handleStartGame() {
-    this.interval = setInterval(() => this.game(), 100);
+    this.interval = setInterval(() => this.game(), this.ms);
 
     // 6. random one hour algorithm
     this.randomOneHourAlgorithm();
   }
 
   async game() {
-    this.x += this.step;
-    this.step += 0.0006;
+    this.x = new Big(this.x).plus(0.01).toNumber();
+    // this.step += 0.0006;
 
     this.socket.emit("game", { x: +this.x.toFixed(2) });
 
     // 4. ----------
     if (this.selectedAlgorithmId === 4) {
-      if (this.x > 1.9 && this.x < 2.2) {
+      if (this.x == 2) {
         this.threePlayers = _.sampleSize(this.currentPlayers, 3);
         this.random = _.random(110, true);
       }
@@ -159,6 +161,26 @@ export class SocketService {
 
     if (this.x >= this.random) {
       return this.loading();
+    }
+
+    if (this.x == 2) {
+      this.ms = 50;
+
+      clearInterval(this.interval);
+
+      this.interval = setInterval(() => this.game(), this.ms);
+    } else if (this.x == 5) {
+      this.ms = 25;
+
+      clearInterval(this.interval);
+
+      this.interval = setInterval(() => this.game(), this.ms);
+    } else if (this.x == 10) {
+      this.ms = 15;
+
+      clearInterval(this.interval);
+
+      this.interval = setInterval(() => this.game(), this.ms);
     }
   }
 
@@ -500,6 +522,7 @@ export class SocketService {
 
     this.x = 1;
     this.step = 0.0006;
+    this.ms = 100;
     this.random = _.random(MAX_COEFF, true);
 
     const admin = await this.adminModel.findOne();

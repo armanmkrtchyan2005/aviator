@@ -11,4 +11,16 @@ export class LinksService {
 
     return { link: support };
   }
+
+  async news() {
+    const { news } = await this.adminSchema.findOne({}, ["news"]);
+
+    return { link: news };
+  }
+
+  async chat() {
+    const { chat } = await this.adminSchema.findOne({}, ["chat"]);
+
+    return { link: chat };
+  }
 }
