@@ -11,6 +11,7 @@ import { Referral, ReferralSchema } from "./schemas/referral.schema";
 import { Promo, PromoSchema } from "./schemas/promo.schema";
 import { UserPromo, UserPromoSchema } from "./schemas/userPromo.schema";
 import { Session, SessionSchema } from "./schemas/session.schema";
+import { Account, AccountSchema } from "src/admin/schemas/account.schema";
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { Session, SessionSchema } from "./schemas/session.schema";
       { name: Admin.name, schema: AdminSchema },
       { name: Referral.name, schema: ReferralSchema },
       { name: Session.name, schema: SessionSchema },
+      { name: Account.name, schema: AccountSchema },
     ]),
     MailModule,
   ],

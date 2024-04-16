@@ -4,6 +4,7 @@ import { User } from "../../user/schemas/user.schema";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Promo } from "src/user/schemas/promo.schema";
 import { Game } from "./game.schema";
+import { UserPromoDocument } from "src/user/schemas/userPromo.schema";
 
 export type BetDocument = HydratedDocument<Bet>;
 
@@ -22,6 +23,7 @@ export interface IBet {
   coeff?: number;
   win?: IAmount;
   promo?: Promo;
+  userPromo?: UserPromoDocument;
   user_balance: number;
   game: Game;
   isBot?: boolean;

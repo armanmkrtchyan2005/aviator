@@ -157,8 +157,8 @@ export class UserController {
   @ApiOkResponse({ type: FindRequisitesResponse })
   @HttpCode(HttpStatus.OK)
   @Get("/requisites")
-  findRequisites() {
-    return this.userService.findRequisites();
+  findRequisites(@Req() req: Request) {
+    return this.userService.findRequisites(req["user"]);
   }
 
   @ApiOkResponse({ type: Requisite })

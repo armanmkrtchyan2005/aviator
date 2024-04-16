@@ -26,6 +26,7 @@ import * as path from "path";
 import { generateCode } from "src/admin/common/utils/generate-code";
 import { CronJob } from "cron";
 import { CronExpression, SchedulerRegistry } from "@nestjs/schedule";
+import { Account } from "src/admin/schemas/account.schema";
 
 @Injectable()
 export class UserService {
@@ -36,6 +37,7 @@ export class UserService {
     @InjectModel(Requisite.name) private requisiteModel: Model<Requisite>,
     @InjectModel(Admin.name) private adminModel: Model<Admin>,
     @InjectModel(Referral.name) private referralModel: Model<Referral>,
+    @InjectModel(Account.name) private accountModel: Model<Account>,
     private jwtService: JwtService,
     private mailService: MailService,
     private convertService: ConvertService,
@@ -325,7 +327,7 @@ export class UserService {
     return recommendedRequisites;
   }
 
-  async findRequisites() {
+  async findRequisites(userPayload: IAuthPayload) {
     const requisites = await this.requisiteModel.aggregate([
       {
         $match: {
@@ -351,7 +353,6 @@ export class UserService {
         },
       },
     ]);
-
     return requisites;
   }
 

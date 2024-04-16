@@ -103,6 +103,7 @@ export class ReplenishmentController {
         },
       },
     },
+    required: false,
   })
   @UseInterceptors(FileInterceptor("card"))
   @Put("/verify/:id")

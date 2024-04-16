@@ -19,6 +19,7 @@ import { SchedulerRegistry } from "@nestjs/schedule";
 import * as _ from "lodash";
 import { IdentityCounter } from "src/admin/schemas/identity-counter.schema";
 import Big from "big.js";
+import { log } from "handlebars/runtime";
 
 const STOP_DISABLE_MS = 2000;
 const LOADING_MS = 5000;
@@ -146,10 +147,10 @@ export class SocketService {
   }
 
   async game() {
+    this.socket.emit("game", { x: +this.x.toFixed(2) });
+
     this.x = new Big(this.x).plus(0.01).toNumber();
     // this.step += 0.0006;
-
-    this.socket.emit("game", { x: +this.x.toFixed(2) });
 
     // 4. ----------
     if (this.selectedAlgorithmId === 4) {
@@ -201,11 +202,11 @@ export class SocketService {
     const minBet = admin.gameLimits.min[user.currency];
     const maxBet = admin.gameLimits.max[user.currency];
 
-    if (dto.bet < minBet) {
+    if (!userPromo && dto.bet < minBet) {
       return new WsException(`Минимальная ставка ${minBet} ${user.currency}`);
     }
 
-    if (dto.bet > maxBet) {
+    if (!userPromo && dto.bet > maxBet) {
       return new WsException(`Максимальная ставка ${maxBet} ${user.currency}`);
     }
 
@@ -241,6 +242,7 @@ export class SocketService {
       // currency: user.currency,
       bet,
       promo: userPromo?.promo,
+      userPromo: userPromo,
       game: this.betGame,
       time: new Date(),
       betNumber: dto.betNumber,
@@ -301,6 +303,11 @@ export class SocketService {
 
     admin.our_balance -= bet.bet["USD"];
     await admin.save();
+
+    try {
+      bet.userPromo.active = false;
+      await bet.userPromo?.save();
+    } catch (error) {}
 
     for (let key in this.betAmount) {
       this.betAmount[key] -= bet[key];
