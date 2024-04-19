@@ -264,7 +264,7 @@ export class ReplenishmentService {
     const requisite = replenishment.requisite as AccountRequisiteDocument;
 
     if (!requisite.isCardFileRequired) {
-      return { message: "" };
+      return { message: "Фото карты не обязательна" };
     }
 
     if (!cardFile) {

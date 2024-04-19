@@ -80,13 +80,12 @@ export class ReplenishmentController {
   async confirm(
     @Param("id") id: string,
     @UploadedFile(
-      "receipt",
       new ParseFilePipe({
         validators: [new FileTypeValidator({ fileType: /(jpg|jpeg|png|webp|pdf)$/ }), new MaxFileSizeValidator({ maxSize: MAX_FILE_SIZE })],
         fileIsRequired: false,
       }),
     )
-    receiptFile?: Express.Multer.File,
+    receiptFile: Express.Multer.File,
   ) {
     return this.replenishmentService.confirmReplenishment(id, receiptFile);
   }
@@ -110,13 +109,12 @@ export class ReplenishmentController {
   async verify(
     @Param("id") id: string,
     @UploadedFile(
-      "receipt",
       new ParseFilePipe({
         validators: [new FileTypeValidator({ fileType: /(jpg|jpeg|heic|png|webp|pdf)$/ }), new MaxFileSizeValidator({ maxSize: MAX_FILE_SIZE })],
         fileIsRequired: false,
       }),
     )
-    cardFile?: Express.Multer.File,
+    cardFile: Express.Multer.File,
   ) {
     return this.replenishmentService.verifyReplenishment(id, cardFile);
   }

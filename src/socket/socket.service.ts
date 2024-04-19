@@ -552,7 +552,7 @@ export class SocketService {
     this.isBetWait = false;
 
     this.socket.emit("loading");
-    this.npcLength = _.random(admin.bots.count.min, admin.bots.count.max); // stanal tvery bazaic
+    this.npcLength = _.random(admin.bots.count.min, admin.bots.count.max);
     for (let i = 0; i < this.npcLength && admin.bots.active; i++) {
       setTimeout(async () => {
         const bet: IAmount = {};
@@ -582,9 +582,6 @@ export class SocketService {
         }
 
         let currentPlayers = this.currentPlayers.flatMap(({ _id, playerId, promo, ...bet }) => bet).sort((a, b) => b.bet["USD"] - a.bet["USD"]);
-        for (let key in this.betAmount) {
-          this.betAmount[key] += bet[key];
-        }
 
         this.socket.emit("currentPlayers", { betAmount: this.betAmount, winAmount: this.winAmount, currentPlayers });
 
