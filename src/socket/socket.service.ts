@@ -87,9 +87,15 @@ export class SocketService {
     private convertService: ConvertService,
   ) {}
 
-  async handleConnection(client: Socket) {
-    const currentPlayers = this.currentPlayers.map(({ _id, playerId, promo, ...bet }) => bet).sort((a, b) => b.bet["USD"] - a.bet["USD"]);
+  private drawCurrentPlayers() {
+    let currentPlayers = _.map(this.currentPlayers, ({ _id, playerId, promo, ...bet }) => bet);
+    // let currentPlayers = this.currentPlayers.map(({ _id, playerId, promo, ...bet }) => bet);
+    currentPlayers = _.orderBy(currentPlayers, k => k.bet["USD"], "desc");
     this.socket.emit("currentPlayers", { betAmount: this.betAmount, winAmount: this.winAmount, currentPlayers });
+  }
+
+  async handleConnection(client: Socket) {
+    this.drawCurrentPlayers();
 
     const token = client.handshake?.auth?.token;
 
@@ -147,7 +153,7 @@ export class SocketService {
   }
 
   async game() {
-    this.socket.emit("game", { x: +this.x.toFixed(2) });
+    this.socket.emit("game", { x: this.x });
 
     this.x = new Big(this.x).plus(0.01).toNumber();
     // this.step += 0.0006;
@@ -258,8 +264,7 @@ export class SocketService {
       this.betAmount[key] += bet[key];
     }
 
-    const currentPlayers = this.currentPlayers.map(({ _id, playerId, promo, ...bet }) => bet).sort((a, b) => b.bet["USD"] - a.bet["USD"]);
-    this.socket.emit("currentPlayers", { betAmount: this.betAmount, winAmount: this.winAmount, currentPlayers });
+    this.drawCurrentPlayers();
 
     admin.our_balance += bet["USD"];
 
@@ -299,6 +304,7 @@ export class SocketService {
 
     user.balance += bet.bet[user.currency];
     user.playedAmount -= bet.bet[user.currency];
+
     await user.save();
 
     admin.our_balance -= bet.bet["USD"];
@@ -320,7 +326,7 @@ export class SocketService {
   }
 
   async handleCashOut(userPayload: IAuthPayload, dto: CashOutDto) {
-    const x = this.x;
+    const x = dto.winX && this.x;
 
     const user = await this.userModel.findById(userPayload.id);
     const admin = await this.adminModel.findOne({}, ["algorithms", "currencies", "our_balance", "gameLimits"]);
@@ -375,9 +381,7 @@ export class SocketService {
       this.winAmount[key] += win[key];
     }
 
-    const currentPlayers = this.currentPlayers.map(({ _id, playerId, promo, ...bet }) => bet).sort((a, b) => b.bet["USD"] - a.bet["USD"]);
-
-    this.socket.emit("currentPlayers", { betAmount: this.betAmount, winAmount: this.winAmount, currentPlayers });
+    this.drawCurrentPlayers();
 
     user.balance += win[user.currency];
 
@@ -556,9 +560,9 @@ export class SocketService {
     for (let i = 0; i < this.npcLength && admin.bots.active; i++) {
       setTimeout(async () => {
         const bet: IAmount = {};
-
+        const r = _.random(admin.bots.betAmount.min, admin.bots.betAmount.max);
         for (const currency of admin.currencies) {
-          bet[currency] = await this.convertService.convert("USD", currency, _.random(admin.bots.betAmount.min, admin.bots.betAmount.max)); // stanal tvery bazaic
+          bet[currency] = await this.convertService.convert("USD", currency, r); // stanal tvery bazaic
         }
 
         const bot: IBet = {
@@ -581,9 +585,7 @@ export class SocketService {
           this.betAmount[key] += bet[key];
         }
 
-        let currentPlayers = this.currentPlayers.flatMap(({ _id, playerId, promo, ...bet }) => bet).sort((a, b) => b.bet["USD"] - a.bet["USD"]);
-
-        this.socket.emit("currentPlayers", { betAmount: this.betAmount, winAmount: this.winAmount, currentPlayers });
+        this.drawCurrentPlayers();
 
         const winCoeff = _.random(admin.bots.coeff.min, admin.bots.coeff.max, true);
 
@@ -599,8 +601,7 @@ export class SocketService {
               this.winAmount[key] += bot.win[key];
             }
 
-            currentPlayers = this.currentPlayers.flatMap(({ _id, playerId, promo, ...bet }) => bet).sort((a, b) => b.bet["USD"] - a.bet["USD"]);
-            this.socket.emit("currentPlayers", { betAmount: this.betAmount, winAmount: this.winAmount, currentPlayers });
+            this.drawCurrentPlayers();
 
             botBet.coeff = bot.coeff;
             botBet.win = bot.win;

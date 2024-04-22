@@ -1,7 +1,11 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsNumber } from "class-validator";
+import { IsNumber, IsOptional } from "class-validator";
 
 export class CashOutDto {
   @IsNumber()
   betNumber: number; // номер ставки
+
+  @IsNumber()
+  @IsOptional()
+  winX: number;
 }
