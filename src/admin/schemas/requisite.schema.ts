@@ -7,12 +7,12 @@ export type RequisiteDocument = HydratedDocument<Requisite>;
 
 class RequisiteLimit {
   @ApiProperty()
-  @Prop({ type: Object })
-  min: IAmount;
+  @Prop()
+  min: number;
 
   @ApiProperty()
-  @Prop({ type: Object })
-  max: IAmount;
+  @Prop()
+  max: number;
 }
 
 @Schema({ timestamps: true })
@@ -66,6 +66,24 @@ export class Requisite {
 
   @Prop({ default: 0 })
   accountCount: number;
+
+  @Prop({ default: false })
+  donatePay: boolean;
+
+  @Prop({ default: false })
+  AAIO: boolean;
+
+  @Prop({ type: Object })
+  donatePaylimit: {
+    min: number;
+    max: number;
+  };
+
+  @Prop({ type: Object })
+  AAIOlimit: {
+    min: number;
+    max: number;
+  };
 }
 
 export const RequisiteSchema = SchemaFactory.createForClass(Requisite);

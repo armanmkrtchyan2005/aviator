@@ -19,6 +19,7 @@ import { Account } from "src/admin/schemas/account.schema";
 import { Request } from "express";
 import { ReplenishmentFilePipe } from "./pipes/replenishment-file.pipe";
 import { AccountRequisiteDocument } from "src/admin/schemas/account-requisite.schema";
+import { PaymentService } from "src/payment/payment.service";
 
 @Injectable()
 export class ReplenishmentService {
@@ -32,14 +33,28 @@ export class ReplenishmentService {
     @InjectModel(Account.name) private accountModel: Model<Account>,
     private schedulerRegistry: SchedulerRegistry,
     private convertService: ConvertService,
+    private paymentService: PaymentService,
   ) {}
 
   async findLimits(userPayload: IAuthPayload, id: string) {
     const requisite = await this.requisiteModel.findById(id);
     const user = await this.userModel.findById(userPayload.id, ["currency"]);
 
-    const minLimit = requisite.replenishmentLimit.min[user.currency];
-    const maxLimit = requisite.replenishmentLimit.min[user.currency];
+    const limits = [requisite.replenishmentLimit.min, requisite.replenishmentLimit.max];
+
+    if (requisite.AAIO) {
+      limits.push(requisite.AAIOlimit.min, requisite.AAIOlimit.max);
+    }
+
+    if (requisite.donatePay) {
+      limits.push(requisite.donatePaylimit.min, requisite.donatePaylimit.max);
+    }
+
+    const min = _.min(limits);
+    const max = _.max(limits);
+
+    const minLimit = await this.convertService.convert("USD", user.currency, min);
+    const maxLimit = await this.convertService.convert("USD", user.currency, max);
 
     return { minLimit, maxLimit, currency: user.currency };
   }
@@ -124,9 +139,6 @@ export class ReplenishmentService {
       throw new NotFoundException("Реквизит не найден");
     }
 
-    const minLimit = requisite.replenishmentLimit.min[user.currency];
-    const maxLimit = requisite.replenishmentLimit.max[user.currency];
-
     const amount: IAmount = {};
     const deduction: IAmount = {};
 
@@ -136,7 +148,28 @@ export class ReplenishmentService {
       deduction[currency] = amount[currency] + commission;
     }
 
-    if (amount[user.currency] < minLimit && amount[user.currency] > maxLimit) {
+    //----------------- AAIO CODE ------------------
+
+    if (requisite.AAIO) {
+      if (amount["USD"] >= requisite.AAIOlimit.min && amount["USD"] <= requisite.AAIOlimit.max) {
+        // --------------------------
+        return await this.paymentService.createAAIOPayment({});
+      }
+    }
+
+    //-------------- DonatePay CODE -----------------
+
+    if (requisite.donatePay) {
+      if (amount["USD"] >= requisite.donatePaylimit.min && amount["USD"] <= requisite.donatePaylimit.max) {
+        // --------------------------
+        return await this.paymentService.createDonatePayPayment({});
+      }
+    }
+
+    const minLimit = requisite.replenishmentLimit.min;
+    const maxLimit = requisite.replenishmentLimit.min;
+
+    if (amount["USD"] < minLimit && amount["USD"] > maxLimit) {
       throw new BadRequestException(`Сумма не должен бит не меньше чем ${minLimit + user.currency} и не больше чем ${maxLimit + user.currency}`);
     }
 
@@ -152,7 +185,7 @@ export class ReplenishmentService {
 
     const account = await this.accountModel
       .findOne({ requisite: requisite._id, balance: { $gte: amount["USDT"] } })
-      .skip(accountsCount)
+      .skip(requisite.accountCount)
       .populate("requisites");
 
     if (!account) {

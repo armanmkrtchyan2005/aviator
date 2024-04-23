@@ -182,7 +182,7 @@ export class AdminService {
       throw new BadRequestException("Вы не можете менять подтвержденную заявку");
     }
 
-    replenishment.user.balance += replenishment.amount[replenishment.user.currency];
+    replenishment.user.balance += replenishment.amount[replenishment.user.currency] + (replenishment.bonusAmount[replenishment.user.currency] || 0);
 
     await replenishment.user.save();
 

@@ -318,41 +318,53 @@ export class UserService {
 
   async findRecommendedRequisites(userPayload: IAuthPayload) {
     const user = await this.userModel.findById(userPayload.id);
+    const usdBalance = this.convertService.convert(user.currency, "USD", user.balance);
 
-    const recommendedRequisites = await this.requisiteModel.find({
-      currency: user.currency,
-      active: true,
-    });
+    const recommendedRequisites = await this.accountModel
+      .aggregate()
+      .match({
+        // balance: {
+        //   $gte: usdBalance,
+        //   $lte: usdBalance,
+        // },
+        requisites: {
+          $exists: true,
+          $ne: [],
+        },
+      })
+      .lookup({ from: "requisites", localField: "requisite", foreignField: "_id", as: "requisite" })
+      .unwind("requisite")
+      .match({ "requisite.currency": user.currency, "requisite.active": true })
+      .group({ _id: "$requisite._id", requisite: { $first: "$requisite" } })
+      .replaceRoot("$requisite");
 
     return recommendedRequisites;
   }
 
   async findRequisites(userPayload: IAuthPayload) {
-    const requisites = await this.requisiteModel.aggregate([
-      {
-        $match: {
-          active: true,
+    const user = await this.userModel.findById(userPayload.id);
+
+    const usdBalance = this.convertService.convert(user.currency, "USD", user.balance);
+
+    const requisites = await this.accountModel
+      .aggregate()
+      .match({
+        // balance: {
+        //   $gte: usdBalance,
+        //   $lte: usdBalance,
+        // },
+        requisites: {
+          $exists: true,
+          $ne: [],
         },
-      },
-      {
-        $group: {
-          _id: "$currency",
-          requisites: {
-            $push: "$$CURRENT",
-          },
-        },
-      },
-      {
-        $addFields: {
-          currency: "$_id",
-        },
-      },
-      {
-        $project: {
-          _id: 0,
-        },
-      },
-    ]);
+      })
+      .lookup({ from: "requisites", localField: "requisite", foreignField: "_id", as: "requisite" })
+      .unwind("requisite")
+      .match({ "requisite.active": true })
+      .group({ _id: "$requisite.currency", requisites: { $push: "$requisite" } })
+      .addFields({ currency: "$_id" })
+      .project({ _id: 0 });
+
     return requisites;
   }
 

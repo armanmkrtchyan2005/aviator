@@ -46,7 +46,7 @@ export class WithdrawalService {
       throw new BadRequestException(`Длина реквизита должен быть в диапазоне от ${requisite.min_symbols_count} до ${requisite.max_symbols_count}`);
     }
 
-    const [{ total }] = await this.replenishmentModel.aggregate([
+    const [replenishment] = await this.replenishmentModel.aggregate([
       { $match: { user: user._id, status: ReplenishmentStatusEnum.COMPLETED } },
       { $group: { _id: null, total: { $sum: `$amount.${user.currency}` } } },
       {
@@ -55,6 +55,10 @@ export class WithdrawalService {
         },
       },
     ]);
+    let total = 0;
+    if(replenishment) {
+      total = replenishment.total
+    }
 
     const betAmount = total - user.playedAmount;
 

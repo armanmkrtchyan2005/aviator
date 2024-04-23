@@ -12,6 +12,7 @@ import { UserPromo, UserPromoSchema } from "src/user/schemas/userPromo.schema";
 import { Bonus, BonusSchema } from "src/user/schemas/bonus.schema";
 import { Account, AccountSchema } from "src/admin/schemas/account.schema";
 import { Session, SessionSchema } from "src/user/schemas/session.schema";
+import { PaymentModule } from "src/payment/payment.module";
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { Session, SessionSchema } from "src/user/schemas/session.schema";
       { name: Session.name, schema: SessionSchema },
     ]),
     ConvertModule,
+    PaymentModule,
   ],
   controllers: [ReplenishmentController],
   providers: [ReplenishmentService],
