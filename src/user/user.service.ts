@@ -287,7 +287,7 @@ export class UserService {
         $addFields: {
           "promo.currency": user.currency,
           "promo.limit": { $cond: [{ $eq: [dto.type, PromoType.ADD_BALANCE] }, "$limit", null] },
-          "promo.amount": { $cond: [{ $eq: [dto.type, PromoType.PROMO] }, "$amount", null] },
+          "promo.amount": { $cond: [{ $eq: [dto.type, PromoType.PROMO] }, "$amount", "$promo.amount"] },
         },
       },
       {

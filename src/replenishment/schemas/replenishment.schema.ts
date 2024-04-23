@@ -30,6 +30,10 @@ export class Replenishment {
   @Prop({ required: true, type: Object })
   amount: IAmount;
 
+  @ApiProperty({ properties: { USD: { example: 100 } } })
+  @Prop({ type: Object })
+  bonusAmount: IAmount;
+
   @ApiProperty({ properties: { USD: { example: 110 } } })
   @Prop({ required: true, type: Object })
   deduction: IAmount;

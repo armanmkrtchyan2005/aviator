@@ -326,7 +326,7 @@ export class SocketService {
   }
 
   async handleCashOut(userPayload: IAuthPayload, dto: CashOutDto) {
-    const x = dto.winX && this.x;
+    const x = dto.winX ? dto.winX : this.x;
 
     const user = await this.userModel.findById(userPayload.id);
     const admin = await this.adminModel.findOne({}, ["algorithms", "currencies", "our_balance", "gameLimits"]);

@@ -42,6 +42,10 @@ export class WithdrawalService {
       throw new NotFoundException({ message: "Реквизит не найден" });
     }
 
+    if (dto.userRequisite.length < requisite.min_symbols_count && dto.userRequisite.length > requisite.max_symbols_count) {
+      throw new BadRequestException(`Длина реквизита должен быть в диапазоне от ${requisite.min_symbols_count} до ${requisite.max_symbols_count}`);
+    }
+
     const [{ total }] = await this.replenishmentModel.aggregate([
       { $match: { user: user._id, status: ReplenishmentStatusEnum.COMPLETED } },
       { $group: { _id: null, total: { $sum: `$amount.${user.currency}` } } },

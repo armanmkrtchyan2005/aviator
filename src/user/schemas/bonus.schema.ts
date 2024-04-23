@@ -6,9 +6,8 @@ import { User } from "./user.schema";
 export type BonusDocument = HydratedDocument<Bonus>;
 
 export enum CoefParamsType {
-  TO_USER = "to_user",
+  NEW_USERS = "to_user",
   ADD_BALANCE = "add_balance",
-  NEW_USERS = "new_users",
 }
 
 class CoefParams {

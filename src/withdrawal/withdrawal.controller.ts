@@ -12,7 +12,7 @@ import { CancelWithdrawalOkResponse } from "./responses/cancelWithdrawal.respons
 @Auth()
 @Controller("withdrawals")
 export class WithdrawalController {
-  constructor(private withdrawalService: WithdrawalService) { }
+  constructor(private withdrawalService: WithdrawalService) {}
 
   @ApiOkResponse({ type: [Withdrawal] })
   @Get("/")

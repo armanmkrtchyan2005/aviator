@@ -179,11 +179,14 @@ export class ReplenishmentService {
 
     const bonuses = await this.userPromoModel.find({ user: user._id }).populate("promo");
 
-    let sum = 0;
+    const bonusAmount: IAmount = {};
 
     for (let bonus of bonuses) {
       if (bonus.limit >= amount[user.currency]) {
-        sum += (dto.amount * bonus.promo.amount) / 100;
+        for (const currency of admin.currencies) {
+          const promoAmount = await this.convertService.convert(bonus.promo.currency, currency, dto.amount);
+          bonusAmount[currency] += (amount[currency] * promoAmount) / 100;
+        }
         bonus.limit -= amount[user.currency];
         await bonus.save();
       }
@@ -192,7 +195,7 @@ export class ReplenishmentService {
     await replenishmentRequisite.save();
 
     const replenishment = await (
-      await this.replenishmentModel.create({ ...dto, deduction, user: user._id, amount, account: account._id, requisite: replenishmentRequisite, method: requisite })
+      await this.replenishmentModel.create({ ...dto, deduction, user: user._id, amount, account: account._id, requisite: replenishmentRequisite, method: requisite, bonusAmount })
     ).populate(["requisite", "method"]);
 
     const job = new CronJob(CronExpression.EVERY_30_MINUTES, async () => {
