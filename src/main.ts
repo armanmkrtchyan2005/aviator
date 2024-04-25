@@ -5,12 +5,14 @@ import * as session from "express-session";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { NestExpressApplication } from "@nestjs/platform-express";
 import { join } from "path";
+import * as requestIp from "request-ip";
 import * as fs from "fs";
 
 const origin = ["http://localhost:5173", "https://avibet.io"];
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  app.use(requestIp.mw());
   app.enableCors({ origin: "*" });
   app.useStaticAssets(join(__dirname, "..", "uploads"), { prefix: "/uploads" });
   const port = process.env.PORT || 8080;

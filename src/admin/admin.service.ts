@@ -143,7 +143,7 @@ export class AdminService {
   }
 
   async getReplenishments(account: Account, dto: LimitQueryDto) {
-    const match: any = { account: account._id };
+    const match: any = { account: { $exists: true, $eq: account._id } };
 
     if (dto.startDate) {
       match.createdAt = { $gte: dto.startDate };

@@ -49,6 +49,7 @@ import { GetPromosDto } from "./dto/getPromos.dto";
 import { Promo } from "./schemas/promo.schema";
 import { GameLimits } from "src/admin/schemas/admin.schema";
 import { ProfileImageSharpPipe } from "src/pipes/profile-image-sharp.pipe";
+import { RequisiteDto } from "./dto/requisite.dto";
 
 const MAX_FILE_SIZE = 1024 * 1024 * 1; // 1mb
 
@@ -157,15 +158,15 @@ export class UserController {
   @ApiOkResponse({ type: FindRequisitesResponse })
   @HttpCode(HttpStatus.OK)
   @Get("/requisites")
-  findRequisites(@Req() req: Request) {
-    return this.userService.findRequisites(req["user"]);
+  findRequisites(@Req() req: Request, @Query() dto: RequisiteDto) {
+    return this.userService.findRequisites(req["user"], dto);
   }
 
   @ApiOkResponse({ type: Requisite })
   @HttpCode(HttpStatus.OK)
   @Get("/requisites/recommended")
-  findRecommendedRequisites(@Req() req: Request) {
-    return this.userService.findRecommendedRequisites(req["user"]);
+  findRecommendedRequisites(@Req() req: Request, @Query() dto: RequisiteDto) {
+    return this.userService.findRecommendedRequisites(req["user"], dto);
   }
 
   @ApiOkResponse({ type: User })

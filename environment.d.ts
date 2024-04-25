@@ -14,6 +14,9 @@ declare global {
       EXCHANGE_API_ENDPOINT: string;
       EXCHANGE_API_KEY: string;
       TWO_FA_TOKEN_EXPIRATION: string;
+
+      AAIO_SECRET_KEY: string;
+      AAIO_MERCHANT_ID: string;
     }
   }
 }

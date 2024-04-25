@@ -27,6 +27,7 @@ import { generateCode } from "src/admin/common/utils/generate-code";
 import { CronJob } from "cron";
 import { CronExpression, SchedulerRegistry } from "@nestjs/schedule";
 import { Account } from "src/admin/schemas/account.schema";
+import { RequisiteDto } from "./dto/requisite.dto";
 
 @Injectable()
 export class UserService {
@@ -316,9 +317,9 @@ export class UserService {
     return promo;
   }
 
-  async findRecommendedRequisites(userPayload: IAuthPayload) {
+  async findRecommendedRequisites(userPayload: IAuthPayload, dto: RequisiteDto) {
     const user = await this.userModel.findById(userPayload.id);
-    const usdBalance = this.convertService.convert(user.currency, "USD", user.balance);
+    // const usdBalance = this.convertService.convert(user.currency, "USD", user.balance);
 
     const recommendedRequisites = await this.accountModel
       .aggregate()
@@ -336,15 +337,16 @@ export class UserService {
       .unwind("requisite")
       .match({ "requisite.currency": user.currency, "requisite.active": true })
       .group({ _id: "$requisite._id", requisite: { $first: "$requisite" } })
-      .replaceRoot("$requisite");
+      .replaceRoot("$requisite")
+      .match({ [dto.type]: { $eq: true } });
 
     return recommendedRequisites;
   }
 
-  async findRequisites(userPayload: IAuthPayload) {
+  async findRequisites(userPayload: IAuthPayload, dto: RequisiteDto) {
     const user = await this.userModel.findById(userPayload.id);
 
-    const usdBalance = this.convertService.convert(user.currency, "USD", user.balance);
+    // const usdBalance = this.convertService.convert(user.currency, "USD", user.balance);
 
     const requisites = await this.accountModel
       .aggregate()
@@ -363,7 +365,8 @@ export class UserService {
       .match({ "requisite.active": true })
       .group({ _id: "$requisite.currency", requisites: { $push: "$requisite" } })
       .addFields({ currency: "$_id" })
-      .project({ _id: 0 });
+      .project({ _id: 0 })
+      .match({ [`requisites.${dto.type}`]: { $eq: true } });
 
     return requisites;
   }

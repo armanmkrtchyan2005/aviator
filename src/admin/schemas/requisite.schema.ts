@@ -41,15 +41,19 @@ export class Requisite {
   active: boolean;
 
   @ApiProperty()
+  @Prop()
   min_symbols_count: number;
 
   @ApiProperty()
+  @Prop()
   max_symbols_count: number;
 
   @ApiProperty()
+  @Prop()
   replenishment: boolean;
 
   @ApiProperty()
+  @Prop()
   withdrawal: boolean;
 
   @ApiProperty()

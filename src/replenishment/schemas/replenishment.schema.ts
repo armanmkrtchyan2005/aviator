@@ -31,18 +31,18 @@ export class Replenishment {
   amount: IAmount;
 
   @ApiProperty({ properties: { USD: { example: 100 } } })
-  @Prop({ type: Object })
+  @Prop({ required: false, type: Object })
   bonusAmount: IAmount;
 
   @ApiProperty({ properties: { USD: { example: 110 } } })
-  @Prop({ required: true, type: Object })
+  @Prop({ required: false, type: Object })
   deduction: IAmount;
 
   @ApiProperty({ enum: ReplenishmentStatusEnum })
   @Prop({ required: true, default: ReplenishmentStatusEnum.PENDING, enum: ReplenishmentStatusEnum })
   status: ReplenishmentStatusEnum;
 
-  @Prop({ required: true, type: mongoose.Schema.Types.ObjectId, ref: Account.name })
+  @Prop({ required: false, type: mongoose.Schema.Types.ObjectId, ref: Account.name })
   account: AccountDocument;
 
   @ApiProperty()
@@ -54,7 +54,7 @@ export class Replenishment {
   isPayConfirmed: boolean;
 
   @ApiProperty({ type: AccountRequisite })
-  @Prop({ required: true, type: mongoose.Schema.Types.ObjectId, ref: AccountRequisite.name })
+  @Prop({ required: false, type: mongoose.Schema.Types.ObjectId, ref: AccountRequisite.name })
   requisite: AccountRequisiteDocument | any;
 
   @ApiProperty({ type: Requisite })
@@ -76,6 +76,10 @@ export class Replenishment {
   @ApiProperty()
   @Prop({ required: false })
   receipt: string;
+
+  @ApiProperty()
+  @Prop({ required: false })
+  paymentUrl: string;
 
   @ApiProperty()
   uid: number;

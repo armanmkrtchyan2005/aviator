@@ -141,8 +141,10 @@ export class ReplenishmentService {
 
     const amount: IAmount = {};
     const deduction: IAmount = {};
+    const bonusAmount: IAmount = {};
 
     for (const currency of admin.currencies) {
+      bonusAmount[currency] = 0;
       amount[currency] = await this.convertService.convert(dto.currency, currency, dto.amount);
       const commission = await this.convertService.convert(admin.commissionCurrency, currency, admin.commission);
       deduction[currency] = amount[currency] + commission;
@@ -153,7 +155,7 @@ export class ReplenishmentService {
     if (requisite.AAIO) {
       if (amount["USD"] >= requisite.AAIOlimit.min && amount["USD"] <= requisite.AAIOlimit.max) {
         // --------------------------
-        return await this.paymentService.createAAIOPayment({});
+        return await this.paymentService.createAAIOPayment({ user, amount, requisite });
       }
     }
 
@@ -162,7 +164,7 @@ export class ReplenishmentService {
     if (requisite.donatePay) {
       if (amount["USD"] >= requisite.donatePaylimit.min && amount["USD"] <= requisite.donatePaylimit.max) {
         // --------------------------
-        return await this.paymentService.createDonatePayPayment({});
+        return await this.paymentService.createDonatePayPayment({ user, amount, requisite });
       }
     }
 
@@ -181,6 +183,8 @@ export class ReplenishmentService {
       requisite.accountCount = 0;
     }
 
+    console.log(accountsCount, requisite.accountCount);
+
     await requisite.save();
 
     const account = await this.accountModel
@@ -188,13 +192,15 @@ export class ReplenishmentService {
       .skip(requisite.accountCount)
       .populate("requisites");
 
+    console.log(account);
+
     if (!account) {
       throw new NotFoundException("Реквизит не найден");
     }
 
     const requisites = account.requisites.filter(req => req.active);
 
-    if (account.selectedRequisiteDir < requisites.length) {
+    if (account.selectedRequisiteDir < requisites.length - 1) {
       account.selectedRequisiteDir++;
     } else {
       account.selectedRequisiteDir = 0;
@@ -212,18 +218,18 @@ export class ReplenishmentService {
 
     const bonuses = await this.userPromoModel.find({ user: user._id }).populate("promo");
 
-    const bonusAmount: IAmount = {};
-
     for (let bonus of bonuses) {
       if (bonus.limit >= amount[user.currency]) {
         for (const currency of admin.currencies) {
-          const promoAmount = await this.convertService.convert(bonus.promo.currency, currency, dto.amount);
+          const promoAmount = await this.convertService.convert(bonus.promo.currency, currency, amount[bonus.promo.currency]);
           bonusAmount[currency] += (amount[currency] * promoAmount) / 100;
         }
         bonus.limit -= amount[user.currency];
         await bonus.save();
       }
     }
+
+    console.log(bonusAmount);
 
     await replenishmentRequisite.save();
 

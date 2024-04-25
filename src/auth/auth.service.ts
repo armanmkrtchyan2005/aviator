@@ -215,7 +215,7 @@ export class AuthService {
   }
 
   async sendCode(req: Request, dto: SendCodeDto): Promise<SendCodeOkResponse> {
-    const token = req.headers.authorization.split(" ")[1];
+    const token = req.headers.authorization?.split(" ")[1];
 
     const session = await this.sessionModel.findOne({ token });
 
@@ -223,14 +223,14 @@ export class AuthService {
       email: dto.email,
     });
 
-    let type = SendEmailType.FORGOT;
-
-    if (user._id.toString() == session.user.toString()) {
-      type = SendEmailType.RESET;
-    }
-
     if (!user) {
       throw new BadRequestException("Такой пользователь не найден");
+    }
+
+    let type = SendEmailType.FORGOT;
+
+    if (user._id.toString() == session?.user?.toString()) {
+      type = SendEmailType.RESET;
     }
 
     if (user.isEmailUpdated) {
