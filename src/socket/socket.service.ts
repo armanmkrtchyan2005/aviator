@@ -488,6 +488,10 @@ export class SocketService {
   }
 
   async handleDrain() {
+    if (this.x <= 1) {
+      return new WsException("Вы не можете слить игру во время загрузки игры");
+    }
+
     this.loading();
 
     return { message: "Игра остановлена" };
@@ -609,8 +613,9 @@ export class SocketService {
             await botBet.save();
           }
         }, 100);
-
-        this.schedulerRegistry.addInterval(`bot-${i}`, intervalId);
+        try {
+          this.schedulerRegistry.addInterval(`bot-${i}`, intervalId);
+        } catch (error) {}
       }, 50 * i);
     }
 
@@ -618,6 +623,8 @@ export class SocketService {
     this.isBetWait = true;
 
     if (this.betGame.game_coeff) {
+      console.log("x =>", this.betGame.game_coeff);
+
       this.random = this.betGame.game_coeff;
       this.interval = setInterval(() => this.game(), 100);
       return;

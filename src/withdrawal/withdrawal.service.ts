@@ -56,8 +56,8 @@ export class WithdrawalService {
       },
     ]);
     let total = 0;
-    if(replenishment) {
-      total = replenishment.total
+    if (replenishment) {
+      total = replenishment.total;
     }
 
     const betAmount = total - user.playedAmount;
@@ -73,6 +73,14 @@ export class WithdrawalService {
 
     for (const currency of admin.currencies) {
       amount[currency] = await this.convertService.convert(dto.currency, currency, dto.amount);
+    }
+
+    if (amount[requisite.currency] < requisite.withdrawalLimit.min) {
+      throw new BadRequestException({ message: `Сумма вывода должна быть више от ${requisite.withdrawalLimit.min} ${requisite.currency}` });
+    }
+
+    if (amount[requisite.currency] > requisite.withdrawalLimit.max) {
+      throw new BadRequestException({ message: `Сумма вывода должна быть ниже от ${requisite.withdrawalLimit.max} ${requisite.currency}` });
     }
 
     if (amount[user.currency] > user.balance) {

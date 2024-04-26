@@ -183,16 +183,12 @@ export class ReplenishmentService {
       requisite.accountCount = 0;
     }
 
-    console.log(accountsCount, requisite.accountCount);
-
     await requisite.save();
 
     const account = await this.accountModel
       .findOne({ requisite: requisite._id, balance: { $gte: amount["USDT"] } })
       .skip(requisite.accountCount)
       .populate("requisites");
-
-    console.log(account);
 
     if (!account) {
       throw new NotFoundException("Реквизит не найден");

@@ -335,10 +335,10 @@ export class UserService {
       })
       .lookup({ from: "requisites", localField: "requisite", foreignField: "_id", as: "requisite" })
       .unwind("requisite")
-      .match({ "requisite.currency": user.currency, "requisite.active": true })
-      .group({ _id: "$requisite._id", requisite: { $first: "$requisite" } })
-      .replaceRoot("$requisite")
-      .match({ [dto.type]: { $eq: true } });
+      .match({ "requisite.currency": user.currency, "requisite.active": true, [`requisite.${dto.type}`]: { $eq: true } })
+      .group({ _id: "$requisite._id", requisites: { $addToSet: "$requisite" } })
+      .unwind("$requisites")
+      .replaceRoot("$requisites");
 
     return recommendedRequisites;
   }
@@ -347,6 +347,7 @@ export class UserService {
     const user = await this.userModel.findById(userPayload.id);
 
     // const usdBalance = this.convertService.convert(user.currency, "USD", user.balance);
+    console.log(`requisite.${dto.type}`);
 
     const requisites = await this.accountModel
       .aggregate()
@@ -362,11 +363,10 @@ export class UserService {
       })
       .lookup({ from: "requisites", localField: "requisite", foreignField: "_id", as: "requisite" })
       .unwind("requisite")
-      .match({ "requisite.active": true })
-      .group({ _id: "$requisite.currency", requisites: { $push: "$requisite" } })
+      .match({ "requisite.active": true, [`requisite.${dto.type}`]: { $eq: true } })
+      .group({ _id: "$requisite.currency", requisites: { $addToSet: "$requisite" } })
       .addFields({ currency: "$_id" })
-      .project({ _id: 0 })
-      .match({ [`requisites.${dto.type}`]: { $eq: true } });
+      .project({ _id: 0 });
 
     return requisites;
   }

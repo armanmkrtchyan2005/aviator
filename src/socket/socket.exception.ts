@@ -13,7 +13,7 @@ export class SocketExceptionsFilter extends BaseWsExceptionFilter {
       event: "error",
       data: {
         id: (client as any).id,
-        rid: data.rid,
+        rid: data?.rid,
         ...details,
       },
     });
