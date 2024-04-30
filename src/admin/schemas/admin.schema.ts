@@ -87,6 +87,9 @@ export class Admin {
 
   @Prop({ required: true, type: Object })
   bots: IBots;
+
+  @Prop({ default: true })
+  game_is_active: boolean;
 }
 
 export const AdminSchema = SchemaFactory.createForClass(Admin);

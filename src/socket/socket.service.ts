@@ -39,7 +39,9 @@ export class SocketService {
   private currentPlayers: IBet[] = [];
   private currentPlayersWithoutBots: IBet[] = [];
   private betAmount: IAmount = {};
+  private betAmountWithoutBots: IAmount = {};
   private winAmount: IAmount = {};
+  private winAmountWithoutBots: IAmount = {};
 
   private algorithms: IAlgorithms[] = [];
   private selectedAlgorithmId: number;
@@ -262,6 +264,7 @@ export class SocketService {
 
     for (let key in this.betAmount) {
       this.betAmount[key] += bet[key];
+      this.betAmountWithoutBots[key] += bet[key];
     }
 
     this.drawCurrentPlayers();
@@ -317,6 +320,7 @@ export class SocketService {
 
     for (let key in this.betAmount) {
       this.betAmount[key] -= bet[key];
+      this.betAmountWithoutBots[key] -= bet[key];
     }
 
     this.currentPlayers = this.currentPlayers.filter(player => player._id !== bet._id);
@@ -379,9 +383,13 @@ export class SocketService {
 
     for (let key in this.winAmount) {
       this.winAmount[key] += win[key];
+      this.winAmountWithoutBots[key] += bet[key];
     }
 
     this.drawCurrentPlayers();
+
+    this.betGame.win = this.winAmountWithoutBots;
+    await this.betGame.save();
 
     user.balance += win[user.currency];
 
@@ -497,6 +505,36 @@ export class SocketService {
     return { message: "Игра остановлена" };
   }
 
+  async handleStopGame() {
+    if (this.x <= 1) {
+      return new WsException("Вы не можете слить игру во время загрузки игры");
+    }
+
+    const admin = await this.adminModel.findOne();
+
+    clearInterval(this.interval);
+
+    admin.game_is_active = false;
+
+    await admin.save();
+
+    return { message: "Игра остановлена" };
+  }
+
+  async handleRunGame() {
+    const admin = await this.adminModel.findOne();
+
+    if (admin.game_is_active) {
+      return new WsException("Игра уже была запушена");
+    }
+
+    admin.game_is_active = true;
+
+    await admin.save();
+
+    return { message: "Игра остановлена" };
+  }
+
   private async loading() {
     clearInterval(this.interval);
 
@@ -546,12 +584,19 @@ export class SocketService {
 
     this.currentPlayers = [];
     this.betAmount = {};
+    this.betAmountWithoutBots = {};
     this.winAmount = {};
+    this.winAmountWithoutBots = {};
 
     for (const currency of admin.currencies) {
       this.betAmount[currency] = 0;
+      this.betAmountWithoutBots[currency] = 0;
       this.winAmount[currency] = 0;
+      this.winAmountWithoutBots[currency] = 0;
     }
+
+    this.betGame.bet = this.betAmountWithoutBots;
+    this.betGame.win = this.winAmountWithoutBots;
 
     this.threePlayers = [];
 
@@ -643,6 +688,9 @@ export class SocketService {
     console.log(this.selectedAlgorithmId);
 
     this.betGame.algorithm_id = this.selectedAlgorithmId;
+    this.betGame.bet = this.betAmountWithoutBots;
+    this.betGame.win = this.winAmountWithoutBots;
+    this.betGame.bets_count = this.currentPlayersWithoutBots.length;
 
     await this.betGame.save();
 
