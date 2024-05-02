@@ -15,16 +15,15 @@ import { UserPromo } from "src/user/schemas/userPromo.schema";
 import { Game, GameDocument } from "src/bets/schemas/game.schema";
 import { Session } from "src/user/schemas/session.schema";
 import { generateUsername } from "unique-username-generator";
-import { SchedulerRegistry } from "@nestjs/schedule";
+import { CronExpression, SchedulerRegistry } from "@nestjs/schedule";
 import * as _ from "lodash";
 import { IdentityCounter } from "src/admin/schemas/identity-counter.schema";
 import Big from "big.js";
-import { log } from "handlebars/runtime";
+import { CronJob } from "cron";
 
 const STOP_DISABLE_MS = 2000;
 const LOADING_MS = 5000;
-const MAX_COEFF = 110;
-const HOUR_IN_MS = 1000 * 60 * 60;
+const MAX_COEFF = 1;
 
 function sleep(ms: number = 0) {
   return new Promise(res => setTimeout(res, ms));
@@ -61,8 +60,8 @@ export class SocketService {
   private maxWinAmount: number = 0;
 
   // Algorithm 7
-  private randomOneHourTimeOut: string | number | NodeJS.Timeout;
-
+  private randomOneHour: boolean = false;
+  private randomEleven: boolean = false;
   // Algorithm 7
   private totalWinsCount: number = 0;
 
@@ -131,15 +130,42 @@ export class SocketService {
     await user.save();
   }
 
-  private async randomOneHourAlgorithm() {
-    const admin = await this.adminModel.findOne();
-    if (admin.algorithms[5].active) {
-      const daley = _.random(HOUR_IN_MS, 2 * HOUR_IN_MS);
-      this.randomOneHourTimeOut = setTimeout(() => {
-        this.random = _.random(1, 100, true);
-        this.randomOneHourAlgorithm();
-      }, daley);
-    }
+  private async randomSixAlgorithm() {
+    const job = new CronJob(CronExpression.EVERY_HOUR, async () => {
+      // set random delay between 5(min) and 50(max) minutes
+      const admin = await this.adminModel.findOne();
+
+      if (admin.algorithms[5].active) {
+        const delay = Math.floor(Math.random() * (3e6 - 300000) + 300000);
+
+        setTimeout(() => {
+          this.randomOneHour = true;
+        }, delay);
+
+        console.log(`running scraper in ${delay / 60000} minutes`);
+      }
+    });
+
+    job.start();
+  }
+
+  private async randomElevenAlgorithm() {
+    const job = new CronJob(CronExpression.EVERY_10_MINUTES, async () => {
+      const admin = await this.adminModel.findOne();
+
+      if (admin.algorithms[10]?.active) {
+        // set random delay between 1(min) and 9(max) minutes
+        const delay = Math.floor(Math.random() * (540000 - 60000) + 60000);
+
+        setTimeout(() => {
+          this.randomEleven = true;
+        }, delay);
+
+        console.log(`running scraper in ${delay / 60000} minutes`);
+      }
+    });
+
+    job.start();
   }
 
   async init() {
@@ -151,7 +177,8 @@ export class SocketService {
     this.interval = setInterval(() => this.game(), this.ms);
 
     // 6. random one hour algorithm
-    this.randomOneHourAlgorithm();
+    this.randomSixAlgorithm();
+    this.randomElevenAlgorithm();
   }
 
   async game() {
@@ -675,7 +702,7 @@ export class SocketService {
       return;
     }
 
-    const excludedAlgorithmsId = [];
+    const excludedAlgorithmsId = [6, 11];
     this.currentPlayersWithoutBots = this.currentPlayers.filter(bet => !bet.isBot);
     if (this.currentPlayersWithoutBots.length <= 3) {
       excludedAlgorithmsId.push(1, 4);
@@ -763,8 +790,21 @@ export class SocketService {
           this.totalWins = 0;
         }
         break;
+      case 12:
+        this.random = _.random(1, 1.5, true);
+        break;
       default:
         break;
+    }
+
+    if (this.randomOneHour) {
+      this.random = _.random(1, 100, true);
+      this.randomOneHour = false;
+    }
+
+    if (this.randomEleven) {
+      this.random = _.random(1, 1.5, true);
+      this.randomEleven = false;
     }
 
     this.interval = setInterval(() => this.game(), 100);
