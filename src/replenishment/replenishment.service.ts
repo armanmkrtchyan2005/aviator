@@ -20,6 +20,7 @@ import { Request } from "express";
 import { ReplenishmentFilePipe } from "./pipes/replenishment-file.pipe";
 import { AccountRequisiteDocument } from "src/admin/schemas/account-requisite.schema";
 import { PaymentService } from "src/payment/payment.service";
+import * as fs from "fs";
 
 @Injectable()
 export class ReplenishmentService {
@@ -40,7 +41,7 @@ export class ReplenishmentService {
     const requisite = await this.requisiteModel.findById(id);
     const user = await this.userModel.findById(userPayload.id, ["currency"]);
 
-    const limits = [requisite.replenishmentLimit.min, requisite.replenishmentLimit.max];
+    const limits = [requisite.profileLimit?.min, requisite.profileLimit?.max];
 
     if (requisite.AAIO) {
       limits.push(requisite.AAIOlimit.min, requisite.AAIOlimit.max);
@@ -53,8 +54,8 @@ export class ReplenishmentService {
     const min = _.min(limits);
     const max = _.max(limits);
 
-    const minLimit = await this.convertService.convert("USD", user.currency, min);
-    const maxLimit = await this.convertService.convert("USD", user.currency, max);
+    const minLimit = await this.convertService.convert(requisite.currency, user.currency, min);
+    const maxLimit = await this.convertService.convert(requisite.currency, user.currency, max);
 
     return { minLimit, maxLimit, currency: user.currency };
   }
@@ -150,28 +151,34 @@ export class ReplenishmentService {
       deduction[currency] = amount[currency] + commission;
     }
 
+    console.log("amount: ", amount);
+
     //----------------- AAIO CODE ------------------
 
     if (requisite.AAIO) {
-      if (amount["USD"] >= requisite.AAIOlimit.min && amount["USD"] <= requisite.AAIOlimit.max) {
+      if (amount[requisite.currency] >= requisite.AAIOlimit.min && amount[requisite.currency] <= requisite.AAIOlimit.max) {
         // --------------------------
         return await this.paymentService.createAAIOPayment({ user, amount, requisite });
       }
     }
 
-    //-------------- DonatePay CODE -----------------
+    //-------------- Freekassa CODE -----------------
 
     if (requisite.donatePay) {
-      if (amount["USD"] >= requisite.donatePaylimit.min && amount["USD"] <= requisite.donatePaylimit.max) {
+      if (amount[requisite.currency] >= requisite.donatePaylimit.min && amount[requisite.currency] <= requisite.donatePaylimit.max) {
         // --------------------------
         return await this.paymentService.createDonatePayPayment({ user, amount, requisite });
       }
     }
 
-    const minLimit = requisite.replenishmentLimit.min;
-    const maxLimit = requisite.replenishmentLimit.min;
+    if (!requisite.profile) {
+      throw new NotFoundException("Реквизит не найден");
+    }
 
-    if (amount["USD"] < minLimit && amount["USD"] > maxLimit) {
+    const minLimit = requisite.profileLimit?.min;
+    const maxLimit = requisite.profileLimit?.min;
+
+    if (amount[requisite.currency] < minLimit && amount[requisite.currency] > maxLimit) {
       throw new BadRequestException(`Сумма не должен бит не меньше чем ${minLimit + user.currency} и не больше чем ${maxLimit + user.currency}`);
     }
 
@@ -225,8 +232,6 @@ export class ReplenishmentService {
       }
     }
 
-    console.log(bonusAmount);
-
     await replenishmentRequisite.save();
 
     const replenishment = await (
@@ -237,6 +242,10 @@ export class ReplenishmentService {
       console.log("Time out");
       replenishment.status = ReplenishmentStatusEnum.CANCELED;
       replenishment.statusMessage = "По истечении времени";
+      try {
+        fs.rmSync(replenishment.receipt);
+        replenishment.receipt = "";
+      } catch (error) {}
       await replenishment.save();
       this.schedulerRegistry.deleteCronJob(replenishment._id.toString());
     });
@@ -255,13 +264,18 @@ export class ReplenishmentService {
     replenishment.status = ReplenishmentStatusEnum.CANCELED;
     replenishment.statusMessage = "Отменена пользователем";
 
+    try {
+      fs.rmSync(replenishment.receipt);
+      replenishment.receipt = "";
+    } catch (error) {}
+
     await replenishment.save();
 
     try {
       this.schedulerRegistry.deleteCronJob(dto.id);
     } catch (error) {}
 
-    return { message: "Пополнение отменена" };
+    return { message: "Пополнение отменено" };
   }
 
   async confirmReplenishment(id: string, receiptFile: Express.Multer.File) {
@@ -274,7 +288,7 @@ export class ReplenishmentService {
     }
 
     if (requisite.isReceiptFileRequired && !receiptFile) {
-      throw new BadRequestException("квитанция об оплате обязательна");
+      throw new BadRequestException("Квитанция об оплате обязательна");
     }
 
     if (requisite.isCardFileRequired && !replenishment.card) {

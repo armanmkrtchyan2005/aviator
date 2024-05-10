@@ -523,6 +523,7 @@ export class SocketService {
   }
 
   async handleDrain() {
+    console.log("Drain");
     if (this.x <= 1) {
       return new WsException("Вы не можете слить игру во время загрузки игры");
     }
@@ -580,7 +581,7 @@ export class SocketService {
     try {
       await this.betGame.save();
     } catch (e) {
-      throw new WsException(e.message);
+      return new WsException(e.message);
     }
 
     const gameFined = await this.gameModel.findOne({ uid: this.betGame.uid + 1 });
@@ -710,16 +711,34 @@ export class SocketService {
 
     const activeAlgorithms = this.algorithms.filter(alg => alg.active && !excludedAlgorithmsId.includes(alg.id));
 
-    this.selectedAlgorithmId = _.sample(activeAlgorithms).id;
+    this.selectedAlgorithmId = _.sample(activeAlgorithms)?.id;
 
-    console.log(this.selectedAlgorithmId);
+    if (this.randomOneHour) {
+      this.random = _.random(1, 100, true);
+      this.randomOneHour = false;
+      this.selectedAlgorithmId = 6;
+    }
+
+    if (this.randomEleven) {
+      this.random = _.random(1, 1.5, true);
+      this.randomEleven = false;
+      this.selectedAlgorithmId = 11;
+    }
 
     this.betGame.algorithm_id = this.selectedAlgorithmId;
     this.betGame.bet = this.betAmountWithoutBots;
     this.betGame.win = this.winAmountWithoutBots;
     this.betGame.bets_count = this.currentPlayersWithoutBots.length;
 
-    await this.betGame.save();
+    console.log(this.selectedAlgorithmId);
+
+    if (!this.selectedAlgorithmId) {
+      return this.loading();
+    }
+
+    try {
+      await this.betGame.save();
+    } catch (error) {}
 
     let totalAmount: number;
     switch (this.selectedAlgorithmId) {
@@ -795,16 +814,6 @@ export class SocketService {
         break;
       default:
         break;
-    }
-
-    if (this.randomOneHour) {
-      this.random = _.random(1, 100, true);
-      this.randomOneHour = false;
-    }
-
-    if (this.randomEleven) {
-      this.random = _.random(1, 1.5, true);
-      this.randomEleven = false;
     }
 
     this.interval = setInterval(() => this.game(), 100);

@@ -23,6 +23,19 @@ export class WithdrawalService {
     private convertService: ConvertService,
   ) {}
 
+  async findLimits(userPayload: IAuthPayload, requisiteId: string) {
+    const user = await this.userModel.findById(userPayload.id);
+    const requisite = await this.requisiteModel.findById(requisiteId);
+
+    const min = requisite.withdrawalLimit.min;
+    const max = requisite.withdrawalLimit.max;
+
+    const minLimit = await this.convertService.convert(requisite.currency, user.currency, min);
+    const maxLimit = await this.convertService.convert(requisite.currency, user.currency, max);
+
+    return { minLimit, maxLimit, currency: user.currency };
+  }
+
   async findAll(userPayload: IAuthPayload) {
     const withdrawals = await this.withdrawalModel
       .find({

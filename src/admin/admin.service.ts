@@ -321,7 +321,6 @@ export class AdminService {
 
   async replenishmentHistory(account: Account) {
     return {
-      address: account.usdtAddress,
       history: account.replenishmentHistory,
     };
   }

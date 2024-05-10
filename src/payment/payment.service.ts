@@ -1,14 +1,15 @@
-import { Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import { CreatePaymentDto } from "./dto/create-payment.dto";
 import { InjectModel } from "@nestjs/mongoose";
 import { Replenishment, ReplenishmentStatusEnum } from "src/replenishment/schemas/replenishment.schema";
 import { Model } from "mongoose";
 import * as crypto from "crypto";
-import { SuccessPaymentDto } from "./dto/success-payment.dto";
+import { AAIOSuccessPaymentDto } from "./dto/aaio-success-payment.dto";
 import { User } from "src/user/schemas/user.schema";
 import { ConvertService } from "src/convert/convert.service";
 import { CronExpression, SchedulerRegistry } from "@nestjs/schedule";
 import { CronJob } from "cron";
+import { FreekassaSuccessPaymentDto } from "./dto/freekassa-success-payment.dto";
 
 @Injectable()
 export class PaymentService {
@@ -18,6 +19,17 @@ export class PaymentService {
     private convertService: ConvertService,
     private schedulerRegistry: SchedulerRegistry,
   ) {}
+
+  private md5(sign: string) {
+    return crypto.createHash("md5").update(sign).digest("hex");
+  }
+
+  private createFirstSign(orderAmount: number, orderId: string, currency: string) {
+    return this.md5(process.env.FREEKASSA_MERCHANT_ID + ":" + orderAmount + ":" + process.env.FREEKASSA_FIRST_PHRASE + ":" + currency + ":" + orderId);
+  }
+  private createSecondSign(orderAmount: number, orderId: string) {
+    return this.md5(process.env.FREEKASSA_MERCHANT_ID + ":" + orderAmount + ":" + process.env.FREEKASSA_SECOND_PHRASE + ":" + orderId);
+  }
 
   async createAAIOPayment(dto: CreatePaymentDto) {
     const replenishment = new this.replenishmentModel({ user: dto.user._id, amount: dto.amount, method: dto.requisite });
@@ -56,13 +68,37 @@ export class PaymentService {
   }
 
   async createDonatePayPayment(dto: CreatePaymentDto) {
-    return {
-      method: "DonatePay",
-      paymentUrl: "/",
-    };
+    const replenishment = new this.replenishmentModel({ user: dto.user._id, amount: dto.amount, method: dto.requisite });
+    const currency = dto.user.currency;
+    const paymentUrl =
+      "https://pay.freekassa.ru/" +
+      `?m=${process.env.FREEKASSA_MERCHANT_ID}` +
+      `&oa=${dto.amount[currency]}` +
+      `&currency=${currency}` +
+      `&o=${replenishment._id}` +
+      `&s=${this.createFirstSign(dto.amount[currency], replenishment._id.toString(), dto.user.currency)}` +
+      `$us_user_id=${dto.user._id.toString()}` +
+      `$us_currency=${currency}`;
+
+    replenishment.paymentUrl = paymentUrl;
+
+    await replenishment.save();
+
+    const job = new CronJob(CronExpression.EVERY_30_MINUTES, async () => {
+      console.log("Time out");
+      replenishment.status = ReplenishmentStatusEnum.CANCELED;
+      replenishment.statusMessage = "По истечении времени";
+      await replenishment.save();
+      this.schedulerRegistry.deleteCronJob(replenishment._id.toString());
+    });
+
+    this.schedulerRegistry.addCronJob(replenishment._id.toString(), job);
+    job.start();
+
+    return replenishment;
   }
 
-  async successPaymentAAIO(dto: SuccessPaymentDto) {
+  async successPaymentAAIO(dto: AAIOSuccessPaymentDto) {
     const user = await this.userModel.findById(dto.us_user_id);
     const replenishment = await this.replenishmentModel.findById(dto.order_id);
 
@@ -74,5 +110,25 @@ export class PaymentService {
 
     await user.save();
     await replenishment.save();
+  }
+
+  async successPaymentFreekassa(dto: FreekassaSuccessPaymentDto) {
+    if (dto.SIGN !== this.createSecondSign(dto.AMOUNT, dto.MERCHANT_ORDER_ID)) {
+      throw new BadRequestException("SIGN не подходит");
+    }
+
+    const user = await this.userModel.findById(dto.us_user_id);
+    const replenishment = await this.replenishmentModel.findById(dto.MERCHANT_ORDER_ID);
+
+    const amount = await this.convertService.convert(dto.us_currency, user.currency, dto.AMOUNT);
+
+    user.balance += amount;
+    replenishment.status = ReplenishmentStatusEnum.COMPLETED;
+    replenishment.paymentUrl = null;
+
+    await user.save();
+    await replenishment.save();
+
+    return "YES";
   }
 }

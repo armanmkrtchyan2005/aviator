@@ -57,8 +57,12 @@ export class Requisite {
   withdrawal: boolean;
 
   @ApiProperty()
+  @Prop({ default: false })
+  profile: boolean;
+
+  @ApiProperty()
   @Prop()
-  replenishmentLimit: RequisiteLimit;
+  profileLimit: RequisiteLimit;
 
   @ApiProperty()
   @Prop()

@@ -27,7 +27,7 @@ import { generateCode } from "src/admin/common/utils/generate-code";
 import { CronJob } from "cron";
 import { CronExpression, SchedulerRegistry } from "@nestjs/schedule";
 import { Account } from "src/admin/schemas/account.schema";
-import { RequisiteDto } from "./dto/requisite.dto";
+import { RequisiteDto, RequisiteTypeEnum } from "./dto/requisite.dto";
 
 @Injectable()
 export class UserService {
@@ -321,7 +321,7 @@ export class UserService {
     const user = await this.userModel.findById(userPayload.id);
     // const usdBalance = this.convertService.convert(user.currency, "USD", user.balance);
 
-    const recommendedRequisites = await this.accountModel
+    let recommendedRequisites = await this.accountModel
       .aggregate()
       .match({
         // balance: {
@@ -335,10 +335,19 @@ export class UserService {
       })
       .lookup({ from: "requisites", localField: "requisite", foreignField: "_id", as: "requisite" })
       .unwind("requisite")
-      .match({ "requisite.currency": user.currency, "requisite.active": true, [`requisite.${dto.type}`]: { $eq: true } })
+      .match({
+        "requisite.currency": user.currency,
+        "requisite.active": true,
+        [`requisite.${dto.type}`]: { $eq: true },
+        $or: [{ "requisite.profile": true }, { "requisite.donatePay": true }, { "requisite.AAIO": true }],
+      })
       .group({ _id: "$requisite._id", requisites: { $addToSet: "$requisite" } })
       .unwind("$requisites")
       .replaceRoot("$requisites");
+
+    if (!recommendedRequisites.length && dto.type == RequisiteTypeEnum.REPLENISHMENT) {
+      recommendedRequisites = await this.requisiteModel.aggregate().match({ currency: user.currency, active: true, AAIO: { $eq: true }, donatepay: { $eq: true } });
+    }
 
     return recommendedRequisites;
   }
@@ -349,13 +358,9 @@ export class UserService {
     // const usdBalance = this.convertService.convert(user.currency, "USD", user.balance);
     console.log(`requisite.${dto.type}`);
 
-    const requisites = await this.accountModel
+    let requisites = await this.accountModel
       .aggregate()
       .match({
-        // balance: {
-        //   $gte: usdBalance,
-        //   $lte: usdBalance,
-        // },
         requisites: {
           $exists: true,
           $ne: [],
@@ -363,10 +368,23 @@ export class UserService {
       })
       .lookup({ from: "requisites", localField: "requisite", foreignField: "_id", as: "requisite" })
       .unwind("requisite")
-      .match({ "requisite.active": true, [`requisite.${dto.type}`]: { $eq: true } })
+      .match({
+        "requisite.active": true,
+        [`requisite.${dto.type}`]: { $eq: true },
+        $or: [{ "requisite.profile": true }, { "requisite.donatePay": true }, { "requisite.AAIO": true }],
+      })
       .group({ _id: "$requisite.currency", requisites: { $addToSet: "$requisite" } })
       .addFields({ currency: "$_id" })
       .project({ _id: 0 });
+
+    if (!requisites.length && dto.type == RequisiteTypeEnum.REPLENISHMENT) {
+      requisites = await this.requisiteModel
+        .aggregate()
+        .match({ active: true, AAIO: { $eq: true }, donatepay: { $eq: true } })
+        .group({ _id: "$requisite.currency", requisites: { $addToSet: "$$ROOT" } })
+        .addFields({ currency: "$_id" })
+        .project({ _id: 0 });
+    }
 
     return requisites;
   }

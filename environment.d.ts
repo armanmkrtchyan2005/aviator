@@ -17,6 +17,12 @@ declare global {
 
       AAIO_SECRET_KEY: string;
       AAIO_MERCHANT_ID: string;
+
+      FREEKASSA_FIRST_PHRASE: string;
+      FREEKASSA_SECOND_PHRASE: string;
+      FREEKASSA_SECRET_KEY: string;
+      FREEKASSA_MERCHANT_ID: string;
+      FREEKASSA_SERVER_IPS: string;
     }
   }
 }

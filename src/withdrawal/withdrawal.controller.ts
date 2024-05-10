@@ -7,12 +7,21 @@ import { CreateWithdrawalDto } from "./dto/createWithdrawal.dto";
 import { Withdrawal } from "./schemas/withdrawal.schema";
 import { CreateWithdrawalBadResponse } from "./responses/createWithdrawal.response";
 import { CancelWithdrawalOkResponse } from "./responses/cancelWithdrawal.response";
+import { LimitsOkResponse } from "src/replenishment/responses/limits.response";
 
 @ApiTags("Withdrawals")
 @Auth()
 @Controller("withdrawals")
 export class WithdrawalController {
   constructor(private withdrawalService: WithdrawalService) {}
+
+  @ApiOkResponse({
+    type: LimitsOkResponse,
+  })
+  @Get("/limits/:requisiteId")
+  getWithdrawalsLimit(@Req() req: Request, @Param("requisiteId") requisiteId: string) {
+    return this.withdrawalService.findLimits(req["user"], requisiteId);
+  }
 
   @ApiOkResponse({ type: [Withdrawal] })
   @Get("/")

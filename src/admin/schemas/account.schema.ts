@@ -44,6 +44,7 @@ export class Account {
   @Prop({ required: true, type: mongoose.Schema.Types.ObjectId, ref: Requisite.name })
   requisite: RequisiteDocument;
 
+  @ApiProperty({ type: [String] })
   @Prop({ type: [{ type: mongoose.Schema.Types.ObjectId }], ref: AccountRequisite.name })
   requisites: AccountRequisiteDocument[];
 
