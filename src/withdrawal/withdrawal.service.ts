@@ -33,7 +33,7 @@ export class WithdrawalService {
     const minLimit = await this.convertService.convert(requisite.currency, user.currency, min);
     const maxLimit = await this.convertService.convert(requisite.currency, user.currency, max);
 
-    return { minLimit, maxLimit, currency: user.currency };
+    return { minLimit, maxLimit, currency: user.currency, minSymbols: requisite.min_symbols_count, maxSymbols: requisite.max_symbols_count };
   }
 
   async findAll(userPayload: IAuthPayload) {
@@ -83,17 +83,20 @@ export class WithdrawalService {
     user.playedAmount = 0;
 
     const amount: IAmount = {};
+    const limits: { min: IAmount; max: IAmount } = { min: {}, max: {} };
 
     for (const currency of admin.currencies) {
       amount[currency] = await this.convertService.convert(dto.currency, currency, dto.amount);
+      limits.min[currency] = await this.convertService.convert(requisite.currency, currency, requisite.withdrawalLimit.min);
+      limits.max[currency] = await this.convertService.convert(requisite.currency, currency, requisite.withdrawalLimit.max);
     }
 
-    if (amount[requisite.currency] < requisite.withdrawalLimit.min) {
-      throw new BadRequestException({ message: `Сумма вывода должна быть више от ${requisite.withdrawalLimit.min} ${requisite.currency}` });
+    if (amount[requisite.currency] < limits.min[requisite.currency]) {
+      throw new BadRequestException({ message: `Сумма вывода должна быть више от ${limits.min[user.currency]} ${user.currency}` });
     }
 
-    if (amount[requisite.currency] > requisite.withdrawalLimit.max) {
-      throw new BadRequestException({ message: `Сумма вывода должна быть ниже от ${requisite.withdrawalLimit.max} ${requisite.currency}` });
+    if (amount[requisite.currency] > limits.max[requisite.currency]) {
+      throw new BadRequestException({ message: `Сумма вывода должна быть ниже от ${limits.max[user.currency]} ${user.currency}` });
     }
 
     if (amount[user.currency] > user.balance) {

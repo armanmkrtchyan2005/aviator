@@ -7,7 +7,7 @@ import { CreateWithdrawalDto } from "./dto/createWithdrawal.dto";
 import { Withdrawal } from "./schemas/withdrawal.schema";
 import { CreateWithdrawalBadResponse } from "./responses/createWithdrawal.response";
 import { CancelWithdrawalOkResponse } from "./responses/cancelWithdrawal.response";
-import { LimitsOkResponse } from "src/replenishment/responses/limits.response";
+import { LimitsOkResponse } from "./responses/limits.response";
 
 @ApiTags("Withdrawals")
 @Auth()

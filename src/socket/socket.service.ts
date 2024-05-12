@@ -185,7 +185,7 @@ export class SocketService {
     this.socket.emit("game", { x: this.x });
 
     this.x = new Big(this.x).plus(0.01).toNumber();
-    // this.step += 0.0006;
+    // this.step = new Big(this.step).plus(0.0006).toNumber();
 
     // 4. ----------
     if (this.selectedAlgorithmId === 4) {
@@ -816,6 +816,6 @@ export class SocketService {
         break;
     }
 
-    this.interval = setInterval(() => this.game(), 100);
+    this.interval = setInterval(() => this.game(), this.ms);
   }
 }

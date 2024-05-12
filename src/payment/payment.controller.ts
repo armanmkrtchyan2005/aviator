@@ -18,6 +18,8 @@ export class PaymentController {
       throw new BadRequestException("hacking attempt");
     }
 
+    console.log("aaaaaaaaaaaaaaaaaaaaaaaaa");
+
     return this.paymentService.successPaymentAAIO(dto);
   }
 

@@ -9,7 +9,7 @@ import { IAuthPayload } from "src/auth/auth.guard";
 import { ConvertService } from "src/convert/convert.service";
 import { CancelReplenishmentDto } from "./dto/cancel-replenishment.dto";
 import { Requisite } from "src/admin/schemas/requisite.schema";
-import { SchedulerRegistry, CronExpression } from "@nestjs/schedule";
+import { SchedulerRegistry, CronExpression, Cron } from "@nestjs/schedule";
 import { CronJob } from "cron";
 import { UserPromo } from "src/user/schemas/userPromo.schema";
 import { Bonus } from "src/user/schemas/bonus.schema";
@@ -20,7 +20,10 @@ import { Request } from "express";
 import { ReplenishmentFilePipe } from "./pipes/replenishment-file.pipe";
 import { AccountRequisiteDocument } from "src/admin/schemas/account-requisite.schema";
 import { PaymentService } from "src/payment/payment.service";
+import findRemoveSync from "find-remove";
 import * as fs from "fs";
+
+const ONE_WEEK_SECONDS = 604800; // 7 days in seconds;
 
 @Injectable()
 export class ReplenishmentService {
@@ -41,7 +44,12 @@ export class ReplenishmentService {
     const requisite = await this.requisiteModel.findById(id);
     const user = await this.userModel.findById(userPayload.id, ["currency"]);
 
-    const limits = [requisite.profileLimit?.min, requisite.profileLimit?.max];
+    const limits = [];
+
+    if (requisite.profile) {
+      limits.push(requisite.profileLimit?.min);
+      limits.push(requisite.profileLimit?.max);
+    }
 
     if (requisite.AAIO) {
       limits.push(requisite.AAIOlimit.min, requisite.AAIOlimit.max);
@@ -151,8 +159,6 @@ export class ReplenishmentService {
       deduction[currency] = amount[currency] + commission;
     }
 
-    console.log("amount: ", amount);
-
     //----------------- AAIO CODE ------------------
 
     if (requisite.AAIO) {
@@ -174,6 +180,7 @@ export class ReplenishmentService {
     if (!requisite.profile) {
       throw new NotFoundException("Реквизит не найден");
     }
+    console.log("amount: ", amount);
 
     const minLimit = requisite.profileLimit?.min;
     const maxLimit = requisite.profileLimit?.min;
@@ -332,5 +339,10 @@ export class ReplenishmentService {
     await replenishment.save();
 
     return { message: "Карта добавлена" };
+  }
+
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  async handleCron() {
+    findRemoveSync(__dirname + "/uploads/files", { age: { seconds: ONE_WEEK_SECONDS } });
   }
 }

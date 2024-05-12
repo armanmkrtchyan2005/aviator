@@ -4,6 +4,7 @@ import { IsEnum, IsOptional } from "class-validator";
 export enum RequisiteTypeEnum {
   REPLENISHMENT = "replenishment",
   WITHDRAWAL = "withdrawal",
+  PROFILE = "profile",
 }
 
 export class RequisiteDto {

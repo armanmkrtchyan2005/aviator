@@ -320,6 +320,9 @@ export class UserService {
   async findRecommendedRequisites(userPayload: IAuthPayload, dto: RequisiteDto) {
     const user = await this.userModel.findById(userPayload.id);
     // const usdBalance = this.convertService.convert(user.currency, "USD", user.balance);
+    if (dto.type === RequisiteTypeEnum.REPLENISHMENT) {
+      dto.type = RequisiteTypeEnum.PROFILE;
+    }
 
     let recommendedRequisites = await this.accountModel
       .aggregate()
@@ -338,15 +341,16 @@ export class UserService {
       .match({
         "requisite.currency": user.currency,
         "requisite.active": true,
-        [`requisite.${dto.type}`]: { $eq: true },
-        $or: [{ "requisite.profile": true }, { "requisite.donatePay": true }, { "requisite.AAIO": true }],
+        $or: [{ [`requisite.${dto.type}`]: true }, { "requisite.donatePay": true }, { "requisite.AAIO": true }],
       })
       .group({ _id: "$requisite._id", requisites: { $addToSet: "$requisite" } })
       .unwind("$requisites")
       .replaceRoot("$requisites");
 
-    if (!recommendedRequisites.length && dto.type == RequisiteTypeEnum.REPLENISHMENT) {
-      recommendedRequisites = await this.requisiteModel.aggregate().match({ currency: user.currency, active: true, AAIO: { $eq: true }, donatepay: { $eq: true } });
+    if (!recommendedRequisites.length && dto.type == RequisiteTypeEnum.PROFILE) {
+      recommendedRequisites = await this.requisiteModel
+        .aggregate()
+        .match({ currency: user.currency, active: true, $or: [{ [`requisite.${dto.type}`]: true }, { "requisite.donatePay": true }, { "requisite.AAIO": true }] });
     }
 
     return recommendedRequisites;
@@ -355,8 +359,9 @@ export class UserService {
   async findRequisites(userPayload: IAuthPayload, dto: RequisiteDto) {
     const user = await this.userModel.findById(userPayload.id);
 
-    // const usdBalance = this.convertService.convert(user.currency, "USD", user.balance);
-    console.log(`requisite.${dto.type}`);
+    if (dto.type === RequisiteTypeEnum.REPLENISHMENT) {
+      dto.type = RequisiteTypeEnum.PROFILE;
+    }
 
     let requisites = await this.accountModel
       .aggregate()
@@ -377,10 +382,10 @@ export class UserService {
       .addFields({ currency: "$_id" })
       .project({ _id: 0 });
 
-    if (!requisites.length && dto.type == RequisiteTypeEnum.REPLENISHMENT) {
+    if (!requisites.length && dto.type == RequisiteTypeEnum.PROFILE) {
       requisites = await this.requisiteModel
         .aggregate()
-        .match({ active: true, AAIO: { $eq: true }, donatepay: { $eq: true } })
+        .match({ active: true, $or: [{ [`requisite.${dto.type}`]: true }, { "requisite.donatePay": true }, { "requisite.AAIO": true }] })
         .group({ _id: "$requisite.currency", requisites: { $addToSet: "$$ROOT" } })
         .addFields({ currency: "$_id" })
         .project({ _id: 0 });
