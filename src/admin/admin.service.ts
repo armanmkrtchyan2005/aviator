@@ -151,7 +151,7 @@ export class AdminService {
 
     if (dto.endDate) {
       const nextDay = new Date(dto.endDate);
-      nextDay.setDate(dto.endDate.getDate() + 1);
+      nextDay.setDate(dto.endDate.getDate());
       match.createdAt = { ...match.createdAt, $lt: nextDay };
     }
 
@@ -190,7 +190,8 @@ export class AdminService {
 
     await replenishment.save();
 
-    const requisiteAmount = replenishment.deduction["USDT"] + (replenishment.deduction["USDT"] * account.replenishmentBonus) / 100;
+    const requisiteAmount = replenishment.deduction["USDT"];
+    console.log(requisiteAmount);
 
     account.requisite.balance -= requisiteAmount;
     account.balance -= requisiteAmount;

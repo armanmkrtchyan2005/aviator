@@ -23,7 +23,7 @@ import { PaymentService } from "src/payment/payment.service";
 import findRemoveSync from "find-remove";
 import * as fs from "fs";
 
-const ONE_WEEK_SECONDS = 604800; // 7 days in seconds;
+const ONE_WEEK_SECONDS = 1209600; // 7 days in seconds;
 
 @Injectable()
 export class ReplenishmentService {
@@ -151,18 +151,22 @@ export class ReplenishmentService {
     const amount: IAmount = {};
     const deduction: IAmount = {};
     const bonusAmount: IAmount = {};
+    const commission: IAmount = {};
 
     for (const currency of admin.currencies) {
       bonusAmount[currency] = 0;
+      // const commission = await this.convertService.convert(admin.commissionCurrency, currency, admin.commission);
       amount[currency] = await this.convertService.convert(dto.currency, currency, dto.amount);
-      const commission = await this.convertService.convert(admin.commissionCurrency, currency, admin.commission);
-      deduction[currency] = amount[currency] + commission;
+      commission[currency] = (amount[currency] * admin.commission) / 100;
+      deduction[currency] = amount[currency];
     }
+
+    console.log(commission);
 
     //----------------- AAIO CODE ------------------
 
     if (requisite.AAIO) {
-      if (amount[requisite.currency] >= requisite.AAIOlimit.min && amount[requisite.currency] <= requisite.AAIOlimit.max) {
+      if (deduction[requisite.currency] >= requisite.AAIOlimit.min && deduction[requisite.currency] <= requisite.AAIOlimit.max) {
         // --------------------------
         return await this.paymentService.createAAIOPayment({ user, amount, requisite });
       }
@@ -171,7 +175,7 @@ export class ReplenishmentService {
     //-------------- Freekassa CODE -----------------
 
     if (requisite.donatePay) {
-      if (amount[requisite.currency] >= requisite.donatePaylimit.min && amount[requisite.currency] <= requisite.donatePaylimit.max) {
+      if (deduction[requisite.currency] >= requisite.donatePaylimit.min && deduction[requisite.currency] <= requisite.donatePaylimit.max) {
         // --------------------------
         return await this.paymentService.createDonatePayPayment({ user, amount, requisite });
       }
@@ -185,7 +189,7 @@ export class ReplenishmentService {
     const minLimit = requisite.profileLimit?.min;
     const maxLimit = requisite.profileLimit?.min;
 
-    if (amount[requisite.currency] < minLimit && amount[requisite.currency] > maxLimit) {
+    if (deduction[requisite.currency] < minLimit && deduction[requisite.currency] > maxLimit) {
       throw new BadRequestException(`Сумма не должен бит не меньше чем ${minLimit + user.currency} и не больше чем ${maxLimit + user.currency}`);
     }
 
@@ -226,6 +230,10 @@ export class ReplenishmentService {
 
     replenishmentRequisite.turnover.inProcess += amount[requisite.currency];
 
+    for (const currency of admin.currencies) {
+      deduction[currency] += (deduction[currency] * account.replenishmentBonus) / 100;
+    }
+
     const bonuses = await this.userPromoModel.find({ user: user._id }).populate("promo");
 
     for (let bonus of bonuses) {
@@ -242,7 +250,17 @@ export class ReplenishmentService {
     await replenishmentRequisite.save();
 
     const replenishment = await (
-      await this.replenishmentModel.create({ ...dto, deduction, user: user._id, amount, account: account._id, requisite: replenishmentRequisite, method: requisite, bonusAmount })
+      await this.replenishmentModel.create({
+        ...dto,
+        deduction,
+        commission,
+        user: user._id,
+        amount,
+        account: account._id,
+        requisite: replenishmentRequisite,
+        method: requisite,
+        bonusAmount,
+      })
     ).populate(["requisite", "method"]);
 
     const job = new CronJob(CronExpression.EVERY_30_MINUTES, async () => {
