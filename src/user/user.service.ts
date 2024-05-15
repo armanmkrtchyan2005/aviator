@@ -28,6 +28,7 @@ import { CronJob } from "cron";
 import { CronExpression, SchedulerRegistry } from "@nestjs/schedule";
 import { Account } from "src/admin/schemas/account.schema";
 import { RequisiteDto, RequisiteTypeEnum } from "./dto/requisite.dto";
+import * as _ from "lodash";
 
 @Injectable()
 export class UserService {
@@ -70,7 +71,7 @@ export class UserService {
 
   async referral(auth: IAuthPayload) {
     const user = await this.userModel.findById(auth.id, { currency: true, referralBalance: true, descendants: true });
-    const descendants = user?.descendants?.sort((a, b) => b.earnings - a.earnings);
+    const descendants = user?.descendants;
     return { ...user.toJSON(), descendants };
   }
 
@@ -321,75 +322,87 @@ export class UserService {
     const user = await this.userModel.findById(userPayload.id);
     // const usdBalance = this.convertService.convert(user.currency, "USD", user.balance);
     if (dto.type === RequisiteTypeEnum.REPLENISHMENT) {
-      dto.type = RequisiteTypeEnum.PROFILE;
-    }
-
-    let recommendedRequisites = await this.accountModel
-      .aggregate()
-      .match({
-        // balance: {
-        //   $gte: usdBalance,
-        //   $lte: usdBalance,
-        // },
-        requisites: {
-          $exists: true,
-          $ne: [],
-        },
-      })
-      .lookup({ from: "requisites", localField: "requisite", foreignField: "_id", as: "requisite" })
-      .unwind("requisite")
-      .match({
-        "requisite.currency": user.currency,
-        "requisite.active": true,
-        $or: [{ [`requisite.${dto.type}`]: true }, { "requisite.donatePay": true }, { "requisite.AAIO": true }],
-      })
-      .group({ _id: "$requisite._id", requisites: { $addToSet: "$requisite" } })
-      .unwind("$requisites")
-      .replaceRoot("$requisites");
-
-    if (!recommendedRequisites.length && dto.type == RequisiteTypeEnum.PROFILE) {
-      recommendedRequisites = await this.requisiteModel
+      let recommendedRequisites = await this.accountModel
         .aggregate()
-        .match({ currency: user.currency, active: true, $or: [{ [`requisite.${dto.type}`]: true }, { "requisite.donatePay": true }, { "requisite.AAIO": true }] });
+        .match({
+          // balance: {
+          //   $gte: usdBalance,
+          //   $lte: usdBalance,
+          // },
+          requisites: {
+            $exists: true,
+            $ne: [],
+          },
+        })
+        .lookup({ from: "requisites", localField: "requisite", foreignField: "_id", as: "requisite" })
+        .unwind("requisite")
+        .lookup({ from: "accountrequisites", localField: "requisites", foreignField: "_id", as: "requisites" })
+        .unwind("requisites")
+        .match({
+          "requisite.currency": user.currency,
+          "requisite.active": true,
+          "requisite.profile": true,
+          "requisites.active": true,
+        })
+        .group({ _id: "$requisite._id", requisites: { $addToSet: "$requisite" } })
+        .unwind("$requisites")
+        .replaceRoot("$requisites");
+
+      const requisites = await this.requisiteModel.find({ active: true, currency: user.currency, replenishment: true, $or: [{ AAIO: true }, { donatePay: true }] });
+      const unique = _.unionBy(requisites, recommendedRequisites, r => r._id.toString());
+
+      return unique;
     }
+
+    let recommendedRequisites = await this.requisiteModel.find({ active: true, withdrawal: true, currency: user.currency });
 
     return recommendedRequisites;
   }
 
   async findRequisites(userPayload: IAuthPayload, dto: RequisiteDto) {
-    const user = await this.userModel.findById(userPayload.id);
-
     if (dto.type === RequisiteTypeEnum.REPLENISHMENT) {
-      dto.type = RequisiteTypeEnum.PROFILE;
+      let recommendedRequisites = await this.accountModel
+        .aggregate()
+        .match({
+          // balance: {
+          //   $gte: usdBalance,
+          //   $lte: usdBalance,
+          // },
+          requisites: {
+            $exists: true,
+            $ne: [],
+          },
+        })
+        .lookup({ from: "requisites", localField: "requisite", foreignField: "_id", as: "requisite" })
+        .unwind("requisite")
+        .lookup({ from: "accountrequisites", localField: "requisites", foreignField: "_id", as: "requisites" })
+        .unwind("requisites")
+        .match({
+          "requisite.active": true,
+          "requisite.profile": true,
+          "requisites.active": true,
+        })
+        .group({ _id: "$requisite._id", requisites: { $addToSet: "$requisite" } })
+        .unwind("$requisites")
+        .replaceRoot("$requisites");
+
+      const requisites = await this.requisiteModel.find({ active: true, replenishment: true, $or: [{ AAIO: true }, { donatePay: true }] });
+
+      const unique = _.unionBy(requisites, recommendedRequisites, r => r._id.toString());
+      const group = _.chain(unique)
+        .groupBy("currency")
+        .map((value, key) => ({ currency: key, requisites: value }))
+        .value();
+
+      return group;
     }
 
-    let requisites = await this.accountModel
+    const requisites = await this.requisiteModel
       .aggregate()
-      .match({
-        requisites: {
-          $exists: true,
-          $ne: [],
-        },
-      })
-      .lookup({ from: "requisites", localField: "requisite", foreignField: "_id", as: "requisite" })
-      .unwind("requisite")
-      .match({
-        "requisite.active": true,
-        [`requisite.${dto.type}`]: { $eq: true },
-        $or: [{ "requisite.profile": true }, { "requisite.donatePay": true }, { "requisite.AAIO": true }],
-      })
-      .group({ _id: "$requisite.currency", requisites: { $addToSet: "$requisite" } })
+      .match({ active: true, withdrawal: true })
+      .group({ _id: "$currency", requisites: { $push: "$$ROOT" } })
       .addFields({ currency: "$_id" })
       .project({ _id: 0 });
-
-    if (!requisites.length && dto.type == RequisiteTypeEnum.PROFILE) {
-      requisites = await this.requisiteModel
-        .aggregate()
-        .match({ active: true, $or: [{ [`requisite.${dto.type}`]: true }, { "requisite.donatePay": true }, { "requisite.AAIO": true }] })
-        .group({ _id: "$requisite.currency", requisites: { $addToSet: "$$ROOT" } })
-        .addFields({ currency: "$_id" })
-        .project({ _id: 0 });
-    }
 
     return requisites;
   }

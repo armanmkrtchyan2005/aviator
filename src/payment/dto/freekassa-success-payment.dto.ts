@@ -67,8 +67,5 @@ export class FreekassaSuccessPaymentDto {
   SIGN: string;
 
   @IsNotEmpty()
-  us_user_id: string;
-
-  @IsNotEmpty()
   us_currency: string;
 }

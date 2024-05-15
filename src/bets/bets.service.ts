@@ -77,19 +77,18 @@ export class BetsService {
 
   async myBets(auth: IAuthPayload, query: MyBetsQueryDto) {
     // const bets = await this.betModel.find({ playerId: auth.id }).skip(query.skip).limit(query.limit).sort({ time: -1 });
-    const bets = await this.betModel
-      .aggregate([
-        {
-          $match: { playerId: new mongoose.Types.ObjectId(auth.id) },
-        },
-        { $lookup: { from: "users", localField: "playerId", foreignField: "_id", as: "player" } },
-        { $unwind: "$player" },
-        { $set: { profileImage: "$player.profileImage" } },
-        { $project: { player: 0 } },
-      ])
-      .skip(query.skip)
-      .limit(query.limit)
-      .sort({ time: -1 });
+    const bets = await this.betModel.aggregate([
+      {
+        $match: { playerId: new mongoose.Types.ObjectId(auth.id) },
+      },
+      { $lookup: { from: "users", localField: "playerId", foreignField: "_id", as: "player" } },
+      { $unwind: "$player" },
+      { $set: { profileImage: "$player.profileImage" } },
+      { $project: { player: 0 } },
+      { $sort: { time: -1 } },
+      { $skip: query.skip },
+      { $limit: query.limit },
+    ]);
 
     return bets;
   }

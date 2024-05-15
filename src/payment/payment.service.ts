@@ -47,22 +47,10 @@ export class PaymentService {
     url.searchParams.append("order_id", replenishment._id.toString());
     url.searchParams.append("sign", sign);
     url.searchParams.append("method", "");
-    url.searchParams.append("us_user_id", dto.user._id.toString());
 
     replenishment.paymentUrl = url.toString();
 
     await replenishment.save();
-
-    const job = new CronJob(CronExpression.EVERY_30_MINUTES, async () => {
-      console.log("Time out");
-      replenishment.status = ReplenishmentStatusEnum.CANCELED;
-      replenishment.statusMessage = "По истечении времени";
-      await replenishment.save();
-      this.schedulerRegistry.deleteCronJob(replenishment._id.toString());
-    });
-
-    this.schedulerRegistry.addCronJob(replenishment._id.toString(), job);
-    job.start();
 
     return replenishment;
   }
@@ -77,38 +65,26 @@ export class PaymentService {
       `&currency=${currency}` +
       `&o=${replenishment._id}` +
       `&s=${this.createFirstSign(dto.amount[currency], replenishment._id.toString(), dto.user.currency)}` +
-      `$us_user_id=${dto.user._id.toString()}` +
       `$us_currency=${currency}`;
 
     replenishment.paymentUrl = paymentUrl;
 
     await replenishment.save();
 
-    const job = new CronJob(CronExpression.EVERY_30_MINUTES, async () => {
-      console.log("Time out");
-      replenishment.status = ReplenishmentStatusEnum.CANCELED;
-      replenishment.statusMessage = "По истечении времени";
-      await replenishment.save();
-      this.schedulerRegistry.deleteCronJob(replenishment._id.toString());
-    });
-
-    this.schedulerRegistry.addCronJob(replenishment._id.toString(), job);
-    job.start();
-
     return replenishment;
   }
 
   async successPaymentAAIO(dto: AAIOSuccessPaymentDto) {
-    const user = await this.userModel.findById(dto.us_user_id);
-    const replenishment = await this.replenishmentModel.findById(dto.order_id);
+    const replenishment = await this.replenishmentModel.findById(dto.order_id).populate("user");
 
-    const amount = await this.convertService.convert(dto.currency, user.currency, dto.amount);
+    const amount = await this.convertService.convert(dto.currency, replenishment.user.currency, dto.amount);
+    console.log(amount);
 
-    user.balance += amount;
+    replenishment.user.balance += amount;
     replenishment.status = ReplenishmentStatusEnum.COMPLETED;
     replenishment.paymentUrl = null;
 
-    await user.save();
+    await replenishment.user.save();
     await replenishment.save();
   }
 
@@ -117,16 +93,15 @@ export class PaymentService {
       throw new BadRequestException("SIGN не подходит");
     }
 
-    const user = await this.userModel.findById(dto.us_user_id);
-    const replenishment = await this.replenishmentModel.findById(dto.MERCHANT_ORDER_ID);
+    const replenishment = await this.replenishmentModel.findById(dto.MERCHANT_ORDER_ID).populate("user");
 
-    const amount = await this.convertService.convert(dto.us_currency, user.currency, dto.AMOUNT);
+    const amount = await this.convertService.convert(dto.us_currency, replenishment.user.currency, dto.AMOUNT);
 
-    user.balance += amount;
+    replenishment.user.balance += amount;
     replenishment.status = ReplenishmentStatusEnum.COMPLETED;
     replenishment.paymentUrl = null;
 
-    await user.save();
+    await replenishment.user.save();
     await replenishment.save();
 
     return "YES";

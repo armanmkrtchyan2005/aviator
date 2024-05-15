@@ -14,6 +14,7 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.use(requestIp.mw());
   app.enableCors({ origin: "*" });
+  app.enable("trust proxy");
   app.useStaticAssets(join(__dirname, "..", "uploads"), { prefix: "/uploads" });
   const port = process.env.PORT || 8080;
 

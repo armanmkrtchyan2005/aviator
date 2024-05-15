@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Ip, Post, Req } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Post, Req } from "@nestjs/common";
 import { ApiExcludeController } from "@nestjs/swagger";
 import { AAIOSuccessPaymentDto } from "./dto/aaio-success-payment.dto";
 import { PaymentService } from "./payment.service";
@@ -18,7 +18,7 @@ export class PaymentController {
       throw new BadRequestException("hacking attempt");
     }
 
-    console.log("aaaaaaaaaaaaaaaaaaaaaaaaa");
+    console.log(dto);
 
     return this.paymentService.successPaymentAAIO(dto);
   }

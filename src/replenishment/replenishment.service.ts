@@ -23,7 +23,7 @@ import { PaymentService } from "src/payment/payment.service";
 import findRemoveSync from "find-remove";
 import * as fs from "fs";
 
-const ONE_WEEK_SECONDS = 1209600; // 7 days in seconds;
+const REMOVE_FILES_SECONDS = 1209600; // 7 days in seconds;
 
 @Injectable()
 export class ReplenishmentService {
@@ -46,7 +46,7 @@ export class ReplenishmentService {
 
     const limits = [];
 
-    if (requisite.profile) {
+    if (requisite.profile && (!requisite.AAIO || !requisite.donatePay)) {
       limits.push(requisite.profileLimit?.min);
       limits.push(requisite.profileLimit?.max);
     }
@@ -157,7 +157,8 @@ export class ReplenishmentService {
       bonusAmount[currency] = 0;
       // const commission = await this.convertService.convert(admin.commissionCurrency, currency, admin.commission);
       amount[currency] = await this.convertService.convert(dto.currency, currency, dto.amount);
-      commission[currency] = (amount[currency] * admin.commission) / 100;
+      commission[currency] = (amount[currency] * requisite.commission) / 100;
+      amount[currency] += commission[currency];
       deduction[currency] = amount[currency];
     }
 
@@ -361,6 +362,6 @@ export class ReplenishmentService {
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async handleCron() {
-    findRemoveSync(__dirname + "/uploads/files", { age: { seconds: ONE_WEEK_SECONDS } });
+    findRemoveSync(__dirname + "/uploads/files", { age: { seconds: REMOVE_FILES_SECONDS } });
   }
 }
