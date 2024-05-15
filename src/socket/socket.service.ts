@@ -533,36 +533,6 @@ export class SocketService {
     return { message: "Игра остановлена" };
   }
 
-  async handleStopGame() {
-    if (this.x <= 1) {
-      return new WsException("Вы не можете слить игру во время загрузки игры");
-    }
-
-    const admin = await this.adminModel.findOne();
-
-    clearInterval(this.interval);
-
-    admin.game_is_active = false;
-
-    await admin.save();
-
-    return { message: "Игра остановлена" };
-  }
-
-  async handleRunGame() {
-    const admin = await this.adminModel.findOne();
-
-    if (admin.game_is_active) {
-      return new WsException("Игра уже была запушена");
-    }
-
-    admin.game_is_active = true;
-
-    await admin.save();
-
-    return { message: "Игра остановлена" };
-  }
-
   private async loading() {
     clearInterval(this.interval);
 
@@ -694,6 +664,11 @@ export class SocketService {
 
     await sleep(LOADING_MS);
     this.isBetWait = true;
+
+    if (!admin.game_is_active) {
+      this.socket.emit("game", { x: this.x });
+      return this.loading();
+    }
 
     if (this.betGame.game_coeff) {
       console.log("x =>", this.betGame.game_coeff);

@@ -51,16 +51,4 @@ export class SocketGateway implements OnGatewayInit, OnGatewayConnection, OnGate
   handleDrain() {
     return this.socketService.handleDrain();
   }
-
-  @UseGuards(SocketAdminAuthGuard)
-  @SubscribeMessage("stop")
-  handleStopGame() {
-    return this.socketService.handleStopGame();
-  }
-
-  @UseGuards(SocketAdminAuthGuard)
-  @SubscribeMessage("run")
-  handleRunGame() {
-    return this.socketService.handleRunGame();
-  }
 }

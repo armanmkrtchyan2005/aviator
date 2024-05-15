@@ -182,11 +182,12 @@ export class AdminService {
       throw new BadRequestException("Вы не можете менять подтвержденную заявку");
     }
 
-    replenishment.user.balance += replenishment.deduction[replenishment.user.currency] + (replenishment.bonusAmount[replenishment.user.currency] || 0);
+    replenishment.user.balance += replenishment.amount[replenishment.user.currency] + (replenishment.bonusAmount[replenishment.user.currency] || 0);
 
     await replenishment.user.save();
 
     replenishment.status = ReplenishmentStatusEnum.COMPLETED;
+    replenishment.completedDate = new Date();
 
     await replenishment.save();
 
@@ -218,8 +219,8 @@ export class AdminService {
     }
 
     replenishment.status = ReplenishmentStatusEnum.CANCELED;
-
     replenishment.statusMessage = dto.statusMessage;
+    replenishment.completedDate = new Date();
 
     await replenishment.save();
 

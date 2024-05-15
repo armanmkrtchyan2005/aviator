@@ -41,7 +41,8 @@ export class WithdrawalService {
       .find({
         user: userPayload.id,
       })
-      .populate("requisite");
+      .populate("requisite")
+      .sort({ createdAt: -1 });
 
     return withdrawals;
   }

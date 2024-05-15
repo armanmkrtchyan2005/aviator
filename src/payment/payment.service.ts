@@ -32,7 +32,7 @@ export class PaymentService {
   }
 
   async createAAIOPayment(dto: CreatePaymentDto) {
-    const replenishment = new this.replenishmentModel({ user: dto.user._id, amount: dto.amount, method: dto.requisite });
+    const replenishment = new this.replenishmentModel({ user: dto.user._id, amount: dto.amount, method: dto.requisite._id });
 
     const amount = dto.amount[dto.requisite.currency].toString();
 
@@ -56,7 +56,7 @@ export class PaymentService {
   }
 
   async createDonatePayPayment(dto: CreatePaymentDto) {
-    const replenishment = new this.replenishmentModel({ user: dto.user._id, amount: dto.amount, method: dto.requisite });
+    const replenishment = new this.replenishmentModel({ user: dto.user._id, amount: dto.amount, method: dto.requisite._id });
     const currency = dto.user.currency;
     const paymentUrl =
       "https://pay.freekassa.ru/" +
@@ -82,6 +82,7 @@ export class PaymentService {
 
     replenishment.user.balance += amount;
     replenishment.status = ReplenishmentStatusEnum.COMPLETED;
+    replenishment.completedDate = new Date();
     replenishment.paymentUrl = null;
 
     await replenishment.user.save();
@@ -99,6 +100,7 @@ export class PaymentService {
 
     replenishment.user.balance += amount;
     replenishment.status = ReplenishmentStatusEnum.COMPLETED;
+    replenishment.completedDate = new Date();
     replenishment.paymentUrl = null;
 
     await replenishment.user.save();

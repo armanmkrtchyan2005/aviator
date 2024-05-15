@@ -82,31 +82,10 @@ export class ReplenishmentService {
       .find({
         user: userPayload.id,
       })
-      .populate(["requisite", "method"]);
+      .populate(["requisite", "method"])
+      .sort({ createdAt: -1 });
 
     return replenishments;
-
-    // const replenishments = await this.replenishmentModel.aggregate([
-    //   {
-    //     $match: { user: userPayload.id },
-    //   },
-    //   {
-    //     $lookup: {
-    //       localField: "account",
-    //       foreignField: "_id",
-    //       from: "accounts",
-    //       as: "account",
-    //       pipeline: [{ $lookup: { localField: "requisite", foreignField: "_id", from: "requisites", as: "requisite" } }, { $unwind: "$requisite" }],
-    //     },
-    //   },
-    //   { $unwind: "$account" },
-    //   {
-    //     $set: {
-    //       method: "$account.requisite",
-    //     },
-    //   },
-    //   { $project: { account: 0 } },
-    // ]);
   }
 
   async findOne(id: string) {
@@ -157,12 +136,12 @@ export class ReplenishmentService {
       bonusAmount[currency] = 0;
       // const commission = await this.convertService.convert(admin.commissionCurrency, currency, admin.commission);
       amount[currency] = await this.convertService.convert(dto.currency, currency, dto.amount);
-      commission[currency] = (amount[currency] * requisite.commission) / 100;
-      amount[currency] += commission[currency];
       deduction[currency] = amount[currency];
+      commission[currency] = (amount[currency] * requisite.commission) / 100;
+      deduction[currency] += commission[currency];
     }
 
-    console.log(commission);
+    console.log(amount);
 
     //----------------- AAIO CODE ------------------
 
@@ -258,8 +237,8 @@ export class ReplenishmentService {
         user: user._id,
         amount,
         account: account._id,
-        requisite: replenishmentRequisite,
-        method: requisite,
+        requisite: replenishmentRequisite._id,
+        method: requisite._id,
         bonusAmount,
       })
     ).populate(["requisite", "method"]);
@@ -287,8 +266,10 @@ export class ReplenishmentService {
     if (replenishment.isPayConfirmed) {
       return { message: "Вы уже подтвердили оплату" };
     }
+
     replenishment.status = ReplenishmentStatusEnum.CANCELED;
     replenishment.statusMessage = "Отменена пользователем";
+    replenishment.completedDate = new Date();
 
     try {
       fs.rmSync(replenishment.receipt);
@@ -301,7 +282,7 @@ export class ReplenishmentService {
       this.schedulerRegistry.deleteCronJob(dto.id);
     } catch (error) {}
 
-    return { message: "Пополнение отменено" };
+    return { message: "Заявка на вывод отменена" };
   }
 
   async confirmReplenishment(id: string, receiptFile: Express.Multer.File) {
