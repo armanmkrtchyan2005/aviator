@@ -325,10 +325,9 @@ export class UserService {
       let recommendedRequisites = await this.accountModel
         .aggregate()
         .match({
-          // balance: {
-          //   $gte: usdBalance,
-          //   $lte: usdBalance,
-          // },
+          balance: {
+            $gt: 0,
+          },
           requisites: {
             $exists: true,
             $ne: [],
@@ -343,7 +342,6 @@ export class UserService {
           "requisite.active": true,
           "requisite.profile": true,
           "requisites.active": true,
-          "requisites.balance": { $gt: 0 },
         })
         .group({ _id: "$requisite._id", requisites: { $addToSet: "$requisite" } })
         .unwind("$requisites")
@@ -365,10 +363,9 @@ export class UserService {
       let recommendedRequisites = await this.accountModel
         .aggregate()
         .match({
-          // balance: {
-          //   $gte: usdBalance,
-          //   $lte: usdBalance,
-          // },
+          balance: {
+            $gt: 0,
+          },
           requisites: {
             $exists: true,
             $ne: [],
@@ -382,7 +379,6 @@ export class UserService {
           "requisite.active": true,
           "requisite.profile": true,
           "requisites.active": true,
-          "requisites.balance": { $gt: 0 },
         })
         .group({ _id: "$requisite._id", requisites: { $addToSet: "$requisite" } })
         .unwind("$requisites")

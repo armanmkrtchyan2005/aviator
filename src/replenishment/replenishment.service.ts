@@ -46,7 +46,25 @@ export class ReplenishmentService {
 
     const limits = [];
 
-    if (requisite.profile && (!requisite.AAIO || !requisite.donatePay)) {
+    let accounts = await this.accountModel
+      .aggregate()
+      .match({
+        requisite: requisite._id,
+        balance: {
+          $gt: 0,
+        },
+        requisites: {
+          $exists: true,
+          $ne: [],
+        },
+      })
+      .lookup({ from: "accountrequisites", localField: "requisites", foreignField: "_id", as: "requisites" })
+      .unwind("requisites")
+      .match({
+        "requisites.active": true,
+      });
+
+    if (requisite.profile && accounts.length) {
       limits.push(requisite.profileLimit?.min);
       limits.push(requisite.profileLimit?.max);
     }
@@ -146,7 +164,7 @@ export class ReplenishmentService {
     //----------------- AAIO CODE ------------------
 
     if (requisite.AAIO) {
-      if (deduction[requisite.currency] >= requisite.AAIOlimit.min && deduction[requisite.currency] <= requisite.AAIOlimit.max) {
+      if (amount[requisite.currency] >= requisite.AAIOlimit.min && amount[requisite.currency] <= requisite.AAIOlimit.max) {
         // --------------------------
         return await this.paymentService.createAAIOPayment({ user, amount, requisite });
       }
@@ -155,7 +173,7 @@ export class ReplenishmentService {
     //-------------- Freekassa CODE -----------------
 
     if (requisite.donatePay) {
-      if (deduction[requisite.currency] >= requisite.donatePaylimit.min && deduction[requisite.currency] <= requisite.donatePaylimit.max) {
+      if (amount[requisite.currency] >= requisite.donatePaylimit.min && amount[requisite.currency] <= requisite.donatePaylimit.max) {
         // --------------------------
         return await this.paymentService.createDonatePayPayment({ user, amount, requisite });
       }
@@ -203,6 +221,7 @@ export class ReplenishmentService {
     await account.save();
 
     const replenishmentRequisite = requisites[account.selectedRequisiteDir];
+    console.log(replenishmentRequisite);
 
     if (!replenishmentRequisite) {
       throw new NotFoundException("Реквизит не найден");
@@ -282,7 +301,7 @@ export class ReplenishmentService {
       this.schedulerRegistry.deleteCronJob(dto.id);
     } catch (error) {}
 
-    return { message: "Заявка на вывод отменена" };
+    return { message: "Заявка на пополнение отменена" };
   }
 
   async confirmReplenishment(id: string, receiptFile: Express.Multer.File) {

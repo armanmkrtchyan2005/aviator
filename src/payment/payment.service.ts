@@ -7,8 +7,7 @@ import * as crypto from "crypto";
 import { AAIOSuccessPaymentDto } from "./dto/aaio-success-payment.dto";
 import { User } from "src/user/schemas/user.schema";
 import { ConvertService } from "src/convert/convert.service";
-import { CronExpression, SchedulerRegistry } from "@nestjs/schedule";
-import { CronJob } from "cron";
+import { SchedulerRegistry } from "@nestjs/schedule";
 import { FreekassaSuccessPaymentDto } from "./dto/freekassa-success-payment.dto";
 
 @Injectable()
@@ -25,24 +24,29 @@ export class PaymentService {
   }
 
   private createFirstSign(orderAmount: number, orderId: string, currency: string) {
-    return this.md5(process.env.FREEKASSA_MERCHANT_ID + ":" + orderAmount + ":" + process.env.FREEKASSA_FIRST_PHRASE + ":" + currency + ":" + orderId);
+    const str = process.env.FREEKASSA_MERCHANT_ID + ":" + orderAmount + ":" + process.env.FREEKASSA_FIRST_PHRASE + ":" + currency + ":" + orderId;
+    console.log(str);
+
+    return this.md5(str);
   }
   private createSecondSign(orderAmount: number, orderId: string) {
-    return this.md5(process.env.FREEKASSA_MERCHANT_ID + ":" + orderAmount + ":" + process.env.FREEKASSA_SECOND_PHRASE + ":" + orderId);
+    const str = process.env.FREEKASSA_MERCHANT_ID + ":" + orderAmount + ":" + process.env.FREEKASSA_SECOND_PHRASE + ":" + orderId;
+    return this.md5(str);
   }
 
   async createAAIOPayment(dto: CreatePaymentDto) {
     const replenishment = new this.replenishmentModel({ user: dto.user._id, amount: dto.amount, method: dto.requisite._id });
 
-    const amount = dto.amount[dto.requisite.currency].toString();
+    const amount = dto.amount[dto.requisite.currency];
+    const amountFromCommission = amount + (amount * dto.requisite.commission) / 100;
 
-    let sign = [process.env.AAIO_MERCHANT_ID, amount, dto.requisite.currency, process.env.AAIO_SECRET_KEY, replenishment._id.toString()].join(":");
+    let sign = [process.env.AAIO_MERCHANT_ID, amountFromCommission, dto.requisite.currency, process.env.AAIO_SECRET_KEY, replenishment._id.toString()].join(":");
 
     sign = crypto.createHash("sha256").update(sign).digest("hex");
 
     const url = new URL("https://aaio.so/merchant/pay");
     url.searchParams.append("merchant_id", process.env.AAIO_MERCHANT_ID);
-    url.searchParams.append("amount", amount);
+    url.searchParams.append("amount", amountFromCommission.toString());
     url.searchParams.append("currency", dto.requisite.currency);
     url.searchParams.append("order_id", replenishment._id.toString());
     url.searchParams.append("sign", sign);
@@ -57,15 +61,18 @@ export class PaymentService {
 
   async createDonatePayPayment(dto: CreatePaymentDto) {
     const replenishment = new this.replenishmentModel({ user: dto.user._id, amount: dto.amount, method: dto.requisite._id });
-    const currency = dto.user.currency;
+    const currency = dto.requisite.currency;
+
+    const amountFromCommission = dto.amount[currency] + (dto.amount[currency] * dto.requisite.commission) / 100;
+
     const paymentUrl =
       "https://pay.freekassa.ru/" +
       `?m=${process.env.FREEKASSA_MERCHANT_ID}` +
-      `&oa=${dto.amount[currency]}` +
+      `&oa=${amountFromCommission}` +
       `&currency=${currency}` +
       `&o=${replenishment._id}` +
-      `&s=${this.createFirstSign(dto.amount[currency], replenishment._id.toString(), dto.user.currency)}` +
-      `$us_currency=${currency}`;
+      `&s=${this.createFirstSign(amountFromCommission, replenishment._id.toString(), currency)}` +
+      `&us_currency=${currency}`;
 
     replenishment.paymentUrl = paymentUrl;
 
@@ -77,10 +84,7 @@ export class PaymentService {
   async successPaymentAAIO(dto: AAIOSuccessPaymentDto) {
     const replenishment = await this.replenishmentModel.findById(dto.order_id).populate("user");
 
-    const amount = await this.convertService.convert(dto.currency, replenishment.user.currency, dto.amount);
-    console.log(amount);
-
-    replenishment.user.balance += amount;
+    replenishment.user.balance += replenishment.amount[replenishment.user.currency];
     replenishment.status = ReplenishmentStatusEnum.COMPLETED;
     replenishment.completedDate = new Date();
     replenishment.paymentUrl = null;
@@ -96,9 +100,7 @@ export class PaymentService {
 
     const replenishment = await this.replenishmentModel.findById(dto.MERCHANT_ORDER_ID).populate("user");
 
-    const amount = await this.convertService.convert(dto.us_currency, replenishment.user.currency, dto.AMOUNT);
-
-    replenishment.user.balance += amount;
+    replenishment.user.balance += replenishment.amount[replenishment.user.currency];
     replenishment.status = ReplenishmentStatusEnum.COMPLETED;
     replenishment.completedDate = new Date();
     replenishment.paymentUrl = null;

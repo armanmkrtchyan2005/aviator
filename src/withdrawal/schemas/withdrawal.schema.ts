@@ -15,7 +15,7 @@ export enum WithdrawalStatusEnum {
   CANCELED = "Отменена",
 }
 
-@Schema()
+@Schema({ timestamps: { createdAt: true } })
 export class Withdrawal {
   @ApiProperty()
   _id: string;
@@ -45,7 +45,6 @@ export class Withdrawal {
   requisite: RequisiteDocument;
 
   @ApiProperty()
-  @Prop({ required: true, default: Date.now() })
   createdAt: Date;
 
   @ApiProperty()

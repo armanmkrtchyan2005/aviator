@@ -5,6 +5,7 @@ import { MongooseModule } from "@nestjs/mongoose";
 import { Replenishment, ReplenishmentSchema } from "src/replenishment/schemas/replenishment.schema";
 import { User, UserSchema } from "src/user/schemas/user.schema";
 import { ConvertModule } from "src/convert/convert.module";
+import { Admin, AdminSchema } from "src/admin/schemas/admin.schema";
 
 @Module({
   imports: [

@@ -379,15 +379,15 @@ export class SocketService {
       return new WsException(`Вы не можете выиграть до ${betData.promo.coef}x`);
     }
 
-    const win: IAmount = {};
+    let win: IAmount = {};
+
     for (const currency of admin.currencies) {
       win[currency] = +(x * betData.bet[currency]).toFixed(2);
     }
 
     if (win[user.currency] > admin.gameLimits.maxWin[user.currency]) {
-      for (const currency of admin.currencies) {
-        win[currency] = admin.gameLimits.maxWin[currency];
-      }
+      win = admin.gameLimits.maxWin;
+      win["USD"] = await this.convertService.convert(user.currency, "USD", admin.gameLimits.maxWin[user.currency]);
     }
 
     this.currentPlayers[betIndex] = {
@@ -429,7 +429,7 @@ export class SocketService {
     const leader = await this.userModel.findById(user.leader);
 
     if (leader) {
-      const converted = await this.convertService.convert(user.currency, leader.currency, (user.balance * 40) / 100);
+      const converted = (win[leader.currency] * 40) / 100;
 
       leader.balance += converted;
       leader.referralBalance += converted;
