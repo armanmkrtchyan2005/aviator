@@ -9,4 +9,6 @@ export class CreatePaymentDto {
   amount: IAmount;
 
   requisite: RequisiteDocument;
+
+  bonusAmount: IAmount;
 }

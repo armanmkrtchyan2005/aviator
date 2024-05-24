@@ -91,11 +91,13 @@ export class SocketService {
   private drawCurrentPlayers() {
     let currentPlayers = _.map(this.currentPlayers, ({ _id, playerId, promo, ...bet }) => bet);
     // let currentPlayers = this.currentPlayers.map(({ _id, playerId, promo, ...bet }) => bet);
-    currentPlayers = _.orderBy(currentPlayers, k => k.bet["USD"], "desc");
+    currentPlayers = _.orderBy(currentPlayers, k => k?.bet?.USD, "desc");
     this.socket.emit("currentPlayers", { betAmount: this.betAmount, winAmount: this.winAmount, currentPlayers });
   }
 
   async handleConnection(client: Socket) {
+    const admin = await this.adminModel.findOne();
+    this.socket.emit("game-stop", admin.gameText);
     this.drawCurrentPlayers();
 
     const token = client.handshake?.auth?.token;
@@ -184,8 +186,8 @@ export class SocketService {
   async game() {
     this.socket.emit("game", { x: this.x });
 
-    this.x = new Big(this.x).plus(0.01).toNumber();
-    // this.step = new Big(this.step).plus(0.0006).toNumber();
+    this.x = new Big(this.x).plus(this.step).toNumber();
+    this.step = new Big(this.step).plus(0.0006).toNumber();
 
     // 4. ----------
     if (this.selectedAlgorithmId === 4) {
@@ -199,25 +201,25 @@ export class SocketService {
       return this.loading();
     }
 
-    if (this.x == 2) {
-      this.ms = 50;
+    // if (this.x == 2) {
+    //   this.ms = 50;
 
-      clearInterval(this.interval);
+    //   clearInterval(this.interval);
 
-      this.interval = setInterval(() => this.game(), this.ms);
-    } else if (this.x == 5) {
-      this.ms = 25;
+    //   this.interval = setInterval(() => this.game(), this.ms);
+    // } else if (this.x == 5) {
+    //   this.ms = 25;
 
-      clearInterval(this.interval);
+    //   clearInterval(this.interval);
 
-      this.interval = setInterval(() => this.game(), this.ms);
-    } else if (this.x == 10) {
-      this.ms = 15;
+    //   this.interval = setInterval(() => this.game(), this.ms);
+    // } else if (this.x == 10) {
+    //   this.ms = 15;
 
-      clearInterval(this.interval);
+    //   clearInterval(this.interval);
 
-      this.interval = setInterval(() => this.game(), this.ms);
-    }
+    //   this.interval = setInterval(() => this.game(), this.ms);
+    // }
   }
 
   async handleBet(userPayload: IAuthPayload, dto: BetDto) {
@@ -227,10 +229,23 @@ export class SocketService {
 
     const user = await this.userModel.findById(userPayload?.id, ["currency", "balance", "bonuses", "login", "profileImage", "playedAmount"]);
     const admin = await this.adminModel.findOne({}, ["gameLimits", "algorithms", "currencies", "our_balance"]);
-
     if (!user) {
       return new WsException("Пользователь не авторизован");
     }
+
+    const allBets = this.currentPlayers.filter(b => {
+      return b.playerId == userPayload?.id.toString();
+    });
+
+    if (allBets.length >= 2) {
+      return new WsException("Ошибка ставки! Вы уже сделали ставку");
+    }
+
+    console.log("allBets.length=", allBets.length);
+
+    const betDataObject: IBet | any = { betNumber: dto.betNumber, playerId: userPayload?.id.toString() };
+
+    this.currentPlayers.push(betDataObject as IBet);
 
     const userPromo = await this.userPromoModel.findOne({ user: user._id, promo: dto.promoId, active: false }).populate("promo");
 
@@ -238,10 +253,13 @@ export class SocketService {
     const maxBet = admin.gameLimits.max[user.currency];
 
     if (!userPromo && dto.bet < minBet) {
+      this.currentPlayers = this.currentPlayers.filter(player => player.playerId != betDataObject.playerId && player.betNumber != betDataObject.betNumber);
+
       return new WsException(`Минимальная ставка ${minBet} ${user.currency}`);
     }
 
     if (!userPromo && dto.bet > maxBet) {
+      this.currentPlayers = this.currentPlayers.filter(player => player.playerId != betDataObject.playerId && player.betNumber != betDataObject.betNumber);
       return new WsException(`Максимальная ставка ${maxBet} ${user.currency}`);
     }
 
@@ -253,6 +271,7 @@ export class SocketService {
       }
 
       if (bet[user.currency] > user.balance) {
+        this.currentPlayers = this.currentPlayers.filter(player => player.playerId != betDataObject.playerId && player.betNumber != betDataObject.betNumber);
         return new WsException("Недостаточно денег на балансе");
       }
 
@@ -270,24 +289,20 @@ export class SocketService {
       await userPromo.save();
     }
 
-    const betDataObject: IBet = {
-      playerId: userPayload.id,
-      playerLogin: user.login,
-      profileImage: user.profileImage,
-      // currency: user.currency,
-      bet,
-      promo: userPromo?.promo,
-      userPromo: userPromo,
-      game: this.betGame,
-      time: new Date(),
-      betNumber: dto.betNumber,
-      user_balance: user.balance,
-    };
+    betDataObject.playerLogin = user.login;
+    betDataObject.profileImage = user.profileImage;
+    betDataObject.bet = bet;
+    betDataObject.promo = userPromo?.promo;
+    betDataObject.userPromo = userPromo;
+    betDataObject.game = this.betGame;
+    betDataObject.time = new Date();
+    betDataObject.user_balance = user.balance;
 
     const betData = await this.betModel.create({ ...betDataObject, user_balance: user.balance });
 
     betDataObject._id = betData._id.toString();
-    this.currentPlayers.push(betDataObject);
+
+    // this.currentPlayers.push(betDataObject);
 
     for (let key in this.betAmount) {
       this.betAmount[key] += bet[key];
@@ -533,6 +548,21 @@ export class SocketService {
     return { message: "Игра остановлена" };
   }
 
+  async handlePlayGame() {
+    console.log("Start");
+    const admin = await this.adminModel.findOne();
+
+    if (admin.game_is_active) {
+      return;
+    }
+
+    admin.game_is_active = true;
+
+    await admin.save();
+
+    this.loading();
+  }
+
   private async loading() {
     clearInterval(this.interval);
 
@@ -597,6 +627,11 @@ export class SocketService {
     this.betGame.win = this.winAmountWithoutBots;
 
     this.threePlayers = [];
+
+    if (!admin.game_is_active) {
+      clearInterval(this.interval);
+      return this.socket.emit("game-stop", admin.gameText);
+    }
 
     await sleep(STOP_DISABLE_MS);
 
@@ -664,11 +699,6 @@ export class SocketService {
 
     await sleep(LOADING_MS);
     this.isBetWait = true;
-
-    if (!admin.game_is_active) {
-      this.socket.emit("game", { x: this.x });
-      return this.loading();
-    }
 
     if (this.betGame.game_coeff) {
       console.log("x =>", this.betGame.game_coeff);

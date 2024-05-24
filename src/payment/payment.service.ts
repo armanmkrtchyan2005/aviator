@@ -9,6 +9,7 @@ import { User } from "src/user/schemas/user.schema";
 import { ConvertService } from "src/convert/convert.service";
 import { SchedulerRegistry } from "@nestjs/schedule";
 import { FreekassaSuccessPaymentDto } from "./dto/freekassa-success-payment.dto";
+import Big from "big.js";
 
 @Injectable()
 export class PaymentService {
@@ -35,10 +36,13 @@ export class PaymentService {
   }
 
   async createAAIOPayment(dto: CreatePaymentDto) {
-    const replenishment = new this.replenishmentModel({ user: dto.user._id, amount: dto.amount, method: dto.requisite._id });
+    const replenishment = new this.replenishmentModel({ user: dto.user._id, amount: dto.amount, method: dto.requisite._id, acquiring: "AAIO", bonusAmount: dto.bonusAmount });
 
     const amount = dto.amount[dto.requisite.currency];
-    const amountFromCommission = amount + (amount * dto.requisite.commission) / 100;
+    const amountFromCommission = new Big(amount)
+      .plus((amount * dto.requisite.commission) / 100)
+      .round(2)
+      .toNumber();
 
     let sign = [process.env.AAIO_MERCHANT_ID, amountFromCommission, dto.requisite.currency, process.env.AAIO_SECRET_KEY, replenishment._id.toString()].join(":");
 
@@ -60,10 +64,13 @@ export class PaymentService {
   }
 
   async createDonatePayPayment(dto: CreatePaymentDto) {
-    const replenishment = new this.replenishmentModel({ user: dto.user._id, amount: dto.amount, method: dto.requisite._id });
+    const replenishment = new this.replenishmentModel({ user: dto.user._id, amount: dto.amount, method: dto.requisite._id, acquiring: "FREEKASSA", bonusAmount: dto.bonusAmount });
     const currency = dto.requisite.currency;
 
-    const amountFromCommission = dto.amount[currency] + (dto.amount[currency] * dto.requisite.commission) / 100;
+    const amountFromCommission = new Big(dto.amount[currency])
+      .plus((dto.amount[currency] * dto.requisite.commission) / 100)
+      .round(2)
+      .toNumber();
 
     const paymentUrl =
       "https://pay.freekassa.ru/" +
@@ -84,7 +91,7 @@ export class PaymentService {
   async successPaymentAAIO(dto: AAIOSuccessPaymentDto) {
     const replenishment = await this.replenishmentModel.findById(dto.order_id).populate("user");
 
-    replenishment.user.balance += replenishment.amount[replenishment.user.currency];
+    replenishment.user.balance += replenishment.amount[replenishment.user.currency] + (replenishment.bonusAmount[replenishment.user.currency] || 0);
     replenishment.status = ReplenishmentStatusEnum.COMPLETED;
     replenishment.completedDate = new Date();
     replenishment.paymentUrl = null;
@@ -100,7 +107,9 @@ export class PaymentService {
 
     const replenishment = await this.replenishmentModel.findById(dto.MERCHANT_ORDER_ID).populate("user");
 
-    replenishment.user.balance += replenishment.amount[replenishment.user.currency];
+    console.log(replenishment);
+
+    replenishment.user.balance += replenishment.amount[replenishment.user.currency] + (replenishment.bonusAmount[replenishment.user.currency] || 0);
     replenishment.status = ReplenishmentStatusEnum.COMPLETED;
     replenishment.completedDate = new Date();
     replenishment.paymentUrl = null;

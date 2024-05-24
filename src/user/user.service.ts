@@ -54,7 +54,9 @@ export class UserService {
 
   async findGameLimits(authPayload: IAuthPayload) {
     const user = await this.userModel.findById(authPayload.id);
-
+    if (!user) {
+      throw new UnauthorizedException();
+    }
     const { gameLimits } = await this.adminModel.findOne({}, ["gameLimits"]);
     const min = gameLimits.min[user.currency];
     const max = gameLimits.max[user.currency];
@@ -243,9 +245,15 @@ export class UserService {
       throw new UnauthorizedException();
     }
 
-    const promo = await this.promoModel.findOne({ name: dto.promoCode }, ["type", "will_finish", "coef", "amount", "currency", "limit"]);
+    const promo = await this.promoModel.findOne({ name: dto.promoCode }, ["type", "will_finish", "coef", "amount", "currency", "limit", "max_count"]);
 
     if (!promo) {
+      throw new NotFoundException("Промокод не найден");
+    }
+
+    const usedCount = await this.userPromoModel.count({ promo: promo._id });
+
+    if (usedCount >= promo.max_count) {
       throw new NotFoundException("Промокод не найден");
     }
 
@@ -280,29 +288,31 @@ export class UserService {
   async getPromos(dto: GetPromosDto, userPayload: IAuthPayload) {
     const user = await this.userModel.findById(userPayload.id);
 
-    const promos = await this.userPromoModel.aggregate([
-      { $match: { user: user._id, active: false } },
-      { $lookup: { from: "promos", localField: "promo", foreignField: "_id", as: "promo" } },
-      { $unwind: "$promo" },
-      { $match: { "promo.type": dto.type } },
-      {
-        $addFields: {
-          "promo.currency": user.currency,
-          "promo.limit": { $cond: [{ $eq: [dto.type, PromoType.ADD_BALANCE] }, "$limit", null] },
-          "promo.amount": { $cond: [{ $eq: [dto.type, PromoType.PROMO] }, "$amount", "$promo.amount"] },
+    const promos = await this.userPromoModel
+      .aggregate([
+        { $match: { user: user._id, active: false } },
+        { $lookup: { from: "promos", localField: "promo", foreignField: "_id", as: "promo" } },
+        { $unwind: "$promo" },
+        { $match: { "promo.type": dto.type } },
+        {
+          $addFields: {
+            "promo.currency": user.currency,
+            "promo.limit": { $cond: [{ $eq: [dto.type, PromoType.ADD_BALANCE] }, "$limit", null] },
+            "promo.amount": { $cond: [{ $eq: [dto.type, PromoType.PROMO] }, "$amount", "$promo.amount"] },
+          },
         },
-      },
-      {
-        $project: {
-          _id: 0,
-          "promo.name": 0,
-          "promo.used_count": 0,
-          "promo.max_count": 0,
+        {
+          $project: {
+            _id: 0,
+            "promo.name": 0,
+            "promo.used_count": 0,
+            "promo.max_count": 0,
+          },
         },
-      },
-    ]);
+      ])
+      .replaceRoot("$promo");
 
-    return promos.map(entry => entry.promo);
+    return promos;
   }
 
   async getPromo(authPayload: IAuthPayload, id: string) {
@@ -338,6 +348,7 @@ export class UserService {
         .lookup({ from: "accountrequisites", localField: "requisites", foreignField: "_id", as: "requisites" })
         .unwind("requisites")
         .match({
+          "requisite.replenishment": true,
           "requisite.currency": user.currency,
           "requisite.active": true,
           "requisite.profile": true,
@@ -376,6 +387,7 @@ export class UserService {
         .lookup({ from: "accountrequisites", localField: "requisites", foreignField: "_id", as: "requisites" })
         .unwind("requisites")
         .match({
+          "requisite.replenishment": true,
           "requisite.active": true,
           "requisite.profile": true,
           "requisites.active": true,

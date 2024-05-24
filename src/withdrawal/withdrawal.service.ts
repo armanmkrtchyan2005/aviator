@@ -117,17 +117,18 @@ export class WithdrawalService {
     const withdrawal = await this.withdrawalModel.findById(id).populate("user");
 
     if (withdrawal.status == WithdrawalStatusEnum.CANCELED || withdrawal.status === WithdrawalStatusEnum.COMPLETED) {
-      throw new BadRequestException({ message: "Вы не можете изменить статус" });
+      throw new BadRequestException({ message: "Невозможно отменить эту заявку. Обратитесь к администрации" });
     }
-
     withdrawal.status = WithdrawalStatusEnum.CANCELED;
     withdrawal.statusMessage = "Отменена пользователем";
 
     withdrawal.user.balance += withdrawal.amount[withdrawal.user.currency];
 
+    withdrawal.completedDate = new Date();
+
     await withdrawal.user.save();
     await withdrawal.save();
 
-    return { message: "Пополнение отменена" };
+    return { message: "Заявка на вывод отменена" };
   }
 }

@@ -90,6 +90,9 @@ export class Admin {
 
   @Prop({ default: true })
   game_is_active: boolean;
+
+  @Prop({ default: true })
+  gameText: string;
 }
 
 export const AdminSchema = SchemaFactory.createForClass(Admin);

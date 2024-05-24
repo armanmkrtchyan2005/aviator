@@ -87,6 +87,9 @@ export class Replenishment {
 
   @ApiProperty()
   uid: number;
+
+  @Prop({ required: false })
+  acquiring: string;
 }
 
 export const ReplenishmentSchema = SchemaFactory.createForClass(Replenishment).plugin(autoIncrement.plugin, {

@@ -12,7 +12,7 @@ export interface IAmount {
   [key: string]: number;
 }
 
-export interface IBet {
+export type IBet = {
   _id?: string;
   betNumber: number;
   playerId: string;
@@ -27,7 +27,7 @@ export interface IBet {
   user_balance: number;
   game: Game;
   isBot?: boolean;
-}
+};
 
 @Schema({ timestamps: { createdAt: true, updatedAt: "last_active_date" } })
 export class Bet {

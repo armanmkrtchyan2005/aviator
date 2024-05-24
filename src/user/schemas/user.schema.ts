@@ -16,6 +16,9 @@ export class Descendants {
   uid: number;
 
   @ApiProperty()
+  telegramId?: number;
+
+  @ApiProperty()
   createdAt: Date;
 
   @ApiProperty()

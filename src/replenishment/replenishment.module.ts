@@ -13,6 +13,7 @@ import { Bonus, BonusSchema } from "src/user/schemas/bonus.schema";
 import { Account, AccountSchema } from "src/admin/schemas/account.schema";
 import { Session, SessionSchema } from "src/user/schemas/session.schema";
 import { PaymentModule } from "src/payment/payment.module";
+import { AccountRequisite, AccountRequisiteSchema } from "src/admin/schemas/account-requisite.schema";
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { PaymentModule } from "src/payment/payment.module";
       { name: UserPromo.name, schema: UserPromoSchema },
       { name: Bonus.name, schema: BonusSchema },
       { name: Account.name, schema: AccountSchema },
+      { name: AccountRequisite.name, schema: AccountRequisiteSchema },
       { name: Session.name, schema: SessionSchema },
     ]),
     ConvertModule,

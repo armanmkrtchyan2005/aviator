@@ -84,12 +84,16 @@ export class AuthService {
 
     const leader = await this.userModel.findOne({ uid: dto.from });
 
-    const newUser = await this.userModel.create({ ...dto, password: hashedPassword, leader });
+    const newUser = new this.userModel({ ...dto, password: hashedPassword });
 
     if (leader) {
-      leader.descendants.push({ _id: newUser._id.toString(), uid: newUser.uid, createdAt: new Date(), updatedUt: new Date(), earnings: 0 });
+      const isLeaderFined = leader.descendants.find(descendant => descendant.telegramId === dto.telegramId);
 
-      await leader.save();
+      if (!isLeaderFined) {
+        leader.descendants.push({ _id: newUser._id.toString(), uid: newUser.uid, telegramId: newUser.telegramId, createdAt: new Date(), updatedUt: new Date(), earnings: 0 });
+        newUser.leader = leader;
+        await leader.save();
+      }
     }
 
     let balance = 0;

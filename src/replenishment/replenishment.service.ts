@@ -18,10 +18,11 @@ import { IAmount } from "src/bets/schemas/bet.schema";
 import { Account } from "src/admin/schemas/account.schema";
 import { Request } from "express";
 import { ReplenishmentFilePipe } from "./pipes/replenishment-file.pipe";
-import { AccountRequisiteDocument } from "src/admin/schemas/account-requisite.schema";
+import { AccountRequisite, AccountRequisiteDocument } from "src/admin/schemas/account-requisite.schema";
 import { PaymentService } from "src/payment/payment.service";
 import findRemoveSync from "find-remove";
 import * as fs from "fs";
+import Big from "big.js";
 
 const REMOVE_FILES_SECONDS = 1209600; // 7 days in seconds;
 
@@ -35,6 +36,7 @@ export class ReplenishmentService {
     @InjectModel(UserPromo.name) private userPromoModel: Model<UserPromo>,
     @InjectModel(Bonus.name) private bonusModel: Model<Bonus>,
     @InjectModel(Account.name) private accountModel: Model<Account>,
+    @InjectModel(AccountRequisite.name) private accountRequisiteModel: Model<AccountRequisite>,
     private schedulerRegistry: SchedulerRegistry,
     private convertService: ConvertService,
     private paymentService: PaymentService,
@@ -150,23 +152,33 @@ export class ReplenishmentService {
     const bonusAmount: IAmount = {};
     const commission: IAmount = {};
 
+    const bonuses = await this.userPromoModel.find({ user: user._id, limit: { $exists: true } }).populate("promo");
+
     for (const currency of admin.currencies) {
       bonusAmount[currency] = 0;
       // const commission = await this.convertService.convert(admin.commissionCurrency, currency, admin.commission);
       amount[currency] = await this.convertService.convert(dto.currency, currency, dto.amount);
       deduction[currency] = amount[currency];
       commission[currency] = (amount[currency] * requisite.commission) / 100;
-      deduction[currency] += commission[currency];
+      deduction[currency] = new Big(deduction[currency]).plus(commission[currency]).toNumber();
     }
 
-    console.log(amount);
+    for (let bonus of bonuses) {
+      if (bonus.limit >= amount[user.currency]) {
+        for (const currency of admin.currencies) {
+          bonusAmount[currency] += (amount[currency] * bonus.promo.amount) / 100;
+        }
+        bonus.limit -= amount[user.currency];
+        await bonus.save();
+      }
+    }
 
     //----------------- AAIO CODE ------------------
 
     if (requisite.AAIO) {
       if (amount[requisite.currency] >= requisite.AAIOlimit.min && amount[requisite.currency] <= requisite.AAIOlimit.max) {
         // --------------------------
-        return await this.paymentService.createAAIOPayment({ user, amount, requisite });
+        return await this.paymentService.createAAIOPayment({ user, amount, requisite, bonusAmount });
       }
     }
 
@@ -175,7 +187,7 @@ export class ReplenishmentService {
     if (requisite.donatePay) {
       if (amount[requisite.currency] >= requisite.donatePaylimit.min && amount[requisite.currency] <= requisite.donatePaylimit.max) {
         // --------------------------
-        return await this.paymentService.createDonatePayPayment({ user, amount, requisite });
+        return await this.paymentService.createDonatePayPayment({ user, amount, requisite, bonusAmount });
       }
     }
 
@@ -191,37 +203,51 @@ export class ReplenishmentService {
       throw new BadRequestException(`Сумма не должен бит не меньше чем ${minLimit + user.currency} и не больше чем ${maxLimit + user.currency}`);
     }
 
-    const accountsCount = (await this.accountModel.count({ requisite: requisite._id, balance: { $gte: amount["USDT"] } })) - 1;
+    const accounts = await this.accountModel
+      .aggregate()
+      .match({
+        requisite: requisite._id,
+        balance: {
+          $gte: amount["USDT"],
+        },
+        requisites: {
+          $exists: true,
+          $ne: [],
+        },
+      })
+      .lookup({ from: "requisites", localField: "requisite", foreignField: "_id", as: "requisite" })
+      .unwind("requisite")
+      .lookup({ from: "accountrequisites", localField: "requisites", foreignField: "_id", as: "requisites" })
+      .match({
+        "requisite.active": true,
+        "requisite.replenishment": true,
+        "requisite.profile": true,
+        "requisites.active": true,
+      });
 
-    if (requisite.accountCount < accountsCount) {
+    console.log(accounts);
+
+    if (requisite.accountCount < accounts.length - 1) {
       requisite.accountCount++;
     } else {
       requisite.accountCount = 0;
     }
 
-    await requisite.save();
-
-    const account = await this.accountModel
-      .findOne({ requisite: requisite._id, balance: { $gte: amount["USDT"] } })
-      .skip(requisite.accountCount)
-      .populate("requisites");
+    const account = accounts[requisite.accountCount];
 
     if (!account) {
       throw new NotFoundException("Реквизит не найден");
     }
 
-    const requisites = account.requisites.filter(req => req.active);
-
-    if (account.selectedRequisiteDir < requisites.length - 1) {
+    if (account.selectedRequisiteDir < account.requisites.length - 1) {
       account.selectedRequisiteDir++;
     } else {
       account.selectedRequisiteDir = 0;
     }
 
-    await account.save();
+    await this.accountModel.findByIdAndUpdate(account._id, { $set: { selectedRequisiteDir: account.selectedRequisiteDir } });
 
-    const replenishmentRequisite = requisites[account.selectedRequisiteDir];
-    console.log(replenishmentRequisite);
+    const replenishmentRequisite = account.requisites[account.selectedRequisiteDir];
 
     if (!replenishmentRequisite) {
       throw new NotFoundException("Реквизит не найден");
@@ -233,20 +259,7 @@ export class ReplenishmentService {
       deduction[currency] += (deduction[currency] * account.replenishmentBonus) / 100;
     }
 
-    const bonuses = await this.userPromoModel.find({ user: user._id }).populate("promo");
-
-    for (let bonus of bonuses) {
-      if (bonus.limit >= amount[user.currency]) {
-        for (const currency of admin.currencies) {
-          const promoAmount = await this.convertService.convert(bonus.promo.currency, currency, amount[bonus.promo.currency]);
-          bonusAmount[currency] += (amount[currency] * promoAmount) / 100;
-        }
-        bonus.limit -= amount[user.currency];
-        await bonus.save();
-      }
-    }
-
-    await replenishmentRequisite.save();
+    await this.accountRequisiteModel.findByIdAndUpdate(replenishmentRequisite._id, { $set: { turnover: replenishmentRequisite.turnover } });
 
     const replenishment = await (
       await this.replenishmentModel.create({

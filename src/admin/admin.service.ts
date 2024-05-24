@@ -81,6 +81,8 @@ export class AdminService {
       throw new BadRequestException("Такой реквизит уже существует");
     }
 
+    console.log(account);
+
     const requisite = await this.accountRequisiteModel.create({ requisite: dto.requisite, account: account._id, currency: account.requisite.currency });
 
     account.requisites.push(requisite);
@@ -281,6 +283,8 @@ export class AdminService {
     const requisiteAmount = withdrawal.amount["USDT"] + (withdrawal.amount["USDT"] * account.withdrawalBonus) / 100;
 
     withdrawal.requisite.balance += requisiteAmount;
+    withdrawal.completedDate = new Date();
+
     account.balance += requisiteAmount;
 
     await withdrawal.requisite.save();
@@ -304,7 +308,7 @@ export class AdminService {
       throw new BadRequestException("Вы не можете отменить уже подтверждённую или отменённую заявку");
     }
 
-    if (account._id !== withdrawal.active._id) {
+    if (account._id.toString() !== withdrawal.active._id.toString()) {
       throw new BadRequestException("Вы не можете отменить заявку, активированную другим аккаунтом");
     }
 
@@ -313,6 +317,8 @@ export class AdminService {
     withdrawal.statusMessage = dto.statusMessage;
 
     withdrawal.user.balance += withdrawal.amount[withdrawal.user.currency];
+
+    withdrawal.completedDate = new Date();
 
     await withdrawal.user.save();
 
