@@ -11,6 +11,7 @@ import { ConvertService } from "src/convert/convert.service";
 import { isCreditCard } from "class-validator";
 import { IAmount } from "src/bets/schemas/bet.schema";
 import { Replenishment, ReplenishmentStatusEnum } from "src/replenishment/schemas/replenishment.schema";
+import { Limit, LimitType } from "src/user/schemas/limit.schema";
 
 @Injectable()
 export class WithdrawalService {
@@ -20,6 +21,7 @@ export class WithdrawalService {
     @InjectModel(Requisite.name) private requisiteModel: Model<Requisite>,
     @InjectModel(Withdrawal.name) private withdrawalModel: Model<Withdrawal>,
     @InjectModel(Replenishment.name) private replenishmentModel: Model<Replenishment>,
+    @InjectModel(Limit.name) private limitModel: Model<Limit>,
     private convertService: ConvertService,
   ) {}
 
@@ -58,6 +60,12 @@ export class WithdrawalService {
 
     if (dto.userRequisite.length < requisite.min_symbols_count && dto.userRequisite.length > requisite.max_symbols_count) {
       throw new BadRequestException(`Длина реквизита должен быть в диапазоне от ${requisite.min_symbols_count} до ${requisite.max_symbols_count}`);
+    }
+
+    if (user.banned) {
+      const limit = await this.limitModel.findOne({ id: userPayload.id, type: LimitType.BLOCKED }).sort({ createdAt: "desc" });
+
+      throw new BadRequestException(`Вывод средств ограничен. Причина ограничений: ${limit.reason}. Для оспаривания ограничений обратитесь к администрации.`);
     }
 
     const [replenishment] = await this.replenishmentModel.aggregate([

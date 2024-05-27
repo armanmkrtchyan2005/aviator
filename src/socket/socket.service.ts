@@ -31,6 +31,8 @@ function sleep(ms: number = 0) {
 
 @Injectable()
 export class SocketService {
+  private drainLock = false; // добавляем переменную для блокировки
+
   private npcLength: number;
 
   private betGame: GameDocument = null;
@@ -97,7 +99,9 @@ export class SocketService {
 
   async handleConnection(client: Socket) {
     const admin = await this.adminModel.findOne();
-    this.socket.emit("game-stop", admin.gameText);
+    if (!admin.game_is_active) {
+      return this.socket.emit("game-stop", admin.gameText);
+    }
     this.drawCurrentPlayers();
 
     const token = client.handshake?.auth?.token;
@@ -171,7 +175,11 @@ export class SocketService {
   }
 
   async init() {
-    this.betGame = await this.gameModel.create({});
+    try {
+      this.betGame = await this.gameModel.create({});
+    } catch (error) {
+      console.log(error);
+    }
     this.handleStartGame();
   }
 
@@ -425,13 +433,14 @@ export class SocketService {
 
     for (let key in this.winAmount) {
       this.winAmount[key] += win[key];
-      this.winAmountWithoutBots[key] += bet[key];
+      this.winAmountWithoutBots[key] += win[key];
     }
 
     this.drawCurrentPlayers();
 
     this.betGame.win = this.winAmountWithoutBots;
-    await this.betGame.save();
+
+    // await this.betGame.save();
 
     user.balance += win[user.currency];
 
@@ -538,32 +547,53 @@ export class SocketService {
   }
 
   async handleDrain() {
-    console.log("Drain");
-    if (this.x <= 1) {
+    if (this.drainLock) {
       return new WsException("Вы не можете слить игру во время загрузки игры");
     }
 
-    this.loading();
+    this.drainLock = true; // устанавливаем блокировку
 
-    return { message: "Игра остановлена" };
+    try {
+      if (this.x <= 1) {
+        throw new WsException("Вы не можете слить игру во время загрузки игры");
+      }
+
+      await this.loading();
+
+      return { message: "Игра остановлена" };
+    } catch (error) {
+      console.log(error);
+
+      throw error;
+    } finally {
+      this.drainLock = false; // снимаем блокировку
+    }
   }
 
   async handlePlayGame() {
-    console.log("Start");
-    const admin = await this.adminModel.findOne();
+    // const admin = await this.adminModel.findOne();
 
-    if (admin.game_is_active) {
-      return;
+    // if (admin.game_is_active) {
+    //   return;
+    // }
+
+    // console.log("Start");
+
+    // admin.game_is_active = true;
+
+    // await admin.save();
+
+    // console.log(admin.game_is_active);
+    try {
+      await this.loading();
+    } catch (error) {
+      console.log(error);
     }
-
-    admin.game_is_active = true;
-
-    await admin.save();
-
-    this.loading();
   }
 
   private async loading() {
+    console.log("Loading...");
+
     clearInterval(this.interval);
 
     for (let i = 0; i < this.npcLength; i++) {
@@ -581,7 +611,7 @@ export class SocketService {
     try {
       await this.betGame.save();
     } catch (e) {
-      return new WsException(e.message);
+      console.log(e);
     }
 
     const gameFined = await this.gameModel.findOne({ uid: this.betGame.uid + 1 });
@@ -624,7 +654,6 @@ export class SocketService {
     }
 
     this.betGame.bet = this.betAmountWithoutBots;
-    this.betGame.win = this.winAmountWithoutBots;
 
     this.threePlayers = [];
 
@@ -673,7 +702,11 @@ export class SocketService {
 
         const intervalId = setInterval(async () => {
           if (this.x >= winCoeff) {
-            this.schedulerRegistry.deleteInterval(`bot-${i}`);
+            try {
+              this.schedulerRegistry.deleteInterval(`bot-${i}`);
+            } catch (error) {
+              console.log(error);
+            }
 
             bot.coeff = this.x;
             bot.win = {};
@@ -732,12 +765,13 @@ export class SocketService {
 
     this.betGame.algorithm_id = this.selectedAlgorithmId;
     this.betGame.bet = this.betAmountWithoutBots;
-    this.betGame.win = this.winAmountWithoutBots;
     this.betGame.bets_count = this.currentPlayersWithoutBots.length;
 
     console.log(this.selectedAlgorithmId);
 
     if (!this.selectedAlgorithmId) {
+      this.x = 1;
+      this.socket.emit("game", { x: this.x });
       return this.loading();
     }
 

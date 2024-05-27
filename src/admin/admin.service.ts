@@ -14,6 +14,7 @@ import { LimitQueryDto } from "./dto/limit-query.dto";
 import { Account, AccountDocument, ReplenishmentHistory } from "./schemas/account.schema";
 import { AccountRequisite } from "./schemas/account-requisite.schema";
 import { ApiProperty } from "@nestjs/swagger";
+import * as _ from "lodash";
 
 export class ReplenishmentHistoryResponse {
   @ApiProperty()
@@ -329,7 +330,7 @@ export class AdminService {
 
   async replenishmentHistory(account: Account) {
     return {
-      history: account.replenishmentHistory,
+      history: _.orderBy(account.replenishmentHistory, "createdAt", "desc"),
     };
   }
 }

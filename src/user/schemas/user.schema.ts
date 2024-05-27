@@ -104,6 +104,9 @@ export class User {
 
   @Prop({ default: false })
   isWithdrawalAllowed: boolean;
+
+  @Prop({ default: false })
+  banned: boolean;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User).plugin(autoIncrement.plugin, {

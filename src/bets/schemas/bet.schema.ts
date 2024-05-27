@@ -4,7 +4,7 @@ import { User } from "../../user/schemas/user.schema";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Promo } from "src/user/schemas/promo.schema";
 import { Game } from "./game.schema";
-import { UserPromoDocument } from "src/user/schemas/userPromo.schema";
+import { UserPromo, UserPromoDocument } from "src/user/schemas/userPromo.schema";
 
 export type BetDocument = HydratedDocument<Bet>;
 
@@ -58,6 +58,12 @@ export class Bet {
   @ApiProperty({ type: String })
   @Prop({ require: true })
   playerLogin: string;
+
+  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: Promo.name })
+  promo: Promo;
+
+  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: UserPromo.name })
+  userPromo: UserPromoDocument;
 
   @Prop({ required: true })
   user_balance: number;

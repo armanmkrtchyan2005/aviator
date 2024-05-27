@@ -9,6 +9,7 @@ import { Admin, AdminSchema } from "src/admin/schemas/admin.schema";
 import { ConvertModule } from "src/convert/convert.module";
 import { Session, SessionSchema } from "src/user/schemas/session.schema";
 import { Replenishment, ReplenishmentSchema } from "src/replenishment/schemas/replenishment.schema";
+import { Limit, LimitSchema } from "src/user/schemas/limit.schema";
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { Replenishment, ReplenishmentSchema } from "src/replenishment/schemas/re
       { name: Withdrawal.name, schema: WithdrawalSchema },
       { name: Replenishment.name, schema: ReplenishmentSchema },
       { name: Session.name, schema: SessionSchema },
+      { name: Limit.name, schema: LimitSchema },
     ]),
     ConvertModule,
   ],

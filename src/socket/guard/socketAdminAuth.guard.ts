@@ -13,7 +13,6 @@ export class SocketAdminAuthGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     try {
       const client = context.switchToWs().getClient<Socket>();
-      console.log(client);
 
       const handshake = client.handshake;
       const token = handshake.auth?.token as string | undefined;
@@ -26,7 +25,6 @@ export class SocketAdminAuthGuard implements CanActivate {
 
       try {
         const adminPayload = this.jwtService.verify<{ isAdmin: boolean }>(token);
-        console.log(adminPayload);
 
         if (!adminPayload?.isAdmin) {
           throw new WsException("Пользователь не авторизован");
