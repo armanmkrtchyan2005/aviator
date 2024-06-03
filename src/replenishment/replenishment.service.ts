@@ -20,11 +20,13 @@ import { Request } from "express";
 import { ReplenishmentFilePipe } from "./pipes/replenishment-file.pipe";
 import { AccountRequisite, AccountRequisiteDocument } from "src/admin/schemas/account-requisite.schema";
 import { PaymentService } from "src/payment/payment.service";
-import findRemoveSync from "find-remove";
 import * as fs from "fs";
 import Big from "big.js";
+import * as path from "path";
+import { findRemove } from "src/utils/findRemove";
 
-const REMOVE_FILES_SECONDS = 1209600; // 7 days in seconds;
+const REMOVE_FILES_MS = 1209600000; // 14 days in seconds;
+const TIMEOUT_MS = 1000 * 60 * 60 * 30; // 30 minutes
 
 @Injectable()
 export class ReplenishmentService {
@@ -275,20 +277,19 @@ export class ReplenishmentService {
       })
     ).populate(["requisite", "method"]);
 
-    const job = new CronJob(CronExpression.EVERY_30_MINUTES, async () => {
+    const timeoutId = setTimeout(async () => {
       console.log("Time out");
       replenishment.status = ReplenishmentStatusEnum.CANCELED;
       replenishment.statusMessage = "По истечении времени";
+      replenishment.completedDate = new Date();
       try {
         fs.rmSync(replenishment.receipt);
         replenishment.receipt = "";
       } catch (error) {}
       await replenishment.save();
-      this.schedulerRegistry.deleteCronJob(replenishment._id.toString());
-    });
+    }, TIMEOUT_MS);
 
-    this.schedulerRegistry.addCronJob(replenishment._id.toString(), job);
-    job.start();
+    this.schedulerRegistry.addTimeout(replenishment._id.toString(), timeoutId);
 
     return replenishment;
   }
@@ -375,6 +376,7 @@ export class ReplenishmentService {
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async handleCron() {
-    findRemoveSync(__dirname + "/uploads/files", { age: { seconds: REMOVE_FILES_SECONDS } });
+    const uploadDir = path.resolve("uploads", "files");
+    findRemove(uploadDir, REMOVE_FILES_MS);
   }
 }

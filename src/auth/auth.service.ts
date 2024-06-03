@@ -78,7 +78,7 @@ export class AuthService {
       throw new BadRequestException("Промокод не найден");
     }
 
-    const newUsersBonuses = await this.bonusModel.find({ active: true, coef_params: { type: CoefParamsType.NEW_USERS } });
+    const newUsersBonuses = await this.bonusModel.find({ active: true, "coef_params.type": CoefParamsType.NEW_USERS });
 
     const hashedPassword = bcrypt.hashSync(dto.password, salt);
 
@@ -111,11 +111,15 @@ export class AuthService {
     if (promo) {
       const newUserPromo = await this.userPromoModel.create({ user: newUser._id, promo: promo._id });
 
+      if (promo.type === PromoType.PROMO) {
+        newUserPromo.amount = await this.convertService.convert(promo.currency, newUser.currency, promo.amount);
+      }
+
       if (promo.type === PromoType.ADD_BALANCE) {
         newUserPromo.limit = await this.convertService.convert(promo.currency, newUser.currency, promo.limit);
-
-        await newUserPromo.save();
       }
+
+      await newUserPromo.save();
     }
 
     const token = this.jwtService.sign({ id: newUser._id }, {});

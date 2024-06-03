@@ -31,5 +31,6 @@ import { IdentityCounter, IdentityCounterSchema } from "src/admin/schemas/identi
     ConvertModule,
   ],
   providers: [SocketGateway, SocketService],
+  exports: [SocketGateway]
 })
 export class SocketModule {}

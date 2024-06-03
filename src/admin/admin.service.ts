@@ -15,6 +15,7 @@ import { Account, AccountDocument, ReplenishmentHistory } from "./schemas/accoun
 import { AccountRequisite } from "./schemas/account-requisite.schema";
 import { ApiProperty } from "@nestjs/swagger";
 import * as _ from "lodash";
+import { SocketGateway } from "src/socket/socket.gateway";
 
 export class ReplenishmentHistoryResponse {
   @ApiProperty()
@@ -49,6 +50,7 @@ export class AdminService {
     @InjectModel(Withdrawal.name) private withdrawalModel: Model<Withdrawal>,
     private jwtService: JwtService,
     private convertService: ConvertService,
+    private socketGateway: SocketGateway,
   ) {}
 
   async adminDetails(account: AccountDocument) {
@@ -207,6 +209,8 @@ export class AdminService {
     await replenishment.requisite.save();
     await account.save();
 
+    this.socketGateway.server.to(replenishment.user._id.toString()).emit("replenishment-refresh")
+
     return { message: "Заявка подтверждена" };
   }
 
@@ -226,6 +230,8 @@ export class AdminService {
     replenishment.completedDate = new Date();
 
     await replenishment.save();
+
+    this.socketGateway.server.to(replenishment.user._id.toString()).emit("replenishment-refresh")
 
     return { message: "Заявка отменена" };
   }
@@ -295,6 +301,9 @@ export class AdminService {
 
     await withdrawal.save();
 
+    this.socketGateway.server.to(withdrawal.user._id.toString()).emit("withdrawal-refresh")
+
+
     return { message: "Заявка подтверждена" };
   }
 
@@ -324,6 +333,8 @@ export class AdminService {
     await withdrawal.user.save();
 
     await withdrawal.save();
+
+    this.socketGateway.server.to(withdrawal.user._id.toString()).emit("withdrawal-refresh")
 
     return { message: "Заявка отменена" };
   }

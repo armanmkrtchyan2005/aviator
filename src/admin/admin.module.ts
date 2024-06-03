@@ -10,6 +10,7 @@ import { ConvertModule } from "src/convert/convert.module";
 import { Withdrawal, WithdrawalSchema } from "src/withdrawal/schemas/withdrawal.schema";
 import { Account, AccountSchema } from "./schemas/account.schema";
 import { AccountRequisite, AccountRequisiteSchema } from "./schemas/account-requisite.schema";
+import { SocketModule } from "src/socket/socket.module";
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { AccountRequisite, AccountRequisiteSchema } from "./schemas/account-requ
       { name: Withdrawal.name, schema: WithdrawalSchema },
     ]),
     ConvertModule,
+    SocketModule
   ],
   controllers: [AdminController],
   providers: [AdminService],

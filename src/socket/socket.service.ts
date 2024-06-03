@@ -99,9 +99,11 @@ export class SocketService {
 
   async handleConnection(client: Socket) {
     const admin = await this.adminModel.findOne();
+
     if (!admin.game_is_active) {
-      return this.socket.emit("game-stop", admin.gameText);
+      return this.socket.emit("game-stop", admin.game_text);
     }
+
     this.drawCurrentPlayers();
 
     const token = client.handshake?.auth?.token;
@@ -134,6 +136,8 @@ export class SocketService {
     user.lastActiveDate = new Date();
 
     await user.save();
+
+    this.socket.to(user._id.toString())
   }
 
   private async randomSixAlgorithm() {
@@ -659,7 +663,7 @@ export class SocketService {
 
     if (!admin.game_is_active) {
       clearInterval(this.interval);
-      return this.socket.emit("game-stop", admin.gameText);
+      return this.socket.emit("game-stop", admin.game_text);
     }
 
     await sleep(STOP_DISABLE_MS);
