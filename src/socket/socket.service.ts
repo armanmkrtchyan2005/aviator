@@ -119,6 +119,7 @@ export class SocketService {
     user.active = true;
 
     await user.save();
+    client.join(user._id.toString());
   }
 
   async handleDisconnect(client: Socket) {
@@ -137,7 +138,7 @@ export class SocketService {
 
     await user.save();
 
-    this.socket.to(user._id.toString())
+    this.socket.to(user._id.toString());
   }
 
   private async randomSixAlgorithm() {

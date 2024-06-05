@@ -165,6 +165,8 @@ export class ReplenishmentService {
       deduction[currency] = new Big(deduction[currency]).plus(commission[currency]).toNumber();
     }
 
+    console.log(deduction);
+
     for (let bonus of bonuses) {
       if (bonus.limit >= amount[user.currency]) {
         for (const currency of admin.currencies) {
@@ -257,9 +259,9 @@ export class ReplenishmentService {
 
     replenishmentRequisite.turnover.inProcess += amount[requisite.currency];
 
-    for (const currency of admin.currencies) {
-      deduction[currency] += (deduction[currency] * account.replenishmentBonus) / 100;
-    }
+    // for (const currency of admin.currencies) {
+    //   deduction[currency] += (deduction[currency] * account.replenishmentBonus) / 100;
+    // }
 
     await this.accountRequisiteModel.findByIdAndUpdate(replenishmentRequisite._id, { $set: { turnover: replenishmentRequisite.turnover } });
 
@@ -296,7 +298,7 @@ export class ReplenishmentService {
 
   async cancelReplenishment(dto: CancelReplenishmentDto) {
     const replenishment = await this.replenishmentModel.findById(dto.id);
-    if (replenishment.isPayConfirmed) {
+    if (replenishment.isPayConfirmed || replenishment.status !== ReplenishmentStatusEnum.PENDING) {
       return { message: "Вы уже подтвердили оплату" };
     }
 
