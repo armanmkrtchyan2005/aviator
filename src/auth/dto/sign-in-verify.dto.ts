@@ -8,6 +8,6 @@ export class SignInVerifyDto {
 
   @ApiProperty()
   @IsNotEmpty()
-  @IsNumber()
+  @IsNumber({}, { message: "Неверный код" })
   code: number;
 }

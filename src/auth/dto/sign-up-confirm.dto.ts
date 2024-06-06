@@ -8,6 +8,6 @@ export class SignUpConfirmDto extends SignUpDto {
   token: string;
 
   @ApiProperty()
-  @IsNumber({}, { message: "code должен быть числом" })
+  @IsNumber({}, { message: "Неверный код" })
   code: number;
 }

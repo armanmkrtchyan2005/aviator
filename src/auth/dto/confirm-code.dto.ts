@@ -6,7 +6,7 @@ export class ConfirmCodeDto {
     example: 123456,
   })
   @IsNotEmpty()
-  @IsNumber()
+  @IsNumber({}, { message: "Неверный код" })
   code: number;
 
   @ApiProperty({ example: "test@gmail.com", format: "email" })
