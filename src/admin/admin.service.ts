@@ -16,6 +16,7 @@ import { AccountRequisite } from "./schemas/account-requisite.schema";
 import { ApiProperty } from "@nestjs/swagger";
 import * as _ from "lodash";
 import { SocketGateway } from "src/socket/socket.gateway";
+import { Cron, CronExpression } from "@nestjs/schedule";
 
 export class ReplenishmentHistoryResponse {
   @ApiProperty()
@@ -196,8 +197,7 @@ export class AdminService {
 
     await replenishment.save();
 
-    const requisiteAmount = replenishment.deduction["USDT"];
-    console.log(requisiteAmount);
+    const requisiteAmount = replenishment.accrualAmount["USDT"];
 
     account.requisite.balance -= requisiteAmount;
     account.balance -= requisiteAmount;
@@ -205,11 +205,12 @@ export class AdminService {
     replenishment.requisite.turnover.confirmed += requisiteAmount;
     replenishment.requisite.turnover.inProcess -= requisiteAmount;
     replenishment.requisite.turnover.confirmedCount++;
+    replenishment.isPayConfirmed = true;
 
     await replenishment.requisite.save();
     await account.save();
 
-    this.socketGateway.server.to(replenishment.user._id.toString()).emit("replenishment-refresh")
+    this.socketGateway.server.to(replenishment.user._id.toString()).emit("replenishment-refresh");
 
     return { message: "Заявка подтверждена" };
   }
@@ -231,7 +232,7 @@ export class AdminService {
 
     await replenishment.save();
 
-    this.socketGateway.server.to(replenishment.user._id.toString()).emit("replenishment-refresh")
+    this.socketGateway.server.to(replenishment.user._id.toString()).emit("replenishment-refresh");
 
     return { message: "Заявка отменена" };
   }
@@ -251,6 +252,22 @@ export class AdminService {
     return withdrawals;
   }
 
+  @Cron(CronExpression.EVERY_MINUTE)
+  async autoDeactivateWithdrawals() {
+    const oneHourAgo = new Date();
+    oneHourAgo.setHours(oneHourAgo.getHours() - 1);
+    console.log("One minute", oneHourAgo);
+
+    await this.withdrawalModel.updateMany(
+      {
+        status: { $eq: WithdrawalStatusEnum.PENDING },
+        active: { $ne: null },
+        activeAt: { $lte: oneHourAgo },
+      },
+      { $set: { active: null, activeAt: null } },
+    );
+  }
+
   async activateWithdrawal(account: AccountDocument, id: string) {
     const withdrawal = await this.withdrawalModel.findById(id);
 
@@ -263,6 +280,7 @@ export class AdminService {
     }
 
     withdrawal.active = account;
+    withdrawal.activeAt = new Date();
 
     await withdrawal.save();
 
@@ -301,8 +319,7 @@ export class AdminService {
 
     await withdrawal.save();
 
-    this.socketGateway.server.to(withdrawal.user._id.toString()).emit("withdrawal-refresh")
-
+    this.socketGateway.server.to(withdrawal.user._id.toString()).emit("withdrawal-refresh");
 
     return { message: "Заявка подтверждена" };
   }
@@ -334,7 +351,7 @@ export class AdminService {
 
     await withdrawal.save();
 
-    this.socketGateway.server.to(withdrawal.user._id.toString()).emit("withdrawal-refresh")
+    this.socketGateway.server.to(withdrawal.user._id.toString()).emit("withdrawal-refresh");
 
     return { message: "Заявка отменена" };
   }

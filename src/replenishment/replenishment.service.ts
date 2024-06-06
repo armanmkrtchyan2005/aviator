@@ -153,6 +153,7 @@ export class ReplenishmentService {
     const deduction: IAmount = {};
     const bonusAmount: IAmount = {};
     const commission: IAmount = {};
+    const accrualAmount: IAmount = {};
 
     const bonuses = await this.userPromoModel.find({ user: user._id, limit: { $exists: true } }).populate("promo");
 
@@ -259,9 +260,9 @@ export class ReplenishmentService {
 
     replenishmentRequisite.turnover.inProcess += amount[requisite.currency];
 
-    // for (const currency of admin.currencies) {
-    //   deduction[currency] += (deduction[currency] * account.replenishmentBonus) / 100;
-    // }
+    for (const currency of admin.currencies) {
+      accrualAmount[currency] = amount[currency] - (amount[currency] * account.replenishmentBonus) / 100;
+    }
 
     await this.accountRequisiteModel.findByIdAndUpdate(replenishmentRequisite._id, { $set: { turnover: replenishmentRequisite.turnover } });
 
@@ -272,6 +273,7 @@ export class ReplenishmentService {
         commission,
         user: user._id,
         amount,
+        accrualAmount,
         account: account._id,
         requisite: replenishmentRequisite._id,
         method: requisite._id,

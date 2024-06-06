@@ -55,6 +55,9 @@ export class Withdrawal {
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: Account.name })
   active: Account;
 
+  @Prop({})
+  activeAt: Date;
+
   @ApiProperty()
   uid: number;
 }
