@@ -26,7 +26,7 @@ import * as path from "path";
 import { findRemove } from "src/utils/findRemove";
 
 const REMOVE_FILES_MS = 1209600000; // 14 days in seconds;
-const TIMEOUT_MS = 1000 * 60 * 60 * 30; // 30 minutes
+const TIMEOUT_MS = 1000 * 60 * 30; // 30 minutes
 
 @Injectable()
 export class ReplenishmentService {
@@ -166,15 +166,19 @@ export class ReplenishmentService {
       deduction[currency] = new Big(deduction[currency]).plus(commission[currency]).toNumber();
     }
 
-    console.log(deduction);
-
     for (let bonus of bonuses) {
       if (bonus.limit >= amount[user.currency]) {
         for (const currency of admin.currencies) {
           bonusAmount[currency] += (amount[currency] * bonus.promo.amount) / 100;
         }
         bonus.limit -= amount[user.currency];
-        await bonus.save();
+      } else {
+        for (const currency of admin.currencies) {
+          const limitAmount = await this.convertService.convert(user.currency, currency, bonus.limit);
+          bonusAmount[currency] += (limitAmount * bonus.promo.amount) / 100;
+        }
+        bonus.limit -= bonus.limit;
+        await bonus.deleteOne();
       }
     }
 
@@ -199,7 +203,6 @@ export class ReplenishmentService {
     if (!requisite.profile) {
       throw new NotFoundException("Реквизит не найден");
     }
-    console.log("amount: ", amount);
 
     const minLimit = requisite.profileLimit?.min;
     const maxLimit = requisite.profileLimit?.min;
@@ -229,8 +232,6 @@ export class ReplenishmentService {
         "requisite.profile": true,
         "requisites.active": true,
       });
-
-    console.log(accounts);
 
     if (requisite.accountCount < accounts.length - 1) {
       requisite.accountCount++;

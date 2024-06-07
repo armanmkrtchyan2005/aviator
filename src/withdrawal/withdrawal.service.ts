@@ -124,7 +124,7 @@ export class WithdrawalService {
   async cancelWithdrawal(id: string) {
     const withdrawal = await this.withdrawalModel.findById(id).populate("user");
 
-    if (withdrawal.status == WithdrawalStatusEnum.CANCELED || withdrawal.status === WithdrawalStatusEnum.COMPLETED) {
+    if (withdrawal.status == WithdrawalStatusEnum.CANCELED || withdrawal.status === WithdrawalStatusEnum.COMPLETED || withdrawal.active) {
       throw new BadRequestException({ message: "Невозможно отменить эту заявку. Обратитесь к администрации" });
     }
     withdrawal.status = WithdrawalStatusEnum.CANCELED;

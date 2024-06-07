@@ -107,8 +107,6 @@ export class PaymentService {
 
     const replenishment = await this.replenishmentModel.findById(dto.MERCHANT_ORDER_ID).populate("user");
 
-    console.log(replenishment);
-
     replenishment.user.balance += replenishment.amount[replenishment.user.currency] + (replenishment.bonusAmount[replenishment.user.currency] || 0);
     replenishment.status = ReplenishmentStatusEnum.COMPLETED;
     replenishment.completedDate = new Date();
