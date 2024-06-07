@@ -100,6 +100,10 @@ export class SocketService {
   async handleConnection(client: Socket) {
     const admin = await this.adminModel.findOne();
 
+    if (!this.isBetWait) {
+      this.socket.emit("loading");
+    }
+
     if (!admin.game_is_active) {
       return this.socket.emit("game-stop", admin.game_text);
     }
@@ -237,24 +241,22 @@ export class SocketService {
 
   async handleBet(userPayload: IAuthPayload, dto: BetDto) {
     if (this.isBetWait) {
-      return new WsException("Ставки сейчас не применяются");
+      throw new WsException("Ставки сейчас не применяются");
     }
 
     const user = await this.userModel.findById(userPayload?.id, ["currency", "balance", "bonuses", "login", "profileImage", "playedAmount"]);
     const admin = await this.adminModel.findOne({}, ["gameLimits", "algorithms", "currencies", "our_balance"]);
     if (!user) {
-      return new WsException("Пользователь не авторизован");
+      throw new WsException("Пользователь не авторизован");
     }
 
-    const allBets = this.currentPlayers.filter(b => {
-      return b.playerId == userPayload?.id.toString();
-    });
+    const allBets = this.currentPlayers.filter(b => b.playerId == userPayload?.id.toString());
 
-    if (allBets.length >= 2) {
+    const isBetNumberFined = allBets.some(b => b.betNumber === dto.betNumber);
+
+    if (allBets.length >= 2 || isBetNumberFined) {
       return new WsException("Ошибка ставки! Вы уже сделали ставку");
     }
-
-    console.log("allBets.length=", allBets.length);
 
     const betDataObject: IBet | any = { betNumber: dto.betNumber, playerId: userPayload?.id.toString() };
 
@@ -268,12 +270,12 @@ export class SocketService {
     if (!userPromo && dto.bet < minBet) {
       this.currentPlayers = this.currentPlayers.filter(player => player.playerId != betDataObject.playerId && player.betNumber != betDataObject.betNumber);
 
-      return new WsException(`Минимальная ставка ${minBet} ${user.currency}`);
+      throw new WsException(`Минимальная ставка ${minBet} ${user.currency}`);
     }
 
     if (!userPromo && dto.bet > maxBet) {
       this.currentPlayers = this.currentPlayers.filter(player => player.playerId != betDataObject.playerId && player.betNumber != betDataObject.betNumber);
-      return new WsException(`Максимальная ставка ${maxBet} ${user.currency}`);
+      throw new WsException(`Максимальная ставка ${maxBet} ${user.currency}`);
     }
 
     const bet: IAmount = {};
@@ -285,7 +287,7 @@ export class SocketService {
 
       if (bet[user.currency] > user.balance) {
         this.currentPlayers = this.currentPlayers.filter(player => player.playerId != betDataObject.playerId && player.betNumber != betDataObject.betNumber);
-        return new WsException("Недостаточно денег на балансе");
+        throw new WsException("Недостаточно денег на балансе");
       }
 
       user.balance -= bet[user.currency];
@@ -343,7 +345,7 @@ export class SocketService {
 
   async handleCancel(userPayload: IAuthPayload, dto: CashOutDto) {
     if (this.isBetWait) {
-      return new WsException("Отмена ставки невозможна");
+      throw new WsException("Отмена ставки невозможна");
     }
 
     const user = await this.userModel.findById(userPayload.id);
@@ -355,7 +357,7 @@ export class SocketService {
     });
 
     if (!bet) {
-      return new WsException("У вас нет такой ставки");
+      throw new WsException("У вас нет такой ставки");
     }
 
     await this.betModel.findByIdAndDelete(bet._id);
@@ -395,16 +397,16 @@ export class SocketService {
     });
 
     if (betIndex == -1) {
-      return new WsException("У вас нет такой ставки");
+      throw new WsException("У вас нет такой ставки");
     }
 
     const betData = this.currentPlayers[betIndex];
     if (betData.win) {
-      return new WsException("Вы уже сняли эту ставку");
+      throw new WsException("Вы уже сняли эту ставку");
     }
 
     if (betData.promo && this.x < betData?.promo?.coef) {
-      return new WsException(`Вы не можете выиграть до ${betData.promo.coef}x`);
+      throw new WsException(`Вы не можете выиграть до ${betData.promo.coef}x`);
     }
 
     let win: IAmount = {};
@@ -553,7 +555,7 @@ export class SocketService {
 
   async handleDrain() {
     if (this.drainLock) {
-      return new WsException("Вы не можете слить игру во время загрузки игры");
+      throw new WsException("Вы не можете слить игру во время загрузки игры");
     }
 
     this.drainLock = true; // устанавливаем блокировку
@@ -597,6 +599,7 @@ export class SocketService {
   }
 
   private async loading() {
+    this.drainLock = true;
     console.log("Loading...");
 
     clearInterval(this.interval);
@@ -736,6 +739,7 @@ export class SocketService {
     }
 
     await sleep(LOADING_MS);
+    this.drainLock = false;
     this.isBetWait = true;
 
     if (this.betGame.game_coeff) {

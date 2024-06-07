@@ -5,11 +5,11 @@ import { UseFilters, UseGuards, UsePipes, ValidationPipe } from "@nestjs/common"
 import { SocketAuthGuard } from "./guard/socketAuth.guard";
 import { BetDto } from "./dto/bet.dto";
 import { CashOutDto } from "./dto/cashOut.dto";
-import { SocketExceptionsFilter } from "./socket.exception";
+import { SocketExceptionFilter } from "./socket.exception";
 import { SocketAdminAuthGuard } from "./guard/socketAdminAuth.guard";
 
 @WebSocketGateway({ cors: { origin: "*" } })
-@UseFilters(SocketExceptionsFilter)
+@UseFilters(SocketExceptionFilter)
 export class SocketGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() public server: Server;
 
