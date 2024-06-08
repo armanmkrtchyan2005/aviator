@@ -17,6 +17,8 @@ import { ApiProperty } from "@nestjs/swagger";
 import * as _ from "lodash";
 import { SocketGateway } from "src/socket/socket.gateway";
 import { Cron, CronExpression } from "@nestjs/schedule";
+import { UserPromo } from "src/user/schemas/userPromo.schema";
+import { Bonus, CoefParamsType } from "src/user/schemas/bonus.schema";
 
 export class ReplenishmentHistoryResponse {
   @ApiProperty()
@@ -49,6 +51,8 @@ export class AdminService {
     @InjectModel(Requisite.name) private requisiteModel: Model<Requisite>,
     @InjectModel(AccountRequisite.name) private accountRequisiteModel: Model<AccountRequisite>,
     @InjectModel(Withdrawal.name) private withdrawalModel: Model<Withdrawal>,
+    @InjectModel(Bonus.name) private bonusModel: Model<Bonus>,
+    @InjectModel(UserPromo.name) private userPromoModel: Model<UserPromo>,
     private jwtService: JwtService,
     private convertService: ConvertService,
     private socketGateway: SocketGateway,
@@ -209,6 +213,14 @@ export class AdminService {
 
     await replenishment.requisite.save();
     await account.save();
+
+    const bonus = await this.bonusModel.findOne({ "coef_params.type": CoefParamsType.ADD_BALANCE });
+
+    if (replenishment.amount["USD"] >= bonus.coef_params.from_amount) {
+      const randomAmount = _.random(bonus.coef_params.amount_first, bonus.coef_params.amount_second);
+      const amount = await this.convertService.convert("USD", replenishment.user.currency, randomAmount);
+      await this.userPromoModel.create({ bonus: bonus._id, user: replenishment.user._id, amount, active: false });
+    }
 
     this.socketGateway.server.to(replenishment.user._id.toString()).emit("replenishment-refresh");
 

@@ -297,7 +297,7 @@ export class SocketService {
       await user.save();
     } else {
       for (const currency of admin.currencies) {
-        bet[currency] = await this.convertService.convert(userPromo.promo.currency, currency, userPromo.promo.amount);
+        bet[currency] = await this.convertService.convert(user.currency, currency, userPromo.amount);
       }
 
       userPromo.active = true;

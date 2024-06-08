@@ -51,14 +51,14 @@ export class AuthService {
       login: dto.login,
     });
 
-    const promo = await this.promoModel.findOne({ name: dto.promocode }, ["type", "will_finish", "coef", "amount", "currency", "limit"]);
+    const promo = await this.promoModel.findOne({ name: dto.promocode, to_user_id: null, active: true });
 
     if (dto.email && userEmail) {
       throw new BadRequestException("Невозможно привязать данный Email");
     }
 
     if (userLogin) {
-      throw new BadRequestException("Данный логин уже зарегистрирован");
+      throw new BadRequestException("Невозможно зарегистрироваться с данным логином. Попробуйте другой логин.");
     }
 
     if (dto.email && !isEmailConfirmed) {
@@ -96,15 +96,11 @@ export class AuthService {
       }
     }
 
-    let balance = 0;
-
     for (let newUsersBonus of newUsersBonuses) {
-      const amount = _.random(newUsersBonus.coef_params.amount_first, newUsersBonus.coef_params.amount_second);
-      balance += await this.convertService.convert("USD", dto.currency, amount);
-      newUsersBonus.actived_users.push(newUser);
+      const randomAmount = _.random(newUsersBonus.coef_params.amount_first, newUsersBonus.coef_params.amount_second);
+      const amount = await this.convertService.convert("USD", dto.currency, randomAmount);
+      await this.userPromoModel.create({ active: false, user: newUser._id, bonus: newUsersBonus._id, amount });
     }
-
-    newUser.balance = balance;
 
     await newUser.save();
 

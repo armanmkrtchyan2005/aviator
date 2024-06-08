@@ -10,12 +10,16 @@ import { ConvertService } from "src/convert/convert.service";
 import { SchedulerRegistry } from "@nestjs/schedule";
 import { FreekassaSuccessPaymentDto } from "./dto/freekassa-success-payment.dto";
 import Big from "big.js";
+import { Bonus, CoefParamsType } from "src/user/schemas/bonus.schema";
+import { UserPromo } from "src/user/schemas/userPromo.schema";
+import * as _ from "lodash";
 
 @Injectable()
 export class PaymentService {
   constructor(
     @InjectModel(Replenishment.name) private replenishmentModel: Model<Replenishment>,
-    @InjectModel(User.name) private userModel: Model<User>,
+    @InjectModel(Bonus.name) private bonusModel: Model<Bonus>,
+    @InjectModel(UserPromo.name) private userPromoModel: Model<UserPromo>,
     private convertService: ConvertService,
     private schedulerRegistry: SchedulerRegistry,
   ) {}
@@ -96,6 +100,14 @@ export class PaymentService {
     replenishment.completedDate = new Date();
     replenishment.paymentUrl = null;
 
+    const bonus = await this.bonusModel.findOne({ "coef_params.type": CoefParamsType.ADD_BALANCE });
+
+    if (replenishment.amount["USD"] >= bonus.coef_params.from_amount) {
+      const randomAmount = _.random(bonus.coef_params.amount_first, bonus.coef_params.amount_second);
+      const amount = await this.convertService.convert("USD", replenishment.user.currency, randomAmount);
+      await this.userPromoModel.create({ bonus: bonus._id, user: replenishment.user._id, amount, active: false });
+    }
+
     await replenishment.user.save();
     await replenishment.save();
   }
@@ -111,6 +123,14 @@ export class PaymentService {
     replenishment.status = ReplenishmentStatusEnum.COMPLETED;
     replenishment.completedDate = new Date();
     replenishment.paymentUrl = null;
+
+    const bonus = await this.bonusModel.findOne({ "coef_params.type": CoefParamsType.ADD_BALANCE });
+
+    if (replenishment.amount["USD"] >= bonus.coef_params.from_amount) {
+      const randomAmount = _.random(bonus.coef_params.amount_first, bonus.coef_params.amount_second);
+      const amount = await this.convertService.convert("USD", replenishment.user.currency, randomAmount);
+      await this.userPromoModel.create({ bonus: bonus._id, user: replenishment.user._id, amount, active: false });
+    }
 
     await replenishment.user.save();
     await replenishment.save();

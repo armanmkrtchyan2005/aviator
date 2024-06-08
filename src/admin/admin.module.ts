@@ -11,6 +11,8 @@ import { Withdrawal, WithdrawalSchema } from "src/withdrawal/schemas/withdrawal.
 import { Account, AccountSchema } from "./schemas/account.schema";
 import { AccountRequisite, AccountRequisiteSchema } from "./schemas/account-requisite.schema";
 import { SocketModule } from "src/socket/socket.module";
+import { UserPromo, UserPromoSchema } from "src/user/schemas/userPromo.schema";
+import { Bonus, BonusSchema } from "src/user/schemas/bonus.schema";
 
 @Module({
   imports: [
@@ -22,9 +24,11 @@ import { SocketModule } from "src/socket/socket.module";
       { name: Requisite.name, schema: RequisiteSchema },
       { name: AccountRequisite.name, schema: AccountRequisiteSchema },
       { name: Withdrawal.name, schema: WithdrawalSchema },
+      { name: Bonus.name, schema: BonusSchema },
+      { name: UserPromo.name, schema: UserPromoSchema },
     ]),
     ConvertModule,
-    SocketModule
+    SocketModule,
   ],
   controllers: [AdminController],
   providers: [AdminService],

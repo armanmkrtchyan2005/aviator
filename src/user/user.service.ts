@@ -288,9 +288,9 @@ export class UserService {
   async getPromos(dto: GetPromosDto, userPayload: IAuthPayload) {
     const user = await this.userModel.findById(userPayload.id);
 
-    const promos = await this.userPromoModel
+    const userPromos = await this.userPromoModel
       .aggregate([
-        { $match: { user: user._id, active: false } },
+        { $match: { user: user._id, promo: { $ne: null }, active: false } },
         { $lookup: { from: "promos", localField: "promo", foreignField: "_id", as: "promo" } },
         { $unwind: "$promo" },
         { $match: { "promo.type": dto.type } },
@@ -311,8 +311,31 @@ export class UserService {
         },
       ])
       .replaceRoot("$promo");
+    let userBonuses = [];
+    if (dto.type === PromoType.PROMO) {
+      userBonuses = await this.userPromoModel.aggregate([
+        { $match: { user: user._id, bonus: { $ne: null }, active: false } },
+        { $lookup: { from: "bonus", localField: "bonus", foreignField: "_id", as: "bonus" } },
+        { $unwind: "$bonus" },
+        {
+          $addFields: {
+            currency: user.currency,
+            coef: "$bonus.coef_params.coef",
+            will_finish: "$bonus.will_finish",
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            bonus: 0,
+            promo: 0,
+          },
+        },
+      ]);
+    }
 
-    return promos;
+    const bonuses = [...userPromos, ...userBonuses];
+    return bonuses;
   }
 
   async getPromo(authPayload: IAuthPayload, id: string) {

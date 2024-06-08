@@ -23,6 +23,7 @@ class CoefParams {
   // add_balance
   @Prop()
   from_amount: number;
+
   coef: number;
 }
 
