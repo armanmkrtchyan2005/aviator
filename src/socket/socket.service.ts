@@ -255,7 +255,7 @@ export class SocketService {
     const isBetNumberFined = allBets.some(b => b.betNumber === dto.betNumber);
 
     if (allBets.length >= 2 || isBetNumberFined) {
-      return new WsException("Ошибка ставки! Вы уже сделали ставку");
+      return new WsException("Ошибка. Вы уже сделали максимально возможное количество ставок.");
     }
 
     const betDataObject: IBet | any = { betNumber: dto.betNumber, playerId: userPayload?.id.toString() };
@@ -287,7 +287,7 @@ export class SocketService {
 
       if (bet[user.currency] > user.balance) {
         this.currentPlayers = this.currentPlayers.filter(player => player.playerId != betDataObject.playerId && player.betNumber != betDataObject.betNumber);
-        throw new WsException("Недостаточно денег на балансе");
+        throw new WsException("Недостаточно средств на балансе");
       }
 
       user.balance -= bet[user.currency];
@@ -562,7 +562,7 @@ export class SocketService {
 
     try {
       if (this.x <= 1) {
-        throw new WsException("Вы не можете слить игру во время загрузки игры");
+        return { message: "Вы не можете слить игру во время загрузки игры" };
       }
 
       await this.loading();
@@ -597,6 +597,8 @@ export class SocketService {
       console.log(error);
     }
   }
+
+  async handleStartBot() {}
 
   private async loading() {
     this.drainLock = true;
@@ -664,6 +666,11 @@ export class SocketService {
     this.betGame.bet = this.betAmountWithoutBots;
 
     this.threePlayers = [];
+
+    if (!admin.bot_is_active) {
+      clearInterval(this.interval);
+      return this.socket.emit("bot-stop", admin.bot_text);
+    }
 
     if (!admin.game_is_active) {
       clearInterval(this.interval);

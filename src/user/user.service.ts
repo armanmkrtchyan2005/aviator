@@ -29,6 +29,7 @@ import { CronExpression, SchedulerRegistry } from "@nestjs/schedule";
 import { Account } from "src/admin/schemas/account.schema";
 import { RequisiteDto, RequisiteTypeEnum } from "./dto/requisite.dto";
 import * as _ from "lodash";
+import { HOURS48 } from "src/constants";
 
 @Injectable()
 export class UserService {
@@ -115,7 +116,9 @@ export class UserService {
 
   async confirmEmailSendCode(userPayload: IAuthPayload) {
     const user = await this.userModel.findById(userPayload.id);
-    if (user.isEmailUpdated) {
+    const now = new Date();
+
+    if (now.getMilliseconds() - user.emailUpdatedAt.getMilliseconds() <= HOURS48) {
       throw new BadRequestException("Невозможно выполнить действие. Попробуйте позже.");
     }
 
@@ -154,8 +157,9 @@ export class UserService {
     }
 
     const user = await this.userModel.findById(userPayload.id);
+    const now = new Date();
 
-    if (user.isEmailUpdated) {
+    if (now.getMilliseconds() - user.emailUpdatedAt.getMilliseconds() <= HOURS48) {
       throw new BadRequestException("Невозможно выполнить действие. Попробуйте позже.");
     }
 
@@ -179,20 +183,10 @@ export class UserService {
       }
 
       user.email = payload.email;
-      user.isEmailUpdated = true;
+      user.emailUpdatedAt = new Date();
       user.codeToken = "";
 
       await user.save();
-
-      const job = new CronJob("* * */2 * *", async () => {
-        console.log("Time out");
-        user.isEmailUpdated = false;
-
-        await user.save();
-      });
-
-      this.schedulerRegistry.addCronJob(user._id.toString(), job);
-      job.start();
 
       return { message: "Ваш email успешно изменен" };
     } catch (error) {

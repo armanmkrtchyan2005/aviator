@@ -90,8 +90,8 @@ export class User {
   @Prop()
   twoFAToken: string;
 
-  @Prop({ default: false })
-  isEmailUpdated: boolean;
+  @Prop({ default: () => new Date() })
+  emailUpdatedAt: Date;
 
   @Prop({ default: true })
   active: boolean;

@@ -93,6 +93,12 @@ export class Admin {
 
   @Prop()
   game_text: string;
+
+  @Prop()
+  bot_is_active: boolean;
+
+  @Prop()
+  bot_text: string;
 }
 
 export const AdminSchema = SchemaFactory.createForClass(Admin);

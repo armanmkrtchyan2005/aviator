@@ -25,6 +25,7 @@ import { Session } from "src/user/schemas/session.schema";
 import { SignOutDto } from "./dto/sign-out.dto";
 import { Request } from "express";
 import { SignUpConfirmDto } from "./dto/sign-up-confirm.dto";
+import { HOURS48 } from "src/constants";
 
 const saltRounds = 10;
 export const salt = bcrypt.genSaltSync(saltRounds);
@@ -237,7 +238,9 @@ export class AuthService {
       type = SendEmailType.RESET;
     }
 
-    if (user.isEmailUpdated) {
+    const now = new Date();
+
+    if (now.getMilliseconds() - user.emailUpdatedAt.getMilliseconds() <= HOURS48) {
       throw new BadRequestException("Невозможно выполнить действие. Попробуйте позже.");
     }
 
