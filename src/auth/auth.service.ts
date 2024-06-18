@@ -26,6 +26,7 @@ import { SignOutDto } from "./dto/sign-out.dto";
 import { Request } from "express";
 import { SignUpConfirmDto } from "./dto/sign-up-confirm.dto";
 import { HOURS48 } from "src/constants";
+import { IdentityCounter } from "src/admin/schemas/identity-counter.schema";
 
 const saltRounds = 10;
 export const salt = bcrypt.genSaltSync(saltRounds);
@@ -39,6 +40,7 @@ export class AuthService {
     @InjectModel(Promo.name) private promoModel: Model<Promo>,
     @InjectModel(UserPromo.name) private userPromoModel: Model<UserPromo>,
     @InjectModel(Session.name) private sessionModel: Model<Session>,
+    @InjectModel(IdentityCounter.name) private identityCounterModel: Model<IdentityCounter>,
     private mailService: MailService,
     private convertService: ConvertService,
   ) {}
@@ -87,11 +89,17 @@ export class AuthService {
 
     const newUser = new this.userModel({ ...dto, password: hashedPassword });
 
+    if (dto.email) {
+      newUser.emailUpdatedAt = new Date();
+    }
+
     if (leader) {
       const isLeaderFined = leader.descendants.find(descendant => descendant.telegramId === dto.telegramId);
+      console.log(newUser.uid);
 
       if (!isLeaderFined) {
-        leader.descendants.push({ _id: newUser._id.toString(), uid: newUser.uid, telegramId: newUser.telegramId, createdAt: new Date(), updatedUt: new Date(), earnings: 0 });
+        const { count } = await this.identityCounterModel.findOne({ model: "User" });
+        leader.descendants.push({ _id: newUser._id.toString(), uid: count + 1, telegramId: newUser.telegramId, createdAt: new Date(), updatedUt: new Date(), earnings: 0 });
         newUser.leader = leader;
         await leader.save();
       }
@@ -117,6 +125,10 @@ export class AuthService {
       }
 
       await newUserPromo.save();
+
+      promo.used_count++;
+
+      await promo.save();
     }
 
     const token = this.jwtService.sign({ id: newUser._id }, {});
@@ -240,7 +252,7 @@ export class AuthService {
 
     const now = new Date();
 
-    if (now.getMilliseconds() - user.emailUpdatedAt.getMilliseconds() <= HOURS48) {
+    if (user.emailUpdatedAt && now.getMilliseconds() - user.emailUpdatedAt.getMilliseconds() <= HOURS48) {
       throw new BadRequestException("Невозможно выполнить действие. Попробуйте позже.");
     }
 

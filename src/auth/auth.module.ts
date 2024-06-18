@@ -10,6 +10,7 @@ import { Bonus, BonusSchema } from "src/user/schemas/bonus.schema";
 import { Promo, PromoSchema } from "src/user/schemas/promo.schema";
 import { UserPromo, UserPromoSchema } from "src/user/schemas/userPromo.schema";
 import { Session, SessionSchema } from "src/user/schemas/session.schema";
+import { IdentityCounter, IdentityCounterSchema } from "src/admin/schemas/identity-counter.schema";
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { Session, SessionSchema } from "src/user/schemas/session.schema";
       { name: Promo.name, schema: PromoSchema },
       { name: UserPromo.name, schema: UserPromoSchema },
       { name: Session.name, schema: SessionSchema },
+      { name: IdentityCounter.name, schema: IdentityCounterSchema },
     ]),
     MailModule,
     ConvertModule,

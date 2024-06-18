@@ -8,23 +8,30 @@ const START_AT = 100000;
 
 export type UserDocument = HydratedDocument<User>;
 
+@Schema()
 export class Descendants {
   @ApiProperty()
+  @Prop()
   _id: string;
 
   @ApiProperty()
+  @Prop()
   uid: number;
 
   @ApiProperty()
+  @Prop()
   telegramId?: number;
 
   @ApiProperty()
+  @Prop()
   createdAt: Date;
 
   @ApiProperty()
+  @Prop()
   updatedUt: Date;
 
   @ApiProperty()
+  @Prop()
   earnings: number;
 }
 
@@ -60,20 +67,29 @@ export class User {
   @Prop({ required: true, default: 0 })
   balance: number;
 
+  @Prop({ required: true, default: 0 })
+  startBalance: number;
+
   @Prop({ default: 0 })
   playedAmount: number;
 
   @Prop({ required: true, default: 0 })
   referralBalance: number;
 
+  @Prop({ required: true, default: 0 })
+  sumWithdrawal: number;
+
+  @Prop({ required: true, default: 0 })
+  sumReplenishment: number;
+
   @Prop({
     type: mongoose.Schema.Types.ObjectId,
     ref: User.name,
   })
   @Type(() => User)
-  leader: User;
+  leader: UserDocument;
 
-  @Prop({ required: true, type: [{ type: Object }] })
+  @Prop({ required: true, type: [{ type: Descendants }] })
   descendants: Descendants[];
 
   @ApiProperty({ example: "/image.jpg" })
@@ -90,7 +106,7 @@ export class User {
   @Prop()
   twoFAToken: string;
 
-  @Prop({ default: () => new Date() })
+  @Prop()
   emailUpdatedAt: Date;
 
   @Prop({ default: true })

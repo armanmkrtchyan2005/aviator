@@ -25,11 +25,13 @@ import * as url from "url";
 import * as path from "path";
 import { generateCode } from "src/admin/common/utils/generate-code";
 import { CronJob } from "cron";
-import { CronExpression, SchedulerRegistry } from "@nestjs/schedule";
+import { Cron, CronExpression, SchedulerRegistry } from "@nestjs/schedule";
 import { Account } from "src/admin/schemas/account.schema";
 import { RequisiteDto, RequisiteTypeEnum } from "./dto/requisite.dto";
 import * as _ from "lodash";
 import { HOURS48 } from "src/constants";
+
+type CurrencyPercentageRangesType = Record<string, { min: number; max: number; percentage: number }[]>;
 
 @Injectable()
 export class UserService {
@@ -79,37 +81,12 @@ export class UserService {
   }
 
   async findReferralsByDay(auth: IAuthPayload, query: FindReferralsByDayDto) {
-    const referrals = await this.referralModel.aggregate([
-      { $match: { user: new mongoose.Types.ObjectId(auth.id) } },
-      {
-        $group: {
-          _id: {
-            year: { $year: "$createdAt" },
-            month: { $month: "$createdAt" },
-            day: { $dayOfMonth: "$createdAt" },
-          },
-          totalEarned: { $sum: "$earned" },
-        },
-      },
-      { $skip: query.skip },
-      { $limit: query.limit },
-      {
-        $addFields: {
-          date: {
-            $dateFromParts: {
-              year: "$_id.year",
-              month: "$_id.month",
-              day: "$_id.day",
-            },
-          },
-        },
-      },
-      {
-        $project: {
-          _id: 0,
-        },
-      },
-    ]);
+    const referrals = await this.referralModel
+      .aggregate()
+      .match({ user: new mongoose.Types.ObjectId(auth.id) })
+      .skip(query.skip)
+      .limit(query.limit)
+      .project({ totalEarned: "$earned", date: "$createdAt" });
 
     return referrals;
   }
@@ -118,7 +95,7 @@ export class UserService {
     const user = await this.userModel.findById(userPayload.id);
     const now = new Date();
 
-    if (now.getMilliseconds() - user.emailUpdatedAt.getMilliseconds() <= HOURS48) {
+    if (user.emailUpdatedAt && now.getMilliseconds() - user.emailUpdatedAt.getMilliseconds() <= HOURS48) {
       throw new BadRequestException("Невозможно выполнить действие. Попробуйте позже.");
     }
 
@@ -159,7 +136,7 @@ export class UserService {
     const user = await this.userModel.findById(userPayload.id);
     const now = new Date();
 
-    if (now.getMilliseconds() - user.emailUpdatedAt.getMilliseconds() <= HOURS48) {
+    if (user.emailUpdatedAt && now.getMilliseconds() - user.emailUpdatedAt.getMilliseconds() <= HOURS48) {
       throw new BadRequestException("Невозможно выполнить действие. Попробуйте позже.");
     }
 
@@ -245,9 +222,7 @@ export class UserService {
       throw new NotFoundException("Промокод не найден");
     }
 
-    const usedCount = await this.userPromoModel.count({ promo: promo._id });
-
-    if (usedCount >= promo.max_count) {
+    if (promo.used_count >= promo.max_count) {
       throw new NotFoundException("Промокод не найден");
     }
 
@@ -275,6 +250,10 @@ export class UserService {
     }
 
     await newUserPromo.save();
+
+    promo.used_count++;
+
+    await promo.save();
 
     return promo;
   }
@@ -313,6 +292,7 @@ export class UserService {
         { $unwind: "$bonus" },
         {
           $addFields: {
+            _id: "$bonus._id",
             currency: user.currency,
             coef: "$bonus.coef_params.coef",
             will_finish: "$bonus.will_finish",
@@ -320,7 +300,6 @@ export class UserService {
         },
         {
           $project: {
-            _id: 0,
             bonus: 0,
             promo: 0,
           },
@@ -449,5 +428,85 @@ export class UserService {
     await user.save();
 
     return user.profileImage;
+  }
+
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  async handleCron() {
+    console.log("After 1 minute");
+
+    const { currencies } = await this.adminModel.findOne();
+    const currencyPercentageRanges: CurrencyPercentageRangesType = {};
+
+    for (const currency of currencies) {
+      currencyPercentageRanges[currency] = [];
+    }
+
+    for (const currency of currencies) {
+      currencyPercentageRanges[currency].push({ min: 0, max: await this.convertService.convert("USD", currency, 5), percentage: 0.4 });
+      currencyPercentageRanges[currency].push({
+        min: await this.convertService.convert("USD", currency, 6),
+        max: await this.convertService.convert("USD", currency, 10.99),
+        percentage: 0.35,
+      });
+      currencyPercentageRanges[currency].push({
+        min: await this.convertService.convert("USD", currency, 11),
+        max: await this.convertService.convert("USD", currency, 20.99),
+        percentage: 0.3,
+      });
+      currencyPercentageRanges[currency].push({
+        min: await this.convertService.convert("USD", currency, 21),
+        max: await this.convertService.convert("USD", currency, 40.99),
+        percentage: 0.25,
+      });
+      currencyPercentageRanges[currency].push({
+        min: await this.convertService.convert("USD", currency, 41),
+        max: await this.convertService.convert("USD", currency, 100.99),
+        percentage: 0.2,
+      });
+      currencyPercentageRanges[currency].push({
+        min: await this.convertService.convert("USD", currency, 101),
+        max: Infinity,
+        percentage: 0.25,
+      });
+    }
+
+    const users = await this.userModel.find({ descendants: { $ne: [] } });
+
+    for (const user of users) {
+      let totalReferralBalance = 0;
+      for (let descendant of user.descendants) {
+        const descendantUser = await this.userModel.findById(descendant._id);
+
+        let calculatedReferralBalance = descendantUser.startBalance + descendantUser.sumReplenishment - (descendantUser.balance + descendantUser.sumWithdrawal);
+
+        descendantUser.sumWithdrawal = 0;
+        descendantUser.sumReplenishment = 0;
+        descendantUser.startBalance = descendantUser.balance;
+
+        if (calculatedReferralBalance <= 0) {
+          await descendantUser.save();
+          continue;
+        }
+
+        const range = currencyPercentageRanges[descendantUser.currency].find(range => calculatedReferralBalance >= range.min && calculatedReferralBalance <= range.max);
+
+        calculatedReferralBalance = calculatedReferralBalance * range.percentage;
+
+        user.balance += calculatedReferralBalance;
+
+        descendant.earnings += calculatedReferralBalance;
+        totalReferralBalance += calculatedReferralBalance;
+
+        await descendantUser.save();
+      }
+
+      user.referralBalance += totalReferralBalance;
+
+      if (totalReferralBalance > 0) {
+        await this.referralModel.create({ user: user._id, createdAt: new Date(), currency: user.currency, earned: totalReferralBalance });
+      }
+
+      await user.save();
+    }
   }
 }

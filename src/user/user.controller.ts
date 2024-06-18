@@ -26,7 +26,6 @@ import { ChangePasswordDto } from "src/auth/dto/change-password.dto";
 import { AddPromoDto } from "./dto/add-promo.dto";
 import { User } from "./schemas/user.schema";
 import { MyBalanceResponse } from "./responses/my-balance.response";
-import { AddBonusBadResponse, AddBonusResponse } from "./responses/add-bonus.response";
 import { Bonus } from "./schemas/bonus.schema";
 import {
   ChangeEmailConfirmCodeResponse,
@@ -41,8 +40,6 @@ import { SignInOkResponse } from "src/auth/responses/sign-in.response";
 import { FindRequisitesResponse } from "./responses/requisite.response";
 import { Requisite } from "src/admin/schemas/requisite.schema";
 import { FileInterceptor } from "@nestjs/platform-express";
-import { diskStorage, memoryStorage } from "multer";
-import { extname } from "path";
 import { ReferralByDaysOkResponse, ReferralOkResponse } from "./responses/referral.response";
 import { FindReferralsByDayDto } from "./dto/findReferralsByDay.dto";
 import { GetPromosDto } from "./dto/getPromos.dto";

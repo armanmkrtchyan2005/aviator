@@ -95,17 +95,30 @@ export class PaymentService {
   async successPaymentAAIO(dto: AAIOSuccessPaymentDto) {
     const replenishment = await this.replenishmentModel.findById(dto.order_id).populate("user");
 
-    replenishment.user.balance += replenishment.amount[replenishment.user.currency] + (replenishment.bonusAmount[replenishment.user.currency] || 0);
+    const userAmount = replenishment.amount[replenishment.user.currency] + (replenishment.bonusAmount[replenishment.user.currency] || 0);
+    replenishment.user.balance += userAmount;
     replenishment.status = ReplenishmentStatusEnum.COMPLETED;
     replenishment.completedDate = new Date();
     replenishment.paymentUrl = null;
 
+    const { leader } = await replenishment.user.populate("leader");
+
+    if (leader) {
+      const userLeaderAmount = replenishment.amount[leader.currency] + (replenishment.bonusAmount[leader.currency] || 0);
+      replenishment.user.sumReplenishment += userLeaderAmount;
+    }
+
     const bonus = await this.bonusModel.findOne({ "coef_params.type": CoefParamsType.ADD_BALANCE });
 
-    if (replenishment.amount["USD"] >= bonus.coef_params.from_amount) {
-      const randomAmount = _.random(bonus.coef_params.amount_first, bonus.coef_params.amount_second);
-      const amount = await this.convertService.convert("USD", replenishment.user.currency, randomAmount);
-      await this.userPromoModel.create({ bonus: bonus._id, user: replenishment.user._id, amount, active: false });
+    if (bonus) {
+      const isUserPromoFined = await this.userPromoModel.findOne({ user: replenishment.user._id, bonus: bonus._id });
+      console.log(isUserPromoFined);
+
+      if (replenishment.amount["USD"] >= bonus.coef_params.from_amount && !isUserPromoFined) {
+        const randomAmount = _.random(bonus.coef_params.amount_first, bonus.coef_params.amount_second);
+        const amount = await this.convertService.convert("USD", replenishment.user.currency, randomAmount);
+        await this.userPromoModel.create({ bonus: bonus._id, user: replenishment.user._id, amount, active: false });
+      }
     }
 
     await replenishment.user.save();
@@ -119,17 +132,30 @@ export class PaymentService {
 
     const replenishment = await this.replenishmentModel.findById(dto.MERCHANT_ORDER_ID).populate("user");
 
-    replenishment.user.balance += replenishment.amount[replenishment.user.currency] + (replenishment.bonusAmount[replenishment.user.currency] || 0);
+    const userAmount = replenishment.amount[replenishment.user.currency] + (replenishment.bonusAmount[replenishment.user.currency] || 0);
+    replenishment.user.balance += userAmount;
     replenishment.status = ReplenishmentStatusEnum.COMPLETED;
     replenishment.completedDate = new Date();
     replenishment.paymentUrl = null;
 
+    const { leader } = await replenishment.user.populate("leader");
+
+    if (leader) {
+      const userLeaderAmount = replenishment.amount[leader.currency] + (replenishment.bonusAmount[leader.currency] || 0);
+      replenishment.user.sumReplenishment += userLeaderAmount;
+    }
+
     const bonus = await this.bonusModel.findOne({ "coef_params.type": CoefParamsType.ADD_BALANCE });
 
-    if (replenishment.amount["USD"] >= bonus.coef_params.from_amount) {
-      const randomAmount = _.random(bonus.coef_params.amount_first, bonus.coef_params.amount_second);
-      const amount = await this.convertService.convert("USD", replenishment.user.currency, randomAmount);
-      await this.userPromoModel.create({ bonus: bonus._id, user: replenishment.user._id, amount, active: false });
+    if (bonus) {
+      const isUserPromoFined = await this.userPromoModel.findOne({ user: replenishment.user._id, bonus: bonus._id });
+      console.log(isUserPromoFined);
+
+      if (replenishment.amount["USD"] >= bonus.coef_params.from_amount && !isUserPromoFined) {
+        const randomAmount = _.random(bonus.coef_params.amount_first, bonus.coef_params.amount_second);
+        const amount = await this.convertService.convert("USD", replenishment.user.currency, randomAmount);
+        await this.userPromoModel.create({ bonus: bonus._id, user: replenishment.user._id, amount, active: false });
+      }
     }
 
     await replenishment.user.save();

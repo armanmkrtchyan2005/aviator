@@ -85,7 +85,7 @@ export class WithdrawalService {
     const betAmount = total - user.playedAmount;
 
     if (!user.isWithdrawalAllowed && betAmount > 0) {
-      throw new BadRequestException(`Для вывода денег вы должны делать ставку как минимум ${betAmount} ${user.currency}`);
+      throw new BadRequestException(`Для вывода средств вам необходимо сделать ставку как минимум на сумму ${betAmount} ${user.currency}`);
     }
 
     user.isWithdrawalAllowed = true;
@@ -115,6 +115,10 @@ export class WithdrawalService {
     const withdrawal = await this.withdrawalModel.create({ ...dto, amount, user: user._id });
 
     user.balance -= amount[user.currency];
+
+    const { leader } = await replenishment.user.populate("leader");
+
+    user.sumWithdrawal += amount[leader.currency];
 
     await user.save();
 

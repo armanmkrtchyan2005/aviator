@@ -104,6 +104,11 @@ export class SocketService {
       this.socket.emit("loading");
     }
 
+    if (!admin.bot_is_active) {
+      clearInterval(this.interval);
+      return this.socket.emit("bot-stop", admin.bot_text);
+    }
+
     if (!admin.game_is_active) {
       return this.socket.emit("game-stop", admin.game_text);
     }
@@ -262,7 +267,7 @@ export class SocketService {
 
     this.currentPlayers.push(betDataObject as IBet);
 
-    const userPromo = await this.userPromoModel.findOne({ user: user._id, promo: dto.promoId, active: false }).populate("promo");
+    const userPromo = await this.userPromoModel.findOne({ user: user._id, active: false, $or: [{ promo: dto.promoId }, { bonus: dto.promoId }] }).populate(["promo", "bonus"]);
 
     const minBet = admin.gameLimits.min[user.currency];
     const maxBet = admin.gameLimits.max[user.currency];
@@ -307,7 +312,7 @@ export class SocketService {
     betDataObject.playerLogin = user.login;
     betDataObject.profileImage = user.profileImage;
     betDataObject.bet = bet;
-    betDataObject.promo = userPromo?.promo;
+    betDataObject.promo = userPromo?.promo || userPromo?.bonus;
     betDataObject.userPromo = userPromo;
     betDataObject.game = this.betGame;
     betDataObject.time = new Date();
@@ -409,6 +414,10 @@ export class SocketService {
       throw new WsException(`Вы не можете выиграть до ${betData.promo.coef}x`);
     }
 
+    if (betData.promo && this.x < betData?.promo?.coef) {
+      throw new WsException(`Вы не можете выиграть до ${betData.promo.coef}x`);
+    }
+
     let win: IAmount = {};
 
     for (const currency of admin.currencies) {
@@ -456,24 +465,6 @@ export class SocketService {
     }
 
     await user.save();
-
-    const leader = await this.userModel.findById(user.leader);
-
-    if (leader) {
-      const converted = (win[leader.currency] * 40) / 100;
-
-      leader.balance += converted;
-      leader.referralBalance += converted;
-
-      const findIndex = leader.descendants.findIndex(i => i._id === user._id.toString());
-      const descendant = leader.descendants[findIndex];
-
-      leader.descendants[findIndex] = { ...descendant, earnings: descendant.earnings + converted, updatedUt: new Date() };
-
-      await this.referralModel.create({ earned: converted, currency: leader.currency, createdAt: new Date(), user: leader._id });
-
-      await leader.save();
-    }
 
     let totalWinAmount: number;
 
@@ -591,7 +582,9 @@ export class SocketService {
     // await admin.save();
 
     // console.log(admin.game_is_active);
+
     try {
+      console.log("Play");
       await this.loading();
     } catch (error) {
       console.log(error);
@@ -688,7 +681,7 @@ export class SocketService {
         const bet: IAmount = {};
         const r = _.random(admin.bots.betAmount.min, admin.bots.betAmount.max);
         for (const currency of admin.currencies) {
-          bet[currency] = await this.convertService.convert("USD", currency, r); // stanal tvery bazaic
+          bet[currency] = await this.convertService.convert("USD", currency, r);
         }
 
         const bot: IBet = {
