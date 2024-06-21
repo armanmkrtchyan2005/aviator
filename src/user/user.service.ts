@@ -95,7 +95,7 @@ export class UserService {
     const user = await this.userModel.findById(userPayload.id);
     const now = new Date();
 
-    if (user.emailUpdatedAt && now.getMilliseconds() - user.emailUpdatedAt.getMilliseconds() <= HOURS48) {
+    if (user.emailUpdatedAt && now.getTime() - user.emailUpdatedAt.getTime() <= HOURS48) {
       throw new BadRequestException("Невозможно выполнить действие. Попробуйте позже.");
     }
 
@@ -136,7 +136,7 @@ export class UserService {
     const user = await this.userModel.findById(userPayload.id);
     const now = new Date();
 
-    if (user.emailUpdatedAt && now.getMilliseconds() - user.emailUpdatedAt.getMilliseconds() <= HOURS48) {
+    if (user.emailUpdatedAt && now.getTime() - user.emailUpdatedAt.getTime() <= HOURS48) {
       throw new BadRequestException("Невозможно выполнить действие. Попробуйте позже.");
     }
 
@@ -216,7 +216,7 @@ export class UserService {
       throw new UnauthorizedException();
     }
 
-    const promo = await this.promoModel.findOne({ name: dto.promoCode }, ["type", "will_finish", "coef", "amount", "currency", "limit", "max_count"]);
+    const promo = await this.promoModel.findOne({ name: dto.promoCode });
 
     if (!promo) {
       throw new NotFoundException("Промокод не найден");
@@ -239,7 +239,7 @@ export class UserService {
       throw new BadRequestException("У вас уже есть такой промокод");
     }
 
-    const newUserPromo = await this.userPromoModel.create({ user: user._id, promo: promo._id });
+    const newUserPromo = new this.userPromoModel({ user: user._id, promo: promo._id });
 
     if (promo.type === PromoType.PROMO) {
       newUserPromo.amount = await this.convertService.convert(promo.currency, user.currency, promo.amount);
@@ -249,11 +249,10 @@ export class UserService {
       newUserPromo.limit = await this.convertService.convert(promo.currency, user.currency, promo.limit);
     }
 
-    await newUserPromo.save();
-
     promo.used_count++;
 
     await promo.save();
+    await newUserPromo.save();
 
     return promo;
   }
@@ -261,11 +260,20 @@ export class UserService {
   async getPromos(dto: GetPromosDto, userPayload: IAuthPayload) {
     const user = await this.userModel.findById(userPayload.id);
 
+    const setPipeline = {};
+
+    if (dto.type == PromoType.PROMO) {
+      setPipeline["promo.type"] = { $cond: [{ $eq: ["$promo.type", PromoType.SPECIFIC_USER] }, PromoType.PROMO, "$promo.type"] };
+    }
+
     const userPromos = await this.userPromoModel
       .aggregate([
         { $match: { user: user._id, promo: { $ne: null }, active: false } },
         { $lookup: { from: "promos", localField: "promo", foreignField: "_id", as: "promo" } },
         { $unwind: "$promo" },
+        {
+          $set: setPipeline,
+        },
         { $match: { "promo.type": dto.type } },
         {
           $addFields: {

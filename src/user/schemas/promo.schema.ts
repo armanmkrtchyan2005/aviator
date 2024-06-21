@@ -8,6 +8,7 @@ export type PromoDocument = HydratedDocument<Promo>;
 export enum PromoType {
   ADD_BALANCE = "add_balance",
   PROMO = "promo",
+  SPECIFIC_USER = "specific_user",
 }
 
 @Schema()

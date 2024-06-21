@@ -51,7 +51,7 @@ export class WithdrawalService {
 
   async createWithdrawal(userPayload: IAuthPayload, dto: CreateWithdrawalDto) {
     const admin = await this.adminModel.findOne();
-    const user = await this.userModel.findById(userPayload.id);
+    const user = await this.userModel.findById(userPayload.id).populate("leader");
     const requisite = await this.requisiteModel.findOne({ _id: dto.requisite, active: true });
 
     if (!requisite) {
@@ -116,9 +116,9 @@ export class WithdrawalService {
 
     user.balance -= amount[user.currency];
 
-    const { leader } = await replenishment.user.populate("leader");
-
-    user.sumWithdrawal += amount[leader.currency];
+    if (user.leader) {
+      user.sumWithdrawal += amount[user.leader.currency];
+    }
 
     await user.save();
 

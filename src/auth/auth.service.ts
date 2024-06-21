@@ -94,10 +94,9 @@ export class AuthService {
     }
 
     if (leader) {
-      const isLeaderFined = leader.descendants.find(descendant => descendant.telegramId === dto.telegramId);
-      console.log(newUser.uid);
+      const isUserFined = await this.userModel.findOne({ telegramId: dto.telegramId });
 
-      if (!isLeaderFined) {
+      if (!isUserFined) {
         const { count } = await this.identityCounterModel.findOne({ model: "User" });
         leader.descendants.push({ _id: newUser._id.toString(), uid: count + 1, telegramId: newUser.telegramId, createdAt: new Date(), updatedUt: new Date(), earnings: 0 });
         newUser.leader = leader;
@@ -252,7 +251,7 @@ export class AuthService {
 
     const now = new Date();
 
-    if (user.emailUpdatedAt && now.getMilliseconds() - user.emailUpdatedAt.getMilliseconds() <= HOURS48) {
+    if (user.emailUpdatedAt && now.getTime() - user.emailUpdatedAt.getTime() <= HOURS48) {
       throw new BadRequestException("Невозможно выполнить действие. Попробуйте позже.");
     }
 
