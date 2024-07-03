@@ -94,7 +94,7 @@ export class AuthService {
     }
 
     if (leader) {
-      const isUserFined = await this.userModel.findOne({ telegramId: dto.telegramId });
+      const isUserFined = await this.userModel.findOne({ telegramId: { $exists: true, $eq: dto.telegramId } });
 
       if (!isUserFined) {
         const { count } = await this.identityCounterModel.findOne({ model: "User" });
@@ -233,20 +233,12 @@ export class AuthService {
   async sendCode(req: Request, dto: SendCodeDto): Promise<SendCodeOkResponse> {
     const token = req.headers.authorization?.split(" ")[1];
 
-    const session = await this.sessionModel.findOne({ token });
-
     const user = await this.userModel.findOne({
       email: dto.email,
     });
 
     if (!user) {
       throw new BadRequestException("Такой пользователь не найден");
-    }
-
-    let type = SendEmailType.FORGOT;
-
-    if (user._id.toString() == session?.user?.toString()) {
-      type = SendEmailType.RESET;
     }
 
     const now = new Date();
@@ -259,7 +251,7 @@ export class AuthService {
 
     user.codeToken = this.jwtService.sign({ code }, { expiresIn: 60 * 60 * 2 });
 
-    await this.mailService.sendUserForgotCode({ code, email: dto.email, login: user.login, type });
+    await this.mailService.sendUserForgotCode({ code, email: dto.email, login: user.login, type: SendEmailType.FORGOT });
 
     await user.save();
 

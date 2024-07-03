@@ -29,6 +29,13 @@ function sleep(ms: number = 0) {
   return new Promise(res => setTimeout(res, ms));
 }
 
+function socketException(message: string) {
+  return {
+    message,
+    success: false,
+  };
+}
+
 @Injectable()
 export class SocketService {
   private drainLock = false; // добавляем переменную для блокировки
@@ -129,6 +136,11 @@ export class SocketService {
 
     await user.save();
     client.join(user._id.toString());
+
+    // const userCurrentBets = this.currentPlayers.filter(currentPlayer => currentPlayer.playerId == user._id.toString());
+    // this.socket.to(user._id.toString()).emit("user-current-bets", userCurrentBets);
+
+    this.socket.to(user._id.toString()).emit("user-balance", user.balance);
   }
 
   async handleDisconnect(client: Socket) {
@@ -148,6 +160,26 @@ export class SocketService {
     await user.save();
 
     this.socket.to(user._id.toString());
+
+    const admin = await this.adminModel.findOne({}, ["gameLimits", "currencies", "our_balance"]);
+
+    const bets = this.currentPlayers.filter(b => {
+      return b.playerId == user._id?.toString();
+    });
+
+    for (const bet of bets) {
+      await this.betModel.findByIdAndDelete(bet._id);
+
+      user.balance += bet.bet[user.currency];
+      user.playedAmount -= bet.bet[user.currency];
+
+      admin.our_balance -= bet.bet["USD"];
+    }
+
+    await user.save();
+    await admin.save();
+
+    this.socket.to(user._id.toString()).emit("user-balance", user.balance);
   }
 
   private async randomSixAlgorithm() {
@@ -213,7 +245,7 @@ export class SocketService {
 
     // 4. ----------
     if (this.selectedAlgorithmId === 4) {
-      if (this.x == 2) {
+      if (this.x >= 1.8 && this.x <= 2.1) {
         this.threePlayers = _.sampleSize(this.currentPlayers, 3);
         this.random = _.random(110, true);
       }
@@ -246,28 +278,28 @@ export class SocketService {
 
   async handleBet(userPayload: IAuthPayload, dto: BetDto) {
     if (this.isBetWait) {
-      throw new WsException("Ставки сейчас не применяются");
+      return socketException("Ставки сейчас не применяются");
     }
 
     const user = await this.userModel.findById(userPayload?.id, ["currency", "balance", "bonuses", "login", "profileImage", "playedAmount"]);
     const admin = await this.adminModel.findOne({}, ["gameLimits", "algorithms", "currencies", "our_balance"]);
     if (!user) {
-      throw new WsException("Пользователь не авторизован");
+      return socketException("Пользователь не авторизован");
     }
 
-    const allBets = this.currentPlayers.filter(b => b.playerId == userPayload?.id.toString());
+    const userCurrentBets = this.currentPlayers.filter(currentPlayer => currentPlayer.playerId == user._id.toString());
 
-    const isBetNumberFined = allBets.some(b => b.betNumber === dto.betNumber);
+    const isBetNumberFined = userCurrentBets.some(b => b.betNumber === dto.betNumber);
 
-    if (allBets.length >= 2 || isBetNumberFined) {
-      return new WsException("Ошибка. Вы уже сделали максимально возможное количество ставок.");
+    if (isBetNumberFined && userCurrentBets.length >= 2) {
+      return socketException("Ошибка. Вы уже сделали максимально возможное количество ставок.");
     }
 
     const betDataObject: IBet | any = { betNumber: dto.betNumber, playerId: userPayload?.id.toString() };
 
     this.currentPlayers.push(betDataObject as IBet);
 
-    const userPromo = await this.userPromoModel.findOne({ user: user._id, active: false, $or: [{ promo: dto.promoId }, { bonus: dto.promoId }] }).populate(["promo", "bonus"]);
+    const userPromo = await this.userPromoModel.findOne({ user: user._id, active: false, promo: dto.promoId, amount: { $exists: true } }).populate("promo");
 
     const minBet = admin.gameLimits.min[user.currency];
     const maxBet = admin.gameLimits.max[user.currency];
@@ -275,12 +307,12 @@ export class SocketService {
     if (!userPromo && dto.bet < minBet) {
       this.currentPlayers = this.currentPlayers.filter(player => player.playerId != betDataObject.playerId && player.betNumber != betDataObject.betNumber);
 
-      throw new WsException(`Минимальная ставка ${minBet} ${user.currency}`);
+      return socketException(`Минимальная ставка ${minBet} ${user.currency}`);
     }
 
     if (!userPromo && dto.bet > maxBet) {
       this.currentPlayers = this.currentPlayers.filter(player => player.playerId != betDataObject.playerId && player.betNumber != betDataObject.betNumber);
-      throw new WsException(`Максимальная ставка ${maxBet} ${user.currency}`);
+      return socketException(`Максимальная ставка ${maxBet} ${user.currency}`);
     }
 
     const bet: IAmount = {};
@@ -292,7 +324,7 @@ export class SocketService {
 
       if (bet[user.currency] > user.balance) {
         this.currentPlayers = this.currentPlayers.filter(player => player.playerId != betDataObject.playerId && player.betNumber != betDataObject.betNumber);
-        throw new WsException("Недостаточно средств на балансе");
+        return socketException("Недостаточно средств на балансе");
       }
 
       user.balance -= bet[user.currency];
@@ -331,6 +363,10 @@ export class SocketService {
 
     this.drawCurrentPlayers();
 
+    // userCurrentBets.push(betDataObject);
+    // this.socket.to(user._id.toString()).emit("user-current-bets", userCurrentBets);
+    this.socket.to(user._id.toString()).emit("user-balance", user.balance);
+
     admin.our_balance += bet["USD"];
 
     await admin.save();
@@ -350,7 +386,7 @@ export class SocketService {
 
   async handleCancel(userPayload: IAuthPayload, dto: CashOutDto) {
     if (this.isBetWait) {
-      throw new WsException("Отмена ставки невозможна");
+      return socketException("Отмена ставки невозможна");
     }
 
     const user = await this.userModel.findById(userPayload.id);
@@ -362,7 +398,7 @@ export class SocketService {
     });
 
     if (!bet) {
-      throw new WsException("У вас нет такой ставки");
+      return socketException("У вас нет такой ставки");
     }
 
     await this.betModel.findByIdAndDelete(bet._id);
@@ -388,7 +424,13 @@ export class SocketService {
     this.currentPlayers = this.currentPlayers.filter(player => player._id !== bet._id);
     this.socket.emit("currentPlayers", { betAmount: this.betAmount, winAmount: this.winAmount, currentPlayers: this.currentPlayers });
 
-    return { message: "Ставка отменена" };
+    // const userCurrentBets = this.currentPlayers.filter(currentPlayer => currentPlayer.playerId == user._id.toString());
+    // this.socket.to(user._id.toString()).emit("user-current-bets", userCurrentBets);
+    this.socket.to(user._id.toString()).emit("user-balance", user.balance);
+
+    console.log("CANCELED");
+
+    return { message: "Ставка отменена", success: true };
   }
 
   async handleCashOut(userPayload: IAuthPayload, dto: CashOutDto) {
@@ -466,6 +508,10 @@ export class SocketService {
 
     await user.save();
 
+    // const userCurrentBets = this.currentPlayers.filter(currentPlayer => currentPlayer.playerId == user._id.toString());
+    // this.socket.to(user._id.toString()).emit("user-current-bets", userCurrentBets);
+    this.socket.to(user._id.toString()).emit("user-balance", user.balance);
+
     let totalWinAmount: number;
 
     switch (this.selectedAlgorithmId) {
@@ -477,7 +523,7 @@ export class SocketService {
           admin.algorithms[0].used_count++;
           await admin.updateOne({ $set: { algorithms: admin.algorithms } });
           this.loading();
-          return { message: "Вы выиграли" };
+          return { message: "Вы выиграли", success: true };
         }
         break;
 
@@ -489,7 +535,7 @@ export class SocketService {
           admin.algorithms[1].used_count++;
           await admin.updateOne({ $set: { algorithms: admin.algorithms } });
           this.loading();
-          return { message: "Вы выиграли" };
+          return { message: "Вы выиграли", success: true };
         }
         break;
 
@@ -504,7 +550,7 @@ export class SocketService {
           admin.algorithms[6].used_count++;
           await admin.updateOne({ $set: { algorithms: admin.algorithms } });
           this.loading();
-          return { message: "Вы выиграли" };
+          return { message: "Вы выиграли", success: true };
         }
         break;
 
@@ -516,7 +562,7 @@ export class SocketService {
           admin.algorithms[7].used_count++;
           await admin.updateOne({ $set: { algorithms: admin.algorithms } });
           this.loading();
-          return { message: "Вы выиграли" };
+          return { message: "Вы выиграли", success: true };
         }
         break;
 
@@ -532,7 +578,7 @@ export class SocketService {
             admin.algorithms[9].used_count++;
             await admin.updateOne({ $set: { algorithms: admin.algorithms } });
             this.loading();
-            return { message: "Вы выиграли" };
+            return { message: "Вы выиграли", success: true };
           }
         }
         break;
@@ -541,7 +587,7 @@ export class SocketService {
         break;
     }
 
-    return { message: "Вы выиграли" };
+    return { message: "Вы выиграли", success: true };
   }
 
   async handleDrain() {
@@ -558,7 +604,7 @@ export class SocketService {
 
       await this.loading();
 
-      return { message: "Игра остановлена" };
+      return { message: "Игра остановлена", success: true };
     } catch (error) {
       console.log(error);
 
@@ -590,8 +636,6 @@ export class SocketService {
       console.log(error);
     }
   }
-
-  async handleStartBot() {}
 
   private async loading() {
     this.drainLock = true;
@@ -750,7 +794,7 @@ export class SocketService {
       return;
     }
 
-    const excludedAlgorithmsId = [6, 11];
+    const excludedAlgorithmsId = [11];
     this.currentPlayersWithoutBots = this.currentPlayers.filter(bet => !bet.isBot);
     if (this.currentPlayersWithoutBots.length <= 3) {
       excludedAlgorithmsId.push(1, 4);
@@ -816,6 +860,10 @@ export class SocketService {
       // 5. 1-2 Coeff algorithm
       case 5:
         this.random = _.random(1, 2, true);
+        break;
+
+      case 6:
+        this.random = _.random(1, 100, true);
         break;
 
       // 7. Bet counts algorithm

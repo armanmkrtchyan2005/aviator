@@ -47,6 +47,8 @@ import { Promo } from "./schemas/promo.schema";
 import { GameLimits } from "src/admin/schemas/admin.schema";
 import { ProfileImageSharpPipe } from "src/pipes/profile-image-sharp.pipe";
 import { RequisiteDto } from "./dto/requisite.dto";
+import { ConfirmEmailSendCodeDto } from "./dto/confirm-email-send-code.dto";
+import { ConfirmEmailConfirmCode } from "./dto/confirm-email-confirm-code.dto";
 
 const MAX_FILE_SIZE = 1024 * 1024 * 1; // 1mb
 
@@ -109,15 +111,15 @@ export class UserController {
   @ApiOkResponse({ type: ConfirmEmailSendCodeResponse })
   @HttpCode(HttpStatus.OK)
   @Post("confirm-email/send-code")
-  confirmEmailSendCode(@Req() req: Request) {
-    return this.userService.confirmEmailSendCode(req["user"]);
+  confirmEmailSendCode(@Req() req: Request, @Body() dto: ConfirmEmailSendCodeDto) {
+    return this.userService.confirmEmailSendCode(req["user"], dto);
   }
 
   @ApiOkResponse({ type: ConfirmEmailConfirmCodeResponse })
   @ApiBadRequestResponse({ type: ConfirmEmailConfirmCodeBadResponse })
   @HttpCode(HttpStatus.OK)
   @Post("confirm-email")
-  confirmEmailConfirmCode(@Req() req: Request, @Body() dto: ConfirmCodeDto) {
+  confirmEmailConfirmCode(@Req() req: Request, @Body() dto: ConfirmEmailConfirmCode) {
     return this.userService.confirmEmailConfirmCode(req["user"], dto);
   }
 

@@ -1,6 +1,6 @@
 import mongoose, { HydratedDocument } from "mongoose";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { User } from "./user.schema";
+import { User, UserDocument } from "./user.schema";
 
 export type SessionDocument = HydratedDocument<Session>;
 
@@ -10,7 +10,7 @@ export class Session {
   token: string;
 
   @Prop({ required: true, type: mongoose.Schema.Types.ObjectId, ref: User.name })
-  user: mongoose.Types.ObjectId;
+  user: UserDocument;
 }
 
 export const SessionSchema = SchemaFactory.createForClass(Session);

@@ -193,6 +193,7 @@ export class AdminService {
     }
 
     const userAmount = replenishment.amount[replenishment.user.currency] + (replenishment.bonusAmount[replenishment.user.currency] || 0);
+
     replenishment.user.balance += userAmount;
 
     const { leader } = await replenishment.user.populate("leader");
@@ -235,6 +236,7 @@ export class AdminService {
     }
 
     this.socketGateway.server.to(replenishment.user._id.toString()).emit("replenishment-refresh");
+    this.socketGateway.server.to(replenishment.user._id.toString()).emit("user-balance", replenishment.user.balance);
 
     return { message: "Заявка подтверждена" };
   }
@@ -344,6 +346,7 @@ export class AdminService {
     await withdrawal.save();
 
     this.socketGateway.server.to(withdrawal.user._id.toString()).emit("withdrawal-refresh");
+    this.socketGateway.server.to(withdrawal.user._id.toString()).emit("user-balance", withdrawal.user.balance);
 
     return { message: "Заявка подтверждена" };
   }
@@ -376,6 +379,7 @@ export class AdminService {
     await withdrawal.save();
 
     this.socketGateway.server.to(withdrawal.user._id.toString()).emit("withdrawal-refresh");
+    this.socketGateway.server.to(withdrawal.user._id.toString()).emit("user-balance", withdrawal.user.balance);
 
     return { message: "Заявка отменена" };
   }

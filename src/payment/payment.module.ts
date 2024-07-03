@@ -8,6 +8,7 @@ import { ConvertModule } from "src/convert/convert.module";
 import { Admin, AdminSchema } from "src/admin/schemas/admin.schema";
 import { Bonus, BonusSchema } from "src/user/schemas/bonus.schema";
 import { UserPromo, UserPromoSchema } from "src/user/schemas/userPromo.schema";
+import { SocketModule } from "src/socket/socket.module";
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { UserPromo, UserPromoSchema } from "src/user/schemas/userPromo.schema";
       { name: UserPromo.name, schema: UserPromoSchema },
     ]),
     ConvertModule,
+    SocketModule,
   ],
   controllers: [PaymentController],
   providers: [PaymentService],

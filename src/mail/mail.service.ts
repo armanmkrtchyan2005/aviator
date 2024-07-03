@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { MailerService } from "@nestjs-modules/mailer";
+import { ConfirmEmailSendCodeType } from "src/user/dto/confirm-email-send-code.dto";
 
 export enum SendEmailType {
   RESET = "reset",
@@ -16,7 +17,7 @@ interface ISendEmail {
 }
 
 interface ISendForgotEmail extends ISendEmail {
-  type: SendEmailType;
+  type: SendEmailType | ConfirmEmailSendCodeType;
 }
 
 interface ISend2FAEmail extends ISendEmail {

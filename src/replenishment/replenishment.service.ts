@@ -155,8 +155,6 @@ export class ReplenishmentService {
     const commission: IAmount = {};
     const accrualAmount: IAmount = {};
 
-    const bonuses = await this.userPromoModel.find({ user: user._id, limit: { $exists: true } }).populate("promo");
-
     for (const currency of admin.currencies) {
       bonusAmount[currency] = 0;
       // const commission = await this.convertService.convert(admin.commissionCurrency, currency, admin.commission);
@@ -166,20 +164,27 @@ export class ReplenishmentService {
       deduction[currency] = new Big(deduction[currency]).plus(commission[currency]).toNumber();
     }
 
-    for (let bonus of bonuses) {
+    const bonus = await this.userPromoModel.findOne({ user: user._id, limit: { $exists: true }, active: false }).populate("promo");
+
+    if (bonus) {
       if (bonus.limit >= amount[user.currency]) {
         for (const currency of admin.currencies) {
           bonusAmount[currency] += (amount[currency] * bonus.promo.amount) / 100;
         }
         bonus.limit -= amount[user.currency];
+
+        if (bonus.limit === amount[user.currency]) {
+          bonus.active = true;
+        }
       } else {
         for (const currency of admin.currencies) {
           const limitAmount = await this.convertService.convert(user.currency, currency, bonus.limit);
           bonusAmount[currency] += (limitAmount * bonus.promo.amount) / 100;
         }
         bonus.limit -= bonus.limit;
-        await bonus.deleteOne();
+        bonus.active = true;
       }
+      await bonus.save();
     }
 
     //----------------- AAIO CODE ------------------
@@ -379,7 +384,7 @@ export class ReplenishmentService {
     return { message: "Карта добавлена" };
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, { timeZone: "Europe/Moscow" })
   async handleCron() {
     const uploadDir = path.resolve("uploads", "files");
     findRemove(uploadDir, REMOVE_FILES_MS);

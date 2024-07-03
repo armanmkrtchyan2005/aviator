@@ -13,6 +13,7 @@ import Big from "big.js";
 import { Bonus, CoefParamsType } from "src/user/schemas/bonus.schema";
 import { UserPromo } from "src/user/schemas/userPromo.schema";
 import * as _ from "lodash";
+import { SocketGateway } from "src/socket/socket.gateway";
 
 @Injectable()
 export class PaymentService {
@@ -21,7 +22,7 @@ export class PaymentService {
     @InjectModel(Bonus.name) private bonusModel: Model<Bonus>,
     @InjectModel(UserPromo.name) private userPromoModel: Model<UserPromo>,
     private convertService: ConvertService,
-    private schedulerRegistry: SchedulerRegistry,
+    private socketGateway: SocketGateway,
   ) {}
 
   private md5(sign: string) {
@@ -123,6 +124,8 @@ export class PaymentService {
 
     await replenishment.user.save();
     await replenishment.save();
+
+    this.socketGateway.server.to(replenishment.user._id.toString()).emit("user-balance", replenishment.user.balance);
   }
 
   async successPaymentFreekassa(dto: FreekassaSuccessPaymentDto) {
@@ -160,6 +163,8 @@ export class PaymentService {
 
     await replenishment.user.save();
     await replenishment.save();
+
+    this.socketGateway.server.to(replenishment.user._id.toString()).emit("user-balance", replenishment.user.balance);
 
     return "YES";
   }

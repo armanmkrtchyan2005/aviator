@@ -30,6 +30,8 @@ import { Account } from "src/admin/schemas/account.schema";
 import { RequisiteDto, RequisiteTypeEnum } from "./dto/requisite.dto";
 import * as _ from "lodash";
 import { HOURS48 } from "src/constants";
+import { ConfirmEmailSendCodeDto, ConfirmEmailSendCodeType } from "./dto/confirm-email-send-code.dto";
+import { ConfirmEmailConfirmCode } from "./dto/confirm-email-confirm-code.dto";
 
 type CurrencyPercentageRangesType = Record<string, { min: number; max: number; percentage: number }[]>;
 
@@ -91,7 +93,7 @@ export class UserService {
     return referrals;
   }
 
-  async confirmEmailSendCode(userPayload: IAuthPayload) {
+  async confirmEmailSendCode(userPayload: IAuthPayload, dto: ConfirmEmailSendCodeDto) {
     const user = await this.userModel.findById(userPayload.id);
     const now = new Date();
 
@@ -105,17 +107,27 @@ export class UserService {
 
     await user.save();
 
-    await this.mailService.sendUserForgotCode({ code, email: user.email, type: SendEmailType.CHANGE, login: user.login });
+    await this.mailService.sendUserForgotCode({ code, email: user.email, type: dto.type, login: user.login });
 
     return { message: "На ваш Email отправлен код для подтверждения" };
   }
 
-  async confirmEmailConfirmCode(userPayload: IAuthPayload, dto: ConfirmCodeDto) {
+  async confirmEmailConfirmCode(userPayload: IAuthPayload, dto: ConfirmEmailConfirmCode) {
     try {
       const user = await this.userModel.findById(userPayload.id);
       const payload = await this.jwtService.verifyAsync(user.codeToken);
       if (payload.code !== dto.code) {
         throw new BadRequestException("Неверный код");
+      }
+
+      if (dto.type === ConfirmEmailSendCodeType.RESET) {
+        const token = await this.jwtService.signAsync({ id: user._id }, { expiresIn: 60 * 60 * 10 });
+
+        user.codeToken = null;
+
+        await user.save();
+
+        return { token };
       }
 
       return { message: "Ваш email подтверждён" };
@@ -438,9 +450,9 @@ export class UserService {
     return user.profileImage;
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  @Cron(CronExpression.EVERY_5_MINUTES, { timeZone: "Europe/Moscow" })
   async handleCron() {
-    console.log("After 1 minute");
+    console.log("After 5 minute");
 
     const { currencies } = await this.adminModel.findOne();
     const currencyPercentageRanges: CurrencyPercentageRangesType = {};
@@ -485,11 +497,13 @@ export class UserService {
       for (let descendant of user.descendants) {
         const descendantUser = await this.userModel.findById(descendant._id);
 
-        let calculatedReferralBalance = descendantUser.startBalance + descendantUser.sumReplenishment - (descendantUser.balance + descendantUser.sumWithdrawal);
+        const balance = await this.convertService.convert(descendantUser.currency, user.currency, descendantUser.balance);
+
+        let calculatedReferralBalance = descendantUser.startBalance + descendantUser.sumReplenishment - (balance + descendantUser.sumWithdrawal);
 
         descendantUser.sumWithdrawal = 0;
         descendantUser.sumReplenishment = 0;
-        descendantUser.startBalance = descendantUser.balance;
+        descendantUser.startBalance = balance;
 
         if (calculatedReferralBalance <= 0) {
           await descendantUser.save();
