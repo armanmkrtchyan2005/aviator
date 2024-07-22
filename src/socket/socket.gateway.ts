@@ -7,6 +7,7 @@ import { BetDto } from "./dto/bet.dto";
 import { CashOutDto } from "./dto/cashOut.dto";
 import { SocketExceptionFilter } from "./socket.exception";
 import { SocketAdminAuthGuard } from "./guard/socketAdminAuth.guard";
+import { CancelBetDto } from "./dto/cancel-bet.dto";
 
 @WebSocketGateway({ cors: { origin: "*" } })
 @UseFilters(SocketExceptionFilter)
@@ -36,7 +37,7 @@ export class SocketGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
   @UseGuards(SocketAuthGuard)
   @SubscribeMessage("cancel")
-  handleCancel(@ConnectedSocket() client: Socket, @MessageBody() dto: CashOutDto) {
+  handleCancel(@ConnectedSocket() client: Socket, @MessageBody() dto: CancelBetDto) {
     return this.socketService.handleCancel(client["user"], dto);
   }
 

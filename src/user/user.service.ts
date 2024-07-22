@@ -33,7 +33,36 @@ import { HOURS48 } from "src/constants";
 import { ConfirmEmailSendCodeDto, ConfirmEmailSendCodeType } from "./dto/confirm-email-send-code.dto";
 import { ConfirmEmailConfirmCode } from "./dto/confirm-email-confirm-code.dto";
 
-type CurrencyPercentageRangesType = Record<string, { min: number; max: number; percentage: number }[]>;
+type PercentageRangesType = { min: number; max: number; percentage: number };
+
+const percentageRanges: PercentageRangesType[] = [
+  { min: 0, max: 5, percentage: 0.4 },
+  {
+    min: 5.01,
+    max: 10,
+    percentage: 0.35,
+  },
+  {
+    min: 10.01,
+    max: 20,
+    percentage: 0.3,
+  },
+  {
+    min: 20.01,
+    max: 40,
+    percentage: 0.25,
+  },
+  {
+    min: 40.01,
+    max: 100.99,
+    percentage: 0.2,
+  },
+  {
+    min: 100.01,
+    max: Infinity,
+    percentage: 0.25,
+  },
+];
 
 @Injectable()
 export class UserService {
@@ -88,6 +117,7 @@ export class UserService {
       .match({ user: new mongoose.Types.ObjectId(auth.id) })
       .skip(query.skip)
       .limit(query.limit)
+      .sort({ createdAt: -1 })
       .project({ totalEarned: "$earned", date: "$createdAt" });
 
     return referrals;
@@ -263,6 +293,10 @@ export class UserService {
 
     promo.used_count++;
 
+    if (promo.used_count == promo.max_count) {
+      promo.active = false;
+    }
+
     await promo.save();
     await newUserPromo.save();
 
@@ -304,6 +338,7 @@ export class UserService {
         },
       ])
       .replaceRoot("$promo");
+
     let userBonuses = [];
     if (dto.type === PromoType.PROMO) {
       userBonuses = await this.userPromoModel.aggregate([
@@ -454,42 +489,6 @@ export class UserService {
   async handleCron() {
     console.log("After 5 minute");
 
-    const { currencies } = await this.adminModel.findOne();
-    const currencyPercentageRanges: CurrencyPercentageRangesType = {};
-
-    for (const currency of currencies) {
-      currencyPercentageRanges[currency] = [];
-    }
-
-    for (const currency of currencies) {
-      currencyPercentageRanges[currency].push({ min: 0, max: await this.convertService.convert("USD", currency, 5), percentage: 0.4 });
-      currencyPercentageRanges[currency].push({
-        min: await this.convertService.convert("USD", currency, 6),
-        max: await this.convertService.convert("USD", currency, 10.99),
-        percentage: 0.35,
-      });
-      currencyPercentageRanges[currency].push({
-        min: await this.convertService.convert("USD", currency, 11),
-        max: await this.convertService.convert("USD", currency, 20.99),
-        percentage: 0.3,
-      });
-      currencyPercentageRanges[currency].push({
-        min: await this.convertService.convert("USD", currency, 21),
-        max: await this.convertService.convert("USD", currency, 40.99),
-        percentage: 0.25,
-      });
-      currencyPercentageRanges[currency].push({
-        min: await this.convertService.convert("USD", currency, 41),
-        max: await this.convertService.convert("USD", currency, 100.99),
-        percentage: 0.2,
-      });
-      currencyPercentageRanges[currency].push({
-        min: await this.convertService.convert("USD", currency, 101),
-        max: Infinity,
-        percentage: 0.25,
-      });
-    }
-
     const users = await this.userModel.find({ descendants: { $ne: [] } });
 
     for (const user of users) {
@@ -501,8 +500,11 @@ export class UserService {
 
         let calculatedReferralBalance = descendantUser.startBalance + descendantUser.sumReplenishment - (balance + descendantUser.sumWithdrawal);
 
+        const sumWithdrawal = descendantUser.sumWithdrawal;
         descendantUser.sumWithdrawal = 0;
+        const sumReplenishment = descendantUser.sumReplenishment;
         descendantUser.sumReplenishment = 0;
+        const startBalance = descendantUser.startBalance;
         descendantUser.startBalance = balance;
 
         if (calculatedReferralBalance <= 0) {
@@ -510,7 +512,15 @@ export class UserService {
           continue;
         }
 
-        const range = currencyPercentageRanges[descendantUser.currency].find(range => calculatedReferralBalance >= range.min && calculatedReferralBalance <= range.max);
+        const usdCalculatedReferralBalance = await this.convertService.convert(user.currency, "USD", calculatedReferralBalance);
+
+        const range = percentageRanges.find(range => usdCalculatedReferralBalance >= range.min && usdCalculatedReferralBalance <= range.max);
+
+        console.log(
+          `${user.uid} - ${startBalance} + ${sumReplenishment} - (${balance} + ${sumWithdrawal}) = ${calculatedReferralBalance} = $${usdCalculatedReferralBalance}\nНачислено -> ${
+            calculatedReferralBalance * range.percentage
+          }`,
+        );
 
         calculatedReferralBalance = calculatedReferralBalance * range.percentage;
 

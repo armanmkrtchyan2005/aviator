@@ -78,7 +78,7 @@ export class PaymentService {
       .toNumber();
 
     const paymentUrl =
-      "https://pay.freekassa.ru/" +
+      "https://pay.freekassa.com/" +
       `?m=${process.env.FREEKASSA_MERCHANT_ID}` +
       `&oa=${amountFromCommission}` +
       `&currency=${currency}` +
@@ -105,7 +105,7 @@ export class PaymentService {
     const { leader } = await replenishment.user.populate("leader");
 
     if (leader) {
-      const userLeaderAmount = replenishment.amount[leader.currency] + (replenishment.bonusAmount[leader.currency] || 0);
+      const userLeaderAmount = replenishment.amount[leader.currency];
       replenishment.user.sumReplenishment += userLeaderAmount;
     }
 
@@ -144,7 +144,7 @@ export class PaymentService {
     const { leader } = await replenishment.user.populate("leader");
 
     if (leader) {
-      const userLeaderAmount = replenishment.amount[leader.currency] + (replenishment.bonusAmount[leader.currency] || 0);
+      const userLeaderAmount = replenishment.amount[leader.currency];
       replenishment.user.sumReplenishment += userLeaderAmount;
     }
 

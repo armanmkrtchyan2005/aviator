@@ -50,6 +50,9 @@ export class Promo {
   @ApiProperty()
   @Prop()
   will_finish: string;
+
+  @Prop()
+  active: boolean;
 }
 
 export const PromoSchema = SchemaFactory.createForClass(Promo);

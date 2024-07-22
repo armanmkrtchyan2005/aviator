@@ -167,14 +167,24 @@ export class ReplenishmentService {
     const bonus = await this.userPromoModel.findOne({ user: user._id, limit: { $exists: true }, active: false }).populate("promo");
 
     if (bonus) {
+      console.log(`Bonus Limit: ${bonus.limit}
+        ${bonus.limit} - ${amount[user.currency]} = ${bonus.limit - amount[user.currency]}`);
       if (bonus.limit >= amount[user.currency]) {
         for (const currency of admin.currencies) {
           bonusAmount[currency] += (amount[currency] * bonus.promo.amount) / 100;
         }
         bonus.limit -= amount[user.currency];
+        await bonus.save();
 
-        if (bonus.limit === amount[user.currency]) {
-          bonus.active = true;
+        if (bonus.limit === 0) {
+          if (!bonus.promo.name) {
+            await bonus.promo.deleteOne();
+            await bonus.deleteOne();
+          } else {
+            bonus.active = true;
+
+            await bonus.save();
+          }
         }
       } else {
         for (const currency of admin.currencies) {
@@ -183,8 +193,8 @@ export class ReplenishmentService {
         }
         bonus.limit -= bonus.limit;
         bonus.active = true;
+        await bonus.save();
       }
-      await bonus.save();
     }
 
     //----------------- AAIO CODE ------------------

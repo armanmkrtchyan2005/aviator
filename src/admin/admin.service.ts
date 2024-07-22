@@ -199,7 +199,7 @@ export class AdminService {
     const { leader } = await replenishment.user.populate("leader");
 
     if (leader) {
-      const userLeaderAmount = replenishment.amount[leader.currency] + (replenishment.bonusAmount[leader.currency] || 0);
+      const userLeaderAmount = replenishment.amount[leader.currency];
       replenishment.user.sumReplenishment += userLeaderAmount;
     }
 
