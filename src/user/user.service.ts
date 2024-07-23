@@ -115,9 +115,9 @@ export class UserService {
     const referrals = await this.referralModel
       .aggregate()
       .match({ user: new mongoose.Types.ObjectId(auth.id) })
+      .sort({ createdAt: "desc" })
       .skip(query.skip)
       .limit(query.limit)
-      .sort({ createdAt: -1 })
       .project({ totalEarned: "$earned", date: "$createdAt" });
 
     return referrals;
