@@ -534,11 +534,11 @@ export class UserService {
 
       user.referralBalance += totalReferralBalance;
 
+      await user.save();
+
       if (totalReferralBalance > 0) {
         await this.referralModel.create({ user: user._id, createdAt: new Date(), currency: user.currency, earned: totalReferralBalance });
       }
-
-      await user.save();
     }
   }
 }

@@ -164,14 +164,10 @@ export class SocketService {
 
     this.socket.to(user._id.toString());
 
-    if (this.isBetWait) {
-      return;
-    }
-
     const admin = await this.adminModel.findOne({}, ["gameLimits", "currencies", "our_balance"]);
 
     const bets = this.currentPlayers.filter(b => {
-      return b.playerId == user._id?.toString();
+      return b.playerId == user._id?.toString() && !b.win;
     });
 
     for (const bet of bets) {
