@@ -1,19 +1,17 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
-import { CreatePaymentDto } from "./dto/create-payment.dto";
 import { InjectModel } from "@nestjs/mongoose";
-import { Replenishment, ReplenishmentStatusEnum } from "src/replenishment/schemas/replenishment.schema";
-import { Model } from "mongoose";
-import * as crypto from "crypto";
-import { AAIOSuccessPaymentDto } from "./dto/aaio-success-payment.dto";
-import { User } from "src/user/schemas/user.schema";
-import { ConvertService } from "src/convert/convert.service";
-import { SchedulerRegistry } from "@nestjs/schedule";
-import { FreekassaSuccessPaymentDto } from "./dto/freekassa-success-payment.dto";
 import Big from "big.js";
+import * as crypto from "crypto";
+import * as _ from "lodash";
+import { Model } from "mongoose";
+import { ConvertService } from "src/convert/convert.service";
+import { Replenishment, ReplenishmentStatusEnum } from "src/replenishment/schemas/replenishment.schema";
+import { SocketGateway } from "src/socket/socket.gateway";
 import { Bonus, CoefParamsType } from "src/user/schemas/bonus.schema";
 import { UserPromo } from "src/user/schemas/userPromo.schema";
-import * as _ from "lodash";
-import { SocketGateway } from "src/socket/socket.gateway";
+import { AAIOSuccessPaymentDto } from "./dto/aaio-success-payment.dto";
+import { CreatePaymentDto } from "./dto/create-payment.dto";
+import { FreekassaSuccessPaymentDto } from "./dto/freekassa-success-payment.dto";
 
 @Injectable()
 export class PaymentService {

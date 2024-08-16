@@ -1,29 +1,27 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import { CreateReplenishmentDto } from "./dto/create-replenishment.dto";
 import { InjectModel } from "@nestjs/mongoose";
-import { Replenishment, ReplenishmentStatusEnum } from "./schemas/replenishment.schema";
-import mongoose, { Model } from "mongoose";
-import { User } from "src/user/schemas/user.schema";
-import { Admin } from "src/admin/schemas/admin.schema";
-import { IAuthPayload } from "src/auth/auth.guard";
-import { ConvertService } from "src/convert/convert.service";
-import { CancelReplenishmentDto } from "./dto/cancel-replenishment.dto";
-import { Requisite } from "src/admin/schemas/requisite.schema";
-import { SchedulerRegistry, CronExpression, Cron } from "@nestjs/schedule";
-import { CronJob } from "cron";
-import { UserPromo } from "src/user/schemas/userPromo.schema";
-import { Bonus } from "src/user/schemas/bonus.schema";
-import * as _ from "lodash";
-import { IAmount } from "src/bets/schemas/bet.schema";
-import { Account } from "src/admin/schemas/account.schema";
-import { Request } from "express";
-import { ReplenishmentFilePipe } from "./pipes/replenishment-file.pipe";
-import { AccountRequisite, AccountRequisiteDocument } from "src/admin/schemas/account-requisite.schema";
-import { PaymentService } from "src/payment/payment.service";
-import * as fs from "fs";
+import { Cron, CronExpression, SchedulerRegistry } from "@nestjs/schedule";
 import Big from "big.js";
+import * as fs from "fs";
+import * as _ from "lodash";
+import { Model } from "mongoose";
 import * as path from "path";
+import { AccountRequisite, AccountRequisiteDocument } from "src/admin/schemas/account-requisite.schema";
+import { Account } from "src/admin/schemas/account.schema";
+import { Admin } from "src/admin/schemas/admin.schema";
+import { Requisite } from "src/admin/schemas/requisite.schema";
+import { IAuthPayload } from "src/auth/auth.guard";
+import { IAmount } from "src/bets/schemas/bet.schema";
+import { ConvertService } from "src/convert/convert.service";
+import { PaymentService } from "src/payment/payment.service";
+import { Bonus } from "src/user/schemas/bonus.schema";
+import { User } from "src/user/schemas/user.schema";
+import { UserPromo } from "src/user/schemas/userPromo.schema";
 import { findRemove } from "src/utils/findRemove";
+import { CancelReplenishmentDto } from "./dto/cancel-replenishment.dto";
+import { CreateReplenishmentDto } from "./dto/create-replenishment.dto";
+import { ReplenishmentFilePipe } from "./pipes/replenishment-file.pipe";
+import { Replenishment, ReplenishmentStatusEnum } from "./schemas/replenishment.schema";
 
 const REMOVE_FILES_MS = 1209600000; // 14 days in seconds;
 const TIMEOUT_MS = 1000 * 60 * 30; // 30 minutes
@@ -103,6 +101,7 @@ export class ReplenishmentService {
     const replenishments = await this.replenishmentModel
       .find({
         user: userPayload.id,
+        isShowing: true,
       })
       .populate(["requisite", "method"])
       .sort({ createdAt: -1 });
@@ -260,7 +259,9 @@ export class ReplenishmentService {
       throw new NotFoundException("Реквизит не найден");
     }
 
-    if (account.selectedRequisiteDir < account.requisites.length - 1) {
+    const accountRequisites = account.requisites.filter(requisite => requisite.active) as AccountRequisiteDocument[];
+
+    if (account.selectedRequisiteDir < accountRequisites.length - 1) {
       account.selectedRequisiteDir++;
     } else {
       account.selectedRequisiteDir = 0;
@@ -268,17 +269,17 @@ export class ReplenishmentService {
 
     await this.accountModel.findByIdAndUpdate(account._id, { $set: { selectedRequisiteDir: account.selectedRequisiteDir } });
 
-    const replenishmentRequisite = account.requisites[account.selectedRequisiteDir];
+    const replenishmentRequisite = accountRequisites[account.selectedRequisiteDir];
 
     if (!replenishmentRequisite) {
       throw new NotFoundException("Реквизит не найден");
     }
 
-    replenishmentRequisite.turnover.inProcess += amount[requisite.currency];
-
     for (const currency of admin.currencies) {
-      accrualAmount[currency] = amount[currency] - (amount[currency] * account.replenishmentBonus) / 100;
+      accrualAmount[currency] = amount[currency] + commission[currency] - ((amount[currency] + commission[currency]) * account.replenishmentBonus) / 100;
     }
+
+    replenishmentRequisite.turnover.inProcess += +(amount[requisite.currency] + commission[requisite.currency]).toFixed(2);
 
     await this.accountRequisiteModel.findByIdAndUpdate(replenishmentRequisite._id, { $set: { turnover: replenishmentRequisite.turnover } });
 
@@ -294,6 +295,7 @@ export class ReplenishmentService {
         requisite: replenishmentRequisite._id,
         method: requisite._id,
         bonusAmount,
+        isShowing: !replenishmentRequisite.isCardFileRequired,
       })
     ).populate(["requisite", "method"]);
 
@@ -315,7 +317,7 @@ export class ReplenishmentService {
   }
 
   async cancelReplenishment(dto: CancelReplenishmentDto) {
-    const replenishment = await this.replenishmentModel.findById(dto.id);
+    const replenishment = await this.replenishmentModel.findById(dto.id).populate("requisite");
     if (replenishment.isPayConfirmed || replenishment.status !== ReplenishmentStatusEnum.PENDING) {
       return { message: "Вы уже подтвердили оплату" };
     }
@@ -330,6 +332,12 @@ export class ReplenishmentService {
     } catch (error) {}
 
     await replenishment.save();
+
+    const turnoverAmount = +replenishment.accrualAmount[replenishment.requisite.currency].toFixed(2);
+
+    replenishment.requisite.turnover.inProcess -= turnoverAmount;
+
+    await this.accountRequisiteModel.findByIdAndUpdate(replenishment.requisite._id, { $set: { turnover: replenishment.requisite.turnover } });
 
     try {
       this.schedulerRegistry.deleteCronJob(dto.id);
@@ -388,6 +396,8 @@ export class ReplenishmentService {
     replenishment.card = card;
 
     replenishment.createdAt = new Date();
+
+    replenishment.isShowing = true;
 
     await replenishment.save();
 

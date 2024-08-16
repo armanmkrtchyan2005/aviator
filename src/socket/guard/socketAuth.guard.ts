@@ -1,5 +1,4 @@
-import { BadGatewayException, CanActivate, ExecutionContext, Injectable } from "@nestjs/common";
-import { JwtService } from "@nestjs/jwt";
+import { CanActivate, ExecutionContext, Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { WsException } from "@nestjs/websockets";
 import { Model } from "mongoose";

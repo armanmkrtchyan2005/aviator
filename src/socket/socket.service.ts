@@ -1,30 +1,31 @@
-import mongoose, { Model } from "mongoose";
-import { WsException } from "@nestjs/websockets";
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import { Socket } from "socket.io";
-import { IAuthPayload } from "src/auth/auth.guard";
-import { ConvertService } from "src/convert/convert.service";
-import { User } from "src/user/schemas/user.schema";
-import { BetDto } from "./dto/bet.dto";
-import { Bet, IAmount, IBet } from "src/bets/schemas/bet.schema";
-import { CashOutDto } from "./dto/cashOut.dto";
-import { Admin, IAlgorithms } from "src/admin/schemas/admin.schema";
-import { Referral } from "src/user/schemas/referral.schema";
-import { UserPromo } from "src/user/schemas/userPromo.schema";
-import { Game, GameDocument } from "src/bets/schemas/game.schema";
-import { Session } from "src/user/schemas/session.schema";
-import { generateUsername } from "unique-username-generator";
 import { CronExpression, SchedulerRegistry } from "@nestjs/schedule";
-import { IdentityCounter } from "src/admin/schemas/identity-counter.schema";
-import { CronJob } from "cron";
+import { WsException } from "@nestjs/websockets";
 import Big from "big.js";
+import { CronJob } from "cron";
 import * as _ from "lodash";
+import mongoose, { Model } from "mongoose";
+import { Socket } from "socket.io";
+import { Admin, IAlgorithms } from "src/admin/schemas/admin.schema";
+import { IdentityCounter } from "src/admin/schemas/identity-counter.schema";
+import { IAuthPayload } from "src/auth/auth.guard";
+import { Bet, IAmount, IBet } from "src/bets/schemas/bet.schema";
+import { Game, GameDocument } from "src/bets/schemas/game.schema";
+import { ConvertService } from "src/convert/convert.service";
+import { Referral } from "src/user/schemas/referral.schema";
+import { Session } from "src/user/schemas/session.schema";
+import { User } from "src/user/schemas/user.schema";
+import { UserPromo } from "src/user/schemas/userPromo.schema";
+import { generateUsername } from "unique-username-generator";
+import { BetDto } from "./dto/bet.dto";
 import { CancelBetDto } from "./dto/cancel-bet.dto";
+import { CashOutDto } from "./dto/cashOut.dto";
 
 const STOP_DISABLE_MS = 2000;
 const LOADING_MS = 5000;
 const MAX_COEFF = 1;
+const STEP = 0.0006;
 
 function sleep(ms: number = 0) {
   return new Promise(res => setTimeout(res, ms));
@@ -59,7 +60,7 @@ export class SocketService {
   public socket: Socket = null;
 
   private x = 1;
-  private step = 0.0006;
+  private step = STEP;
   private ms = 100;
   private isBetWait = true;
 
@@ -70,12 +71,16 @@ export class SocketService {
 
   // Algorithm 2, Algorithm 8
   private maxWinAmount: number = 0;
+  private totalWinAmount: number = 0;
 
   // Algorithm 7
   private randomOneHour: boolean = false;
   private randomEleven: boolean = false;
   // Algorithm 7
   private totalWinsCount: number = 0;
+  private winsCount = 0;
+
+  private total8Amount = 0;
 
   // Algorithm 9
   private randomCoeffs = [1, 1.2, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5];
@@ -86,6 +91,7 @@ export class SocketService {
   private totalWins: number = 0;
   private totalBets: number = 0;
   private partOfProfit: number = 0;
+  private profit: number = 0;
 
   constructor(
     @InjectModel(User.name) private userModel: Model<User>,
@@ -196,7 +202,7 @@ export class SocketService {
 
       if (admin.algorithms[5].active) {
         const delay = Math.floor(Math.random() * (3e6 - 300000) + 300000);
-
+        console.log("6 algorithm:", new Date(Date.now() + delay));
         setTimeout(() => {
           this.randomOneHour = true;
         }, delay);
@@ -215,6 +221,8 @@ export class SocketService {
       if (admin.algorithms[10]?.active) {
         // set random delay between 1(min) and 9(max) minutes
         const delay = Math.floor(Math.random() * (540000 - 60000) + 60000);
+
+        console.log("11 algorithm:", new Date(Date.now() + delay));
 
         setTimeout(() => {
           this.randomEleven = true;
@@ -247,20 +255,23 @@ export class SocketService {
   async game() {
     this.socket.emit("game", { x: this.x });
 
-    this.x = new Big(this.x).plus(this.step).toNumber();
-    this.step = new Big(this.step).plus(0.0006).toNumber();
-
     // 4. ----------
     if (this.selectedAlgorithmId === 4) {
       if (this.x >= 1.8 && this.x <= 2.1) {
         this.threePlayers = _.sampleSize(this.currentPlayers, 3);
-        this.random = _.random(110, true);
+        console.log(
+          "three players",
+          this.threePlayers.map(p => p.bet["RUB"]),
+        );
       }
     }
 
     if (this.x >= this.random) {
       return this.loading();
     }
+
+    this.x = new Big(this.x).plus(this.step).toNumber();
+    this.step = new Big(this.step).plus(STEP).toNumber();
 
     // if (this.x == 2) {
     //   this.ms = 50;
@@ -295,12 +306,11 @@ export class SocketService {
     this.betUpdatingMap.set(userPayload.id.toString(), true);
 
     const user = await this.userModel.findById(userPayload?.id, ["currency", "balance", "bonuses", "login", "profileImage", "playedAmount"]);
+
     if (!user) {
       this.betUpdatingMap.set(userPayload.id.toString(), false);
       return socketException("Пользователь не авторизован");
     }
-
-    console.log(`user balance - ${user.balance} ${user.currency}`);
 
     const admin = await this.adminModel.findOne({}, ["gameLimits", "algorithms", "currencies", "our_balance"]);
 
@@ -317,7 +327,9 @@ export class SocketService {
 
     this.currentPlayers.push(betDataObject as IBet);
 
-    const userPromo = await this.userPromoModel.findOne({ user: user._id, active: false, promo: dto.promoId, amount: { $exists: true } }).populate("promo");
+    const userPromo = await this.userPromoModel
+      .findOne({ user: user._id, active: false, $or: [{ promo: dto.promoId }, { bonus: dto.promoId }], amount: { $exists: true } })
+      .populate(["promo", "bonus"]);
 
     const minBet = admin.gameLimits.min[user.currency];
     const maxBet = admin.gameLimits.max[user.currency];
@@ -383,6 +395,8 @@ export class SocketService {
 
     this.drawCurrentPlayers();
 
+    console.log("bet:", bet["USD"]);
+
     // userCurrentBets.push(betDataObject);
     // this.socket.to(user._id.toString()).emit("user-current-bets", userCurrentBets);
     this.socket.to(user._id.toString()).emit("user-balance", user.balance);
@@ -427,8 +441,10 @@ export class SocketService {
 
     await this.betModel.findByIdAndDelete(bet._id);
 
-    user.balance += bet.bet[user.currency];
-    user.playedAmount -= bet.bet[user.currency];
+    if (!bet.userPromo) {
+      user.balance += bet.bet[user.currency];
+      user.playedAmount -= bet.bet[user.currency];
+    }
 
     await user.save();
 
@@ -461,6 +477,8 @@ export class SocketService {
 
   async handleCashOut(userPayload: IAuthPayload, dto: CashOutDto) {
     const x = dto.winX ? dto.winX : this.x;
+
+    console.log("x ---------", x);
 
     const user = await this.userModel.findById(userPayload.id);
     const admin = await this.adminModel.findOne({}, ["algorithms", "currencies", "our_balance", "gameLimits"]);
@@ -504,7 +522,7 @@ export class SocketService {
     };
 
     const bet = await this.betModel.findById(betData._id);
-
+    console.log("win:", win["USD"]);
     bet.win = win;
     bet.coeff = x;
     bet.user_balance = user.balance;
@@ -538,12 +556,15 @@ export class SocketService {
     // this.socket.to(user._id.toString()).emit("user-current-bets", userCurrentBets);
     this.socket.to(user._id.toString()).emit("user-balance", user.balance);
 
-    let totalWinAmount: number;
-
     switch (this.selectedAlgorithmId) {
       //1. 3 player algorithm in Cash Out
       case 1:
-        this.threePlayers = this.threePlayers.filter(u => u.playerId !== userPayload?.id);
+        this.threePlayers = this.threePlayers.filter(u => u._id !== bet._id.toString());
+        console.log(
+          "three players",
+          this.threePlayers.map(p => p.bet["RUB"]),
+        );
+
         if (!this.threePlayers.length) {
           admin.algorithms[0].all_withdrawal_amount += win["USD"];
           admin.algorithms[0].used_count++;
@@ -555,23 +576,41 @@ export class SocketService {
 
       // 2. Net income algorithm
       case 2:
-        totalWinAmount = this.currentPlayersWithoutBots.reduce((prev, next) => prev + next.win["USD"], 0);
-        if (totalWinAmount >= this.maxWinAmount) {
+        this.totalWinAmount += win["USD"];
+        console.log("TotalWinAmount:", this.totalWinAmount);
+
+        if (this.totalWinAmount >= this.maxWinAmount) {
           admin.algorithms[1].all_withdrawal_amount += win["USD"];
           admin.algorithms[1].used_count++;
           await admin.updateOne({ $set: { algorithms: admin.algorithms } });
           this.loading();
           return { message: "Вы выиграли", success: true };
         }
+
         break;
 
+      case 4:
+        this.threePlayers = this.threePlayers.filter(u => u._id !== bet._id.toString());
+        console.log(
+          "three players",
+          this.threePlayers.map(p => p.bet["RUB"]),
+        );
+
+        if (!this.threePlayers.length) {
+          admin.algorithms[0].all_withdrawal_amount += win["USD"];
+          admin.algorithms[0].used_count++;
+          await admin.updateOne({ $set: { algorithms: admin.algorithms } });
+          this.loading();
+          return { message: "Вы выиграли", success: true };
+        }
+        break;
       // 7. Bet counts algorithm
       case 7:
-        const winsCount = this.currentPlayersWithoutBots.filter(bet => {
-          return bet.win;
-        }).length;
+        this.winsCount += 1;
 
-        if (winsCount >= this.totalWinsCount) {
+        console.log("winsCount:", this.winsCount);
+
+        if (this.winsCount >= this.totalWinsCount) {
           admin.algorithms[6].all_withdrawal_amount += win["USD"];
           admin.algorithms[6].used_count++;
           await admin.updateOne({ $set: { algorithms: admin.algorithms } });
@@ -582,8 +621,8 @@ export class SocketService {
 
       // 8. -------------
       case 8:
-        totalWinAmount = this.currentPlayersWithoutBots.reduce((prev, next) => prev + next.win["USD"], 0);
-        if (totalWinAmount >= this.maxWinAmount) {
+        this.total8Amount += win["USD"];
+        if (this.total8Amount >= this.maxWinAmount) {
           admin.algorithms[7].all_withdrawal_amount += win["USD"];
           admin.algorithms[7].used_count++;
           await admin.updateOne({ $set: { algorithms: admin.algorithms } });
@@ -593,20 +632,26 @@ export class SocketService {
         break;
 
       // 9. -------------
-      case 9:
-        if (this.playedCount < this.maxGameCount / 2) {
-          this.totalWins += win["USD"];
-        } else {
-          const totalWinAmount = this.currentPlayersWithoutBots.reduce((prev, next) => prev + next.win["USD"], 0);
+      case 10:
+        this.totalWinAmount += win["USD"];
+        try {
+          if (this.playedCount < Math.floor(this.maxGameCount / 2) + 1) {
+            this.totalWins += win["USD"];
+          } else {
+            console.log("totalWinAmount:", this.totalWinAmount);
 
-          if (totalWinAmount >= this.partOfProfit) {
-            admin.algorithms[9].all_withdrawal_amount += win["USD"];
-            admin.algorithms[9].used_count++;
-            await admin.updateOne({ $set: { algorithms: admin.algorithms } });
-            this.loading();
-            return { message: "Вы выиграли", success: true };
+            if (this.totalWinAmount >= this.partOfProfit) {
+              admin.algorithms[9].all_withdrawal_amount += win["USD"];
+              admin.algorithms[9].used_count++;
+              await admin.updateOne({ $set: { algorithms: admin.algorithms } });
+              this.loading();
+              return { message: "Вы выиграли", success: true };
+            }
           }
+        } catch (error) {
+          console.log(error);
         }
+
         break;
 
       default:
@@ -705,7 +750,7 @@ export class SocketService {
     }
 
     this.x = 1;
-    this.step = 0.0006;
+    this.step = STEP;
     this.ms = 100;
     this.random = _.random(MAX_COEFF, true);
 
@@ -823,13 +868,20 @@ export class SocketService {
 
     const excludedAlgorithmsId = [11];
     this.currentPlayersWithoutBots = this.currentPlayers.filter(bet => !bet.isBot);
-    if (this.currentPlayersWithoutBots.length <= 3) {
-      excludedAlgorithmsId.push(1, 4);
+
+    console.log("current player length", this.currentPlayersWithoutBots.length);
+
+    if (this.currentPlayersWithoutBots.length < 3) {
+      excludedAlgorithmsId.push(1, 4, 6);
     }
 
     const activeAlgorithms = this.algorithms.filter(alg => alg.active && !excludedAlgorithmsId.includes(alg.id));
 
     this.selectedAlgorithmId = _.sample(activeAlgorithms)?.id;
+
+    if (this.playedCount > 0) {
+      this.selectedAlgorithmId = 10;
+    }
 
     if (this.randomOneHour) {
       this.random = _.random(1, 100, true);
@@ -847,7 +899,7 @@ export class SocketService {
     this.betGame.bet = this.betAmountWithoutBots;
     this.betGame.bets_count = this.currentPlayersWithoutBots.length;
 
-    console.log(this.selectedAlgorithmId);
+    console.log("algorithm:", this.selectedAlgorithmId);
 
     if (!this.selectedAlgorithmId) {
       this.x = 1;
@@ -865,13 +917,24 @@ export class SocketService {
       case 1:
         this.threePlayers = _.sampleSize(this.currentPlayersWithoutBots, 3);
 
+        console.log(
+          "three players",
+          this.threePlayers.map(p => p.bet["RUB"]),
+        );
+
         this.random = _.random(80, 110, true);
         break;
 
       // 2. Net income algorithm loading
       case 2:
         totalAmount = this.currentPlayersWithoutBots.reduce((prev, curr) => prev + curr.bet["USD"], 0);
-        this.maxWinAmount = (totalAmount * _.random(30, 100, true)) / 100;
+        this.totalWinAmount = 0;
+        const percent = _.random(30, 100, true);
+        this.maxWinAmount = (totalAmount * percent) / 100;
+        console.log("max win amount:", this.maxWinAmount);
+
+        this.random = _.random(5, 10, true);
+        console.log("coeff=", this.random);
         break;
 
       // 3. 1-3 Coeff algorithm
@@ -882,6 +945,8 @@ export class SocketService {
       // 4. 1-3 Coeff algorithm
       case 4:
         this.random = _.random(2, 20, true);
+        console.log("coeff:", this.random);
+
         break;
 
       // 5. 1-2 Coeff algorithm
@@ -896,14 +961,29 @@ export class SocketService {
       // 7. Bet counts algorithm
       case 7:
         this.random = _.random(5, 10, true);
-        this.totalWinsCount = (this.currentPlayersWithoutBots.length * _.random(20, 70, true)) / 100;
+        this.winsCount = 0;
+        const randomPercent = _.random(20, 70, false);
+        console.log("random percent:", randomPercent);
+
+        this.totalWinsCount = Math.ceil((this.currentPlayersWithoutBots.length * randomPercent) / 100);
+
+        console.log("totalWinsCount:", this.totalWinsCount);
+
         break;
 
       // 8. --------
       case 8:
         const range = _.random(1, 3, true);
+        console.log("rage:", range);
+
         totalAmount = this.currentPlayersWithoutBots.reduce((prev, curr) => prev + curr.bet["USD"], 0);
+        this.total8Amount = 0;
         this.maxWinAmount = totalAmount * range;
+
+        console.log("maxWinAmount:", this.maxWinAmount);
+
+        this.random = _.random(10, 20, true);
+
         break;
 
       // 9. ---------
@@ -914,23 +994,72 @@ export class SocketService {
 
       // 10. --------
       case 10:
-        this.playedCount++;
-        if (this.playedCount < this.maxGameCount / 2) {
-          this.random = _.random(1.3, 1.8, true);
-          const totalAmount = this.currentPlayersWithoutBots.reduce((prev, curr) => prev + curr.bet["USD"], 0);
-          this.totalBets += totalAmount;
-        } else if (this.playedCount == this.maxGameCount / 2) {
-          const profit = this.totalBets - this.totalWins;
-          this.partOfProfit = profit / (this.maxGameCount / 2);
-          if (profit < 0) {
-            this.loading();
-            return (this.interval = setInterval(() => this.game(), 100));
-          }
-        } else if (this.playedCount == this.maxGameCount) {
+        this.totalWinAmount = 0;
+
+        if (this.playedCount == this.maxGameCount) {
           this.playedCount = 0;
           this.totalBets = 0;
           this.totalWins = 0;
+          this.partOfProfit = 0;
         }
+
+        if (this.playedCount == 0) {
+          this.maxGameCount = _.random(3, 6, false) * 2;
+        }
+
+        this.playedCount++;
+        console.log("maxGameCount:", this.maxGameCount);
+        console.log("playedCount:", this.playedCount);
+
+        if (this.playedCount < Math.floor(this.maxGameCount / 2) + 1) {
+          this.random = _.random(1.3, 1.8, true);
+          const totalAmount = this.currentPlayersWithoutBots.reduce((prev, curr) => prev + curr.bet["USD"], 0);
+          this.totalBets += totalAmount;
+          console.log("totalBets:", this.totalBets);
+        } else if (this.playedCount == this.maxGameCount) {
+          this.profit = this.profit - this.partOfProfit;
+          const percent = 100;
+          this.partOfProfit = (this.profit * percent) / 100;
+          console.log("partOfProfit:", this.partOfProfit);
+          console.log("profit:", this.profit);
+          console.log("percent:", percent);
+
+          this.random = _.random(20, 50, true);
+          if (this.profit <= 0) {
+            this.x = 1;
+            this.socket.emit("game", { x: this.x });
+            return this.loading();
+          }
+        } else if (this.playedCount == this.maxGameCount / 2 + 1) {
+          this.profit = this.totalBets - this.totalWins;
+          const percent = _.random(0, 100, false);
+          this.partOfProfit = (this.profit * percent) / 100;
+          console.log("partOfProfit:", this.partOfProfit);
+          console.log("profit:", this.profit);
+          console.log("percent:", percent);
+
+          this.random = _.random(20, 50, true);
+          if (this.profit <= 0) {
+            this.x = 1;
+            this.socket.emit("game", { x: this.x });
+            return this.loading();
+          }
+        } else if (this.playedCount > this.maxGameCount / 2 + 1) {
+          this.profit = this.profit - this.partOfProfit;
+          const percent = _.random(0, 100, false);
+          this.partOfProfit = (this.profit * percent) / 100;
+          console.log("partOfProfit:", this.partOfProfit);
+          console.log("profit:", this.profit);
+          console.log("percent:", percent);
+
+          this.random = _.random(20, 50, true);
+          if (this.profit <= 0) {
+            this.x = 1;
+            this.socket.emit("game", { x: this.x });
+            return this.loading();
+          }
+        }
+
         break;
       case 12:
         this.random = _.random(1, 1.5, true);
@@ -938,6 +1067,8 @@ export class SocketService {
       default:
         break;
     }
+
+    console.log("coeff:", this.random);
 
     this.interval = setInterval(() => this.game(), this.ms);
   }

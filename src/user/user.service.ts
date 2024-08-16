@@ -485,9 +485,9 @@ export class UserService {
     return user.profileImage;
   }
 
-  @Cron(CronExpression.EVERY_5_MINUTES, { timeZone: "Europe/Moscow" })
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, { timeZone: "Europe/Moscow" })
   async handleCron() {
-    console.log("After 5 minute");
+    console.log("EVERY_DAY_AT_MIDNIGHT");
 
     const users = await this.userModel.find({ descendants: { $ne: [] } });
 

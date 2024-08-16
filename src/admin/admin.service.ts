@@ -1,24 +1,24 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import { InjectModel } from "@nestjs/mongoose";
-import { Admin } from "./schemas/admin.schema";
-import { Model, PipelineStage } from "mongoose";
-import { AdminLoginDto } from "./dto/adminLogin.dto";
 import { JwtService } from "@nestjs/jwt";
-import { Requisite } from "./schemas/requisite.schema";
-import { CreateRequisiteDto } from "./dto/createRequisite.dto";
-import { Replenishment, ReplenishmentStatusEnum } from "src/replenishment/schemas/replenishment.schema";
-import { ConvertService } from "src/convert/convert.service";
-import { Withdrawal, WithdrawalStatusEnum } from "src/withdrawal/schemas/withdrawal.schema";
-import { CancelReplenishmentDto } from "./dto/cancelReplenishment.dto";
-import { LimitQueryDto } from "./dto/limit-query.dto";
-import { Account, AccountDocument, ReplenishmentHistory } from "./schemas/account.schema";
-import { AccountRequisite } from "./schemas/account-requisite.schema";
+import { InjectModel } from "@nestjs/mongoose";
+import { Cron, CronExpression, SchedulerRegistry } from "@nestjs/schedule";
 import { ApiProperty } from "@nestjs/swagger";
 import * as _ from "lodash";
+import { Model, PipelineStage } from "mongoose";
+import { ConvertService } from "src/convert/convert.service";
+import { Replenishment, ReplenishmentStatusEnum } from "src/replenishment/schemas/replenishment.schema";
 import { SocketGateway } from "src/socket/socket.gateway";
-import { Cron, CronExpression } from "@nestjs/schedule";
-import { UserPromo } from "src/user/schemas/userPromo.schema";
 import { Bonus, CoefParamsType } from "src/user/schemas/bonus.schema";
+import { UserPromo } from "src/user/schemas/userPromo.schema";
+import { Withdrawal, WithdrawalStatusEnum } from "src/withdrawal/schemas/withdrawal.schema";
+import { AdminLoginDto } from "./dto/adminLogin.dto";
+import { CancelReplenishmentDto } from "./dto/cancelReplenishment.dto";
+import { CreateRequisiteDto } from "./dto/createRequisite.dto";
+import { LimitQueryDto } from "./dto/limit-query.dto";
+import { AccountRequisite } from "./schemas/account-requisite.schema";
+import { Account, AccountDocument, ReplenishmentHistory } from "./schemas/account.schema";
+import { Admin } from "./schemas/admin.schema";
+import { Requisite } from "./schemas/requisite.schema";
 
 export class ReplenishmentHistoryResponse {
   @ApiProperty()
@@ -56,6 +56,7 @@ export class AdminService {
     private jwtService: JwtService,
     private convertService: ConvertService,
     private socketGateway: SocketGateway,
+    private schedulerRegistry: SchedulerRegistry,
   ) {}
 
   async adminDetails(account: AccountDocument) {
@@ -153,7 +154,7 @@ export class AdminService {
   }
 
   async getReplenishments(account: Account, dto: LimitQueryDto) {
-    const match: any = { account: { $exists: true, $eq: account._id } };
+    const match: any = { account: { $exists: true, $eq: account._id }, isShowing: true };
 
     if (dto.startDate) {
       match.createdAt = { $gte: dto.startDate };
@@ -215,13 +216,17 @@ export class AdminService {
     account.requisite.balance -= requisiteAmount;
     account.balance -= requisiteAmount;
 
-    replenishment.requisite.turnover.confirmed += requisiteAmount;
-    replenishment.requisite.turnover.inProcess -= requisiteAmount;
+    const turnoverAmount = +(replenishment.amount[replenishment.requisite.currency] + replenishment.commission[replenishment.requisite.currency]).toFixed(2);
+
+    replenishment.requisite.turnover.confirmed += turnoverAmount;
+    replenishment.requisite.turnover.inProcess -= turnoverAmount;
     replenishment.requisite.turnover.confirmedCount++;
     replenishment.isPayConfirmed = true;
 
     await replenishment.requisite.save();
     await account.save();
+
+    await this.accountRequisiteModel.findByIdAndUpdate(replenishment.requisite._id, { $set: { turnover: replenishment.requisite.turnover } });
 
     const bonus = await this.bonusModel.findOne({ "coef_params.type": CoefParamsType.ADD_BALANCE, active: true });
 
@@ -235,6 +240,10 @@ export class AdminService {
       }
     }
 
+    try {
+      this.schedulerRegistry.deleteCronJob(replenishment._id.toString());
+    } catch (error) {}
+
     this.socketGateway.server.to(replenishment.user._id.toString()).emit("replenishment-refresh");
     this.socketGateway.server.to(replenishment.user._id.toString()).emit("user-balance", replenishment.user.balance);
 
@@ -242,7 +251,7 @@ export class AdminService {
   }
 
   async cancelReplenishment(account: Account, id: string, dto: CancelReplenishmentDto) {
-    const replenishment = await this.replenishmentModel.findOne({ _id: id, account: account._id }).populate("user");
+    const replenishment = await this.replenishmentModel.findOne({ _id: id, account: account._id }).populate(["user", "requisite"]);
 
     if (!replenishment) {
       throw new NotFoundException("Нет такой заявки");
@@ -257,6 +266,16 @@ export class AdminService {
     replenishment.completedDate = new Date();
 
     await replenishment.save();
+
+    const turnoverAmount = +(replenishment.amount[replenishment.requisite.currency] + replenishment.commission[replenishment.requisite.currency]).toFixed(2);
+
+    replenishment.requisite.turnover.inProcess -= turnoverAmount;
+
+    await this.accountRequisiteModel.findByIdAndUpdate(replenishment.requisite._id, { $set: { turnover: replenishment.requisite.turnover } });
+
+    try {
+      this.schedulerRegistry.deleteCronJob(replenishment._id.toString());
+    } catch (error) {}
 
     this.socketGateway.server.to(replenishment.user._id.toString()).emit("replenishment-refresh");
 

@@ -1,12 +1,12 @@
-import mongoose, { HydratedDocument } from "mongoose";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { ApiProperty } from "@nestjs/swagger";
-import { User, UserDocument } from "src/user/schemas/user.schema";
+import mongoose, { HydratedDocument } from "mongoose";
+import * as autoIncrement from "mongoose-plugin-autoinc";
+import { AccountRequisite, AccountRequisiteDocument } from "src/admin/schemas/account-requisite.schema";
+import { Account, AccountDocument } from "src/admin/schemas/account.schema";
 import { Requisite } from "src/admin/schemas/requisite.schema";
 import { IAmount } from "src/bets/schemas/bet.schema";
-import { Account, AccountDocument } from "src/admin/schemas/account.schema";
-import { AccountRequisite, AccountRequisiteDocument } from "src/admin/schemas/account-requisite.schema";
-import * as autoIncrement from "mongoose-plugin-autoinc";
+import { User, UserDocument } from "src/user/schemas/user.schema";
 
 export type ReplenishmentDocument = HydratedDocument<Replenishment>;
 
@@ -93,6 +93,9 @@ export class Replenishment {
 
   @Prop({ required: false })
   acquiring: string;
+
+  @Prop({ default: true, required: true })
+  isShowing: boolean;
 }
 
 export const ReplenishmentSchema = SchemaFactory.createForClass(Replenishment).plugin(autoIncrement.plugin, {
