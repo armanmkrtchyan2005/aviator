@@ -96,6 +96,9 @@ export class Replenishment {
 
   @Prop({ default: true, required: true })
   isShowing: boolean;
+
+  @Prop({ default: false, required: true })
+  isWithdrawalAllowed: boolean;
 }
 
 export const ReplenishmentSchema = SchemaFactory.createForClass(Replenishment).plugin(autoIncrement.plugin, {

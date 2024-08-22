@@ -196,6 +196,39 @@ export class AdminService {
     const userAmount = replenishment.amount[replenishment.user.currency] + (replenishment.bonusAmount[replenishment.user.currency] || 0);
 
     replenishment.user.balance += userAmount;
+    replenishment.user.isWithdrawalAllowed = false;
+
+    const [repl] = await this.replenishmentModel.aggregate([
+      { $match: { user: replenishment.user._id, status: ReplenishmentStatusEnum.COMPLETED, isWithdrawalAllowed: false } },
+      { $group: { _id: null, total: { $sum: `$amount.${replenishment.user.currency}` } } },
+      {
+        $project: {
+          total: { $divide: ["$total", 2] },
+        },
+      },
+    ]);
+
+    let total = 0;
+    if (repl) {
+      total = repl.total;
+    }
+
+    console.log("total:", total);
+
+    const betAmount = total - replenishment.user.playedAmount;
+
+    if (betAmount <= 0) {
+      await this.replenishmentModel.updateMany(
+        { user: replenishment.user._id, status: ReplenishmentStatusEnum.COMPLETED },
+        {
+          $set: {
+            isWithdrawalAllowed: true,
+          },
+        },
+      );
+
+      replenishment.user.playedAmount = 0;
+    }
 
     const { leader } = await replenishment.user.populate("leader");
 

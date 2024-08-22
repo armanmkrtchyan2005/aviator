@@ -1,17 +1,16 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
-import { Requisite } from "src/admin/schemas/requisite.schema";
-import { User } from "src/user/schemas/user.schema";
-import { Withdrawal, WithdrawalStatusEnum } from "./schemas/withdrawal.schema";
-import { IAuthPayload } from "src/auth/auth.guard";
-import { CreateWithdrawalDto } from "./dto/createWithdrawal.dto";
 import { Admin } from "src/admin/schemas/admin.schema";
-import { ConvertService } from "src/convert/convert.service";
-import { isCreditCard } from "class-validator";
+import { Requisite } from "src/admin/schemas/requisite.schema";
+import { IAuthPayload } from "src/auth/auth.guard";
 import { IAmount } from "src/bets/schemas/bet.schema";
+import { ConvertService } from "src/convert/convert.service";
 import { Replenishment, ReplenishmentStatusEnum } from "src/replenishment/schemas/replenishment.schema";
 import { Limit, LimitType } from "src/user/schemas/limit.schema";
+import { User } from "src/user/schemas/user.schema";
+import { CreateWithdrawalDto } from "./dto/createWithdrawal.dto";
+import { Withdrawal, WithdrawalStatusEnum } from "./schemas/withdrawal.schema";
 
 @Injectable()
 export class WithdrawalService {
@@ -69,7 +68,7 @@ export class WithdrawalService {
     }
 
     const [replenishment] = await this.replenishmentModel.aggregate([
-      { $match: { user: user._id, status: ReplenishmentStatusEnum.COMPLETED } },
+      { $match: { user: user._id, status: ReplenishmentStatusEnum.COMPLETED, isWithdrawalAllowed: false } },
       { $group: { _id: null, total: { $sum: `$amount.${user.currency}` } } },
       {
         $project: {
@@ -77,15 +76,22 @@ export class WithdrawalService {
         },
       },
     ]);
+
     let total = 0;
     if (replenishment) {
       total = replenishment.total;
     }
 
+    console.log("total:", total);
+
     const betAmount = total - user.playedAmount;
 
-    if (!user.isWithdrawalAllowed && betAmount > 0) {
-      throw new BadRequestException(`Для вывода средств вам необходимо сделать ставку как минимум на сумму ${betAmount} ${user.currency}`);
+    console.log("playedAmount:", user.playedAmount);
+
+    if (betAmount > 0) {
+      throw new BadRequestException(
+        `Для вывода средств вам необходимо сделать ставку как минимум на сумму ${betAmount} ${user.currency}, забрав её с минимальным коэффициентом 1.2Х`,
+      );
     }
 
     user.isWithdrawalAllowed = true;
@@ -111,6 +117,15 @@ export class WithdrawalService {
     if (amount[user.currency] > user.balance) {
       throw new BadRequestException({ message: "Недостаточно средств на балансе!" });
     }
+
+    await this.replenishmentModel.updateMany(
+      { user: user._id, status: ReplenishmentStatusEnum.COMPLETED },
+      {
+        $set: {
+          isWithdrawalAllowed: true,
+        },
+      },
+    );
 
     const withdrawal = await this.withdrawalModel.create({ ...dto, amount, user: user._id });
 

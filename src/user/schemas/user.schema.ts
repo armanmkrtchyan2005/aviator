@@ -1,7 +1,7 @@
-import mongoose, { HydratedDocument } from "mongoose";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { Type } from "class-transformer";
 import { ApiProperty } from "@nestjs/swagger";
+import { Type } from "class-transformer";
+import mongoose, { HydratedDocument } from "mongoose";
 import * as autoIncrement from "mongoose-plugin-autoinc";
 
 const START_AT = 100000;
@@ -118,7 +118,7 @@ export class User {
   @Prop()
   socketId: string;
 
-  @Prop({ default: false })
+  @Prop({ default: true })
   isWithdrawalAllowed: boolean;
 
   @Prop({ default: false })

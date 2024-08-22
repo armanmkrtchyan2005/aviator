@@ -16,7 +16,7 @@ import { ConvertService } from "src/convert/convert.service";
 import { Referral } from "src/user/schemas/referral.schema";
 import { Session } from "src/user/schemas/session.schema";
 import { User } from "src/user/schemas/user.schema";
-import { UserPromo } from "src/user/schemas/userPromo.schema";
+import { UserPromo, UserPromoDocument } from "src/user/schemas/userPromo.schema";
 import { generateUsername } from "unique-username-generator";
 import { BetDto } from "./dto/bet.dto";
 import { CancelBetDto } from "./dto/cancel-bet.dto";
@@ -92,6 +92,8 @@ export class SocketService {
   private totalBets: number = 0;
   private partOfProfit: number = 0;
   private profit: number = 0;
+
+  private isBlockDisconnectReturnBalance: boolean = false;
 
   constructor(
     @InjectModel(User.name) private userModel: Model<User>,
@@ -172,17 +174,19 @@ export class SocketService {
 
     const admin = await this.adminModel.findOne({}, ["gameLimits", "currencies", "our_balance"]);
 
-    const bets = this.currentPlayers.filter(b => {
-      return b.playerId == user._id?.toString() && !b.win;
-    });
+    if (!this.isBlockDisconnectReturnBalance) {
+      const bets = this.currentPlayers.filter(b => {
+        return b.playerId == user._id?.toString() && !b.win && !b.promo;
+      });
 
-    for (const bet of bets) {
-      await this.betModel.findByIdAndDelete(bet._id);
+      for (const bet of bets) {
+        await this.betModel.findByIdAndDelete(bet._id);
 
-      user.balance += bet.bet[user.currency];
-      user.playedAmount -= bet.bet[user.currency];
+        user.balance += bet.bet[user.currency];
+        user.playedAmount -= bet.bet[user.currency];
 
-      admin.our_balance -= bet.bet["USD"];
+        admin.our_balance -= bet.bet["USD"];
+      }
     }
 
     await user.save();
@@ -312,7 +316,7 @@ export class SocketService {
       return socketException("Пользователь не авторизован");
     }
 
-    const admin = await this.adminModel.findOne({}, ["gameLimits", "algorithms", "currencies", "our_balance"]);
+    const admin = await this.adminModel.findOne({}, ["gameLimits", "algorithms", "currencies", "our_balance", "isWithdrawalAllowed"]);
 
     const userCurrentBets = this.currentPlayers.filter(currentPlayer => currentPlayer.playerId == user._id.toString());
 
@@ -326,10 +330,12 @@ export class SocketService {
     const betDataObject: IBet | any = { betNumber: dto.betNumber, playerId: userPayload?.id.toString() };
 
     this.currentPlayers.push(betDataObject as IBet);
-
-    const userPromo = await this.userPromoModel
-      .findOne({ user: user._id, active: false, $or: [{ promo: dto.promoId }, { bonus: dto.promoId }], amount: { $exists: true } })
-      .populate(["promo", "bonus"]);
+    let userPromo: UserPromoDocument | null = null;
+    if (dto.promoId) {
+      userPromo = await this.userPromoModel
+        .findOne({ user: user._id, active: false, $or: [{ promo: dto.promoId }, { bonus: dto.promoId }], amount: { $exists: true } })
+        .populate(["promo", "bonus"]);
+    }
 
     const minBet = admin.gameLimits.min[user.currency];
     const maxBet = admin.gameLimits.max[user.currency];
@@ -349,6 +355,8 @@ export class SocketService {
     const bet: IAmount = {};
 
     if (userPromo) {
+      console.log("userPromo:", userPromo);
+
       for (const currency of admin.currencies) {
         bet[currency] = await this.convertService.convert(user.currency, currency, userPromo.amount);
       }
@@ -367,8 +375,9 @@ export class SocketService {
       }
 
       user.balance -= bet[user.currency];
-
-      user.playedAmount += bet[user.currency];
+      if (!user.isWithdrawalAllowed) {
+        user.playedAmount += bet[user.currency];
+      }
 
       await user.save();
     }
@@ -546,7 +555,7 @@ export class SocketService {
 
     user.balance += win[user.currency];
 
-    if (x < 1.2) {
+    if (x < 1.2 && !user.isWithdrawalAllowed) {
       user.playedAmount -= betData.bet[user.currency];
     }
 
@@ -710,6 +719,7 @@ export class SocketService {
 
   private async loading() {
     this.drainLock = true;
+    this.isBlockDisconnectReturnBalance = true;
     console.log("Loading...");
 
     clearInterval(this.interval);
@@ -791,6 +801,7 @@ export class SocketService {
     this.isBetWait = false;
 
     this.socket.emit("loading");
+    this.isBlockDisconnectReturnBalance = false;
     this.npcLength = _.random(admin.bots.count.min, admin.bots.count.max);
     for (let i = 0; i < this.npcLength && admin.bots.active; i++) {
       setTimeout(async () => {
@@ -1023,6 +1034,11 @@ export class SocketService {
           console.log("partOfProfit:", this.partOfProfit);
           console.log("profit:", this.profit);
           console.log("percent:", percent);
+
+          this.playedCount = 0;
+          this.totalBets = 0;
+          this.totalWins = 0;
+          this.partOfProfit = 0;
 
           this.random = _.random(20, 50, true);
           if (this.profit <= 0) {
