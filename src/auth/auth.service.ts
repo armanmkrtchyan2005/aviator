@@ -1,32 +1,32 @@
-import * as bcrypt from "bcrypt";
-import { ConvertService } from "./../convert/convert.service";
-import { BadRequestException, Injectable, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { InjectModel } from "@nestjs/mongoose";
-import { Model } from "mongoose";
-import { User } from "src/user/schemas/user.schema";
-import { SignUpDto } from "./dto/sign-up.dto";
-import { SignInDto } from "./dto/sign-in.dto";
-import { MailService, SendEmailType } from "src/mail/mail.service";
-import { SendCodeDto } from "./dto/send-code.dto";
-import { ConfirmCodeDto } from "./dto/confirm-code.dto";
-import { SignUpCreatedResponse } from "./responses/sign-up.response";
-import { SendCodeOkResponse } from "./responses/send-code.response";
-import { ConfirmCodeOkResponse } from "./responses/confirm-code.response";
-import { ChangePasswordDto } from "./dto/change-password.dto";
-import { ChangePasswordOkResponse } from "./responses/change-password.response";
-import { Bonus, CoefParamsType } from "src/user/schemas/bonus.schema";
-import * as _ from "lodash";
-import { Promo, PromoType } from "src/user/schemas/promo.schema";
-import { UserPromo } from "src/user/schemas/userPromo.schema";
-import { generateCode } from "src/admin/common/utils/generate-code";
-import { SignInVerifyDto } from "./dto/sign-in-verify.dto";
-import { Session } from "src/user/schemas/session.schema";
-import { SignOutDto } from "./dto/sign-out.dto";
+import * as bcrypt from "bcrypt";
 import { Request } from "express";
-import { SignUpConfirmDto } from "./dto/sign-up-confirm.dto";
-import { HOURS48 } from "src/constants";
+import * as _ from "lodash";
+import { Model } from "mongoose";
+import { generateCode } from "src/admin/common/utils/generate-code";
 import { IdentityCounter } from "src/admin/schemas/identity-counter.schema";
+import { HOURS48 } from "src/constants";
+import { MailService, SendEmailType } from "src/mail/mail.service";
+import { Bonus, CoefParamsType } from "src/user/schemas/bonus.schema";
+import { Promo, PromoType } from "src/user/schemas/promo.schema";
+import { Session } from "src/user/schemas/session.schema";
+import { User } from "src/user/schemas/user.schema";
+import { UserPromo } from "src/user/schemas/userPromo.schema";
+import { ConvertService } from "./../convert/convert.service";
+import { ChangePasswordDto } from "./dto/change-password.dto";
+import { ConfirmCodeDto } from "./dto/confirm-code.dto";
+import { SendCodeDto } from "./dto/send-code.dto";
+import { SignInVerifyDto } from "./dto/sign-in-verify.dto";
+import { SignInDto } from "./dto/sign-in.dto";
+import { SignOutDto } from "./dto/sign-out.dto";
+import { SignUpConfirmDto } from "./dto/sign-up-confirm.dto";
+import { SignUpDto } from "./dto/sign-up.dto";
+import { ChangePasswordOkResponse } from "./responses/change-password.response";
+import { ConfirmCodeOkResponse } from "./responses/confirm-code.response";
+import { SendCodeOkResponse } from "./responses/send-code.response";
+import { SignUpCreatedResponse } from "./responses/sign-up.response";
 
 const saltRounds = 10;
 export const salt = bcrypt.genSaltSync(saltRounds);
@@ -295,6 +295,8 @@ export class AuthService {
       user.password = hashedPassword;
 
       await user.save();
+
+      await this.sessionModel.deleteMany({ user: user._id });
 
       return {
         message: "Ваш пароль успешно изменен",

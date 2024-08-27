@@ -1,13 +1,13 @@
 import { Injectable } from "@nestjs/common";
-import { IAuthPayload } from "src/auth/auth.guard";
-import { MyBetsQueryDto } from "./dto/my-bets-query.dto";
 import { InjectModel } from "@nestjs/mongoose";
-import { User } from "src/user/schemas/user.schema";
-import mongoose, { Model } from "mongoose";
-import { Bet, IAmount } from "./schemas/bet.schema";
-import { Admin } from "src/admin/schemas/admin.schema";
 import { ApiProperty } from "@nestjs/swagger";
+import mongoose, { Model } from "mongoose";
+import { Admin } from "src/admin/schemas/admin.schema";
+import { IAuthPayload } from "src/auth/auth.guard";
+import { User } from "src/user/schemas/user.schema";
+import { MyBetsQueryDto } from "./dto/my-bets-query.dto";
 import { DateSort, TopBetsQueryDto } from "./dto/top-bets.query.dto";
+import { Bet, IAmount } from "./schemas/bet.schema";
 import { Game } from "./schemas/game.schema";
 
 export class LastBetsResponse {
@@ -95,7 +95,7 @@ export class BetsService {
 
   async findLastCoeffs() {
     const coeffs = await this.gameModel
-      .find({ game_coeff: { $exists: true } })
+      .find({ game_coeff: { $exists: true }, endedAt: { $exists: true } }, { game_coeff: true, uid: true })
       .sort({ createdAt: -1 })
       .limit(30);
 

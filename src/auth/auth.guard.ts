@@ -1,10 +1,8 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from "@nestjs/common";
-import { JwtService } from "@nestjs/jwt";
-import { JwtPayload } from "jsonwebtoken";
-import { Request } from "express";
 import { InjectModel } from "@nestjs/mongoose";
-import { Session } from "src/user/schemas/session.schema";
+import { Request } from "express";
 import { Model } from "mongoose";
+import { Session } from "src/user/schemas/session.schema";
 
 // export interface IAuthPayload extends JwtPayload {
 //   id: string;

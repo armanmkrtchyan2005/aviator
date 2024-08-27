@@ -1,37 +1,37 @@
+import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
+import { InjectModel } from "@nestjs/mongoose";
+import { Cron, CronExpression, SchedulerRegistry } from "@nestjs/schedule";
 import * as bcrypt from "bcrypt";
 import * as fs from "fs";
-import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
-import { InjectModel } from "@nestjs/mongoose";
-import { User } from "./schemas/user.schema";
+import * as _ from "lodash";
 import mongoose, { Model } from "mongoose";
-import { IAuthPayload } from "src/auth/auth.guard";
-import { salt } from "src/auth/auth.service";
-import { SendCodeDto } from "src/auth/dto/send-code.dto";
-import { ConfirmCodeDto } from "src/auth/dto/confirm-code.dto";
-import { JwtService } from "@nestjs/jwt";
-import { MailService, SendEmailType } from "src/mail/mail.service";
-import { OldPasswordConfirmDto } from "./dto/old-password-confirm.dto";
-import { ChangePasswordDto } from "src/auth/dto/change-password.dto";
-import { AddPromoDto } from "./dto/add-promo.dto";
-import { ConvertService } from "src/convert/convert.service";
-import { Requisite } from "src/admin/schemas/requisite.schema";
-import { Admin } from "src/admin/schemas/admin.schema";
-import { Referral } from "./schemas/referral.schema";
-import { FindReferralsByDayDto } from "./dto/findReferralsByDay.dto";
-import { Promo, PromoSchema, PromoType } from "./schemas/promo.schema";
-import { UserPromo } from "./schemas/userPromo.schema";
-import { GetPromosDto } from "./dto/getPromos.dto";
-import * as url from "url";
 import * as path from "path";
 import { generateCode } from "src/admin/common/utils/generate-code";
-import { CronJob } from "cron";
-import { Cron, CronExpression, SchedulerRegistry } from "@nestjs/schedule";
 import { Account } from "src/admin/schemas/account.schema";
-import { RequisiteDto, RequisiteTypeEnum } from "./dto/requisite.dto";
-import * as _ from "lodash";
+import { Admin } from "src/admin/schemas/admin.schema";
+import { Requisite } from "src/admin/schemas/requisite.schema";
+import { IAuthPayload } from "src/auth/auth.guard";
+import { salt } from "src/auth/auth.service";
+import { ChangePasswordDto } from "src/auth/dto/change-password.dto";
+import { ConfirmCodeDto } from "src/auth/dto/confirm-code.dto";
+import { SendCodeDto } from "src/auth/dto/send-code.dto";
 import { HOURS48 } from "src/constants";
-import { ConfirmEmailSendCodeDto, ConfirmEmailSendCodeType } from "./dto/confirm-email-send-code.dto";
+import { ConvertService } from "src/convert/convert.service";
+import { MailService, SendEmailType } from "src/mail/mail.service";
+import * as url from "url";
+import { AddPromoDto } from "./dto/add-promo.dto";
 import { ConfirmEmailConfirmCode } from "./dto/confirm-email-confirm-code.dto";
+import { ConfirmEmailSendCodeDto, ConfirmEmailSendCodeType } from "./dto/confirm-email-send-code.dto";
+import { FindReferralsByDayDto } from "./dto/findReferralsByDay.dto";
+import { GetPromosDto } from "./dto/getPromos.dto";
+import { OldPasswordConfirmDto } from "./dto/old-password-confirm.dto";
+import { RequisiteDto, RequisiteTypeEnum } from "./dto/requisite.dto";
+import { Promo, PromoType } from "./schemas/promo.schema";
+import { Referral } from "./schemas/referral.schema";
+import { Session } from "./schemas/session.schema";
+import { User } from "./schemas/user.schema";
+import { UserPromo } from "./schemas/userPromo.schema";
 
 type PercentageRangesType = { min: number; max: number; percentage: number };
 
@@ -74,6 +74,7 @@ export class UserService {
     @InjectModel(Admin.name) private adminModel: Model<Admin>,
     @InjectModel(Referral.name) private referralModel: Model<Referral>,
     @InjectModel(Account.name) private accountModel: Model<Account>,
+    @InjectModel(Session.name) private sessionModel: Model<Session>,
     private jwtService: JwtService,
     private mailService: MailService,
     private convertService: ConvertService,
@@ -242,6 +243,8 @@ export class UserService {
       user.password = hashedPassword;
 
       await user.save();
+
+      await this.sessionModel.deleteMany({ user: user._id });
 
       return {
         message: "Ваш пароль успешно изменен",

@@ -94,6 +94,7 @@ export class SocketService {
   private profit: number = 0;
 
   private isBlockDisconnectReturnBalance: boolean = false;
+  private isGameIntervalEnded: boolean = false;
 
   constructor(
     @InjectModel(User.name) private userModel: Model<User>,
@@ -258,15 +259,20 @@ export class SocketService {
 
   async game() {
     this.socket.emit("game", { x: this.x });
+    this.isGameIntervalEnded = false;
 
     // 4. ----------
     if (this.selectedAlgorithmId === 4) {
-      if (this.x >= 1.8 && this.x <= 2.1) {
-        this.threePlayers = _.sampleSize(this.currentPlayers, 3);
-        console.log(
-          "three players",
-          this.threePlayers.map(p => p.bet["RUB"]),
-        );
+      if (this.x >= 1.9 && this.x <= 2.1) {
+        const players = this.currentPlayers.filter(curr => !curr.win);
+
+        if (players.length >= 3) {
+          this.threePlayers = _.sampleSize(players, 3);
+          console.log(
+            "three players",
+            this.threePlayers.map(p => p.bet["RUB"]),
+          );
+        }
       }
     }
 
@@ -276,6 +282,8 @@ export class SocketService {
 
     this.x = new Big(this.x).plus(this.step).toNumber();
     this.step = new Big(this.step).plus(STEP).toNumber();
+
+    this.isGameIntervalEnded = true;
 
     // if (this.x == 2) {
     //   this.ms = 50;
@@ -579,7 +587,7 @@ export class SocketService {
           admin.algorithms[0].used_count++;
           await admin.updateOne({ $set: { algorithms: admin.algorithms } });
           this.loading();
-          return { message: "Вы выиграли", success: true };
+          return { message: "Вы выиграли", success: true, winX: x };
         }
         break;
 
@@ -593,12 +601,15 @@ export class SocketService {
           admin.algorithms[1].used_count++;
           await admin.updateOne({ $set: { algorithms: admin.algorithms } });
           this.loading();
-          return { message: "Вы выиграли", success: true };
+          return { message: "Вы выиграли", success: true, winX: x };
         }
 
         break;
 
       case 4:
+        if (!this.threePlayers.length) {
+          return { message: "Вы выиграли", success: true, winX: x };
+        }
         this.threePlayers = this.threePlayers.filter(u => u._id !== bet._id.toString());
         console.log(
           "three players",
@@ -610,7 +621,7 @@ export class SocketService {
           admin.algorithms[0].used_count++;
           await admin.updateOne({ $set: { algorithms: admin.algorithms } });
           this.loading();
-          return { message: "Вы выиграли", success: true };
+          return { message: "Вы выиграли", success: true, winX: x };
         }
         break;
       // 7. Bet counts algorithm
@@ -624,7 +635,7 @@ export class SocketService {
           admin.algorithms[6].used_count++;
           await admin.updateOne({ $set: { algorithms: admin.algorithms } });
           this.loading();
-          return { message: "Вы выиграли", success: true };
+          return { message: "Вы выиграли", success: true, winX: x };
         }
         break;
 
@@ -636,7 +647,7 @@ export class SocketService {
           admin.algorithms[7].used_count++;
           await admin.updateOne({ $set: { algorithms: admin.algorithms } });
           this.loading();
-          return { message: "Вы выиграли", success: true };
+          return { message: "Вы выиграли", success: true, winX: x };
         }
         break;
 
@@ -654,7 +665,7 @@ export class SocketService {
               admin.algorithms[9].used_count++;
               await admin.updateOne({ $set: { algorithms: admin.algorithms } });
               this.loading();
-              return { message: "Вы выиграли", success: true };
+              return { message: "Вы выиграли", success: true, winX: x };
             }
           }
         } catch (error) {
@@ -667,7 +678,7 @@ export class SocketService {
         break;
     }
 
-    return { message: "Вы выиграли", success: true };
+    return { message: "Вы выиграли", success: true, winX: x };
   }
 
   async handleDrain() {
@@ -723,6 +734,10 @@ export class SocketService {
     console.log("Loading...");
 
     clearInterval(this.interval);
+    const x = this.isGameIntervalEnded ? new Big(this.x).minus(this.step).minus(STEP).toNumber() : this.x;
+
+    const game_coeff = +_.round(x, 2).toFixed(2);
+    console.log("game_coeff:", game_coeff);
 
     for (let i = 0; i < this.npcLength; i++) {
       try {
@@ -731,7 +746,6 @@ export class SocketService {
     }
 
     this.socket.emit("crash");
-    const game_coeff = +this.x.toFixed(2);
 
     this.betGame.game_coeff = game_coeff;
     this.betGame.endedAt = new Date();
@@ -1022,7 +1036,7 @@ export class SocketService {
         console.log("maxGameCount:", this.maxGameCount);
         console.log("playedCount:", this.playedCount);
 
-        if (this.playedCount < Math.floor(this.maxGameCount / 2) + 1) {
+        if (this.playedCount < this.maxGameCount / 2 + 1) {
           this.random = _.random(1.3, 1.8, true);
           const totalAmount = this.currentPlayersWithoutBots.reduce((prev, curr) => prev + curr.bet["USD"], 0);
           this.totalBets += totalAmount;

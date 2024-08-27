@@ -1,13 +1,13 @@
-import { WebSocketGateway, SubscribeMessage, MessageBody, OnGatewayConnection, WebSocketServer, OnGatewayInit, OnGatewayDisconnect, ConnectedSocket } from "@nestjs/websockets";
+import { UseFilters, UseGuards } from "@nestjs/common";
+import { ConnectedSocket, MessageBody, OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit, SubscribeMessage, WebSocketGateway, WebSocketServer } from "@nestjs/websockets";
 import { Server, Socket } from "socket.io";
-import { SocketService } from "./socket.service";
-import { UseFilters, UseGuards, UsePipes, ValidationPipe } from "@nestjs/common";
-import { SocketAuthGuard } from "./guard/socketAuth.guard";
 import { BetDto } from "./dto/bet.dto";
-import { CashOutDto } from "./dto/cashOut.dto";
-import { SocketExceptionFilter } from "./socket.exception";
-import { SocketAdminAuthGuard } from "./guard/socketAdminAuth.guard";
 import { CancelBetDto } from "./dto/cancel-bet.dto";
+import { CashOutDto } from "./dto/cashOut.dto";
+import { SocketAdminAuthGuard } from "./guard/socketAdminAuth.guard";
+import { SocketAuthGuard } from "./guard/socketAuth.guard";
+import { SocketExceptionFilter } from "./socket.exception";
+import { SocketService } from "./socket.service";
 
 @WebSocketGateway({ cors: { origin: "*" } })
 @UseFilters(SocketExceptionFilter)
