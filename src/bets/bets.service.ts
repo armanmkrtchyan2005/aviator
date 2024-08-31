@@ -136,7 +136,12 @@ export class BetsService {
 
     const lastBets = await this.betModel.aggregate([
       { $match: { game: lastGame._id } },
-      { $sort: { createdAt: -1 } },
+      { $sort: { "bet.USD": -1 } },
+      { $lookup: { from: "users", localField: "playerId", foreignField: "_id", as: "player" } },
+      { $unwind: { path: "$player", preserveNullAndEmptyArrays: true } },
+      {
+        $set: { profileImage: "$player.profileImage" },
+      },
       {
         $group: {
           _id: null,

@@ -82,3 +82,4 @@ export class Bet {
 
 export const BetSchema = SchemaFactory.createForClass(Bet);
 BetSchema.index({ "win.USD": -1 });
+BetSchema.index({ "bet.USD": -1 });

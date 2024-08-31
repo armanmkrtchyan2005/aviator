@@ -1,19 +1,19 @@
-import { NestFactory } from "@nestjs/core";
-import { AppModule } from "./app.module";
 import { ValidationPipe } from "@nestjs/common";
-import * as session from "express-session";
-import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
+import { NestFactory } from "@nestjs/core";
 import { NestExpressApplication } from "@nestjs/platform-express";
+import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
+import * as session from "express-session";
+import * as fs from "fs";
 import { join } from "path";
 import * as requestIp from "request-ip";
-import * as fs from "fs";
+import { AppModule } from "./app.module";
 
 const origin = ["http://localhost:5173", "https://avibet.io"];
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.use(requestIp.mw());
-  app.enableCors({ origin: "*" });
+  app.enableCors({ origin });
   app.enable("trust proxy");
   app.useStaticAssets(join(__dirname, "..", "uploads"), { prefix: "/uploads" });
   const port = process.env.PORT || 8080;
@@ -21,9 +21,9 @@ async function bootstrap() {
   const config = new DocumentBuilder().setTitle("Aviator").setDescription("Aviator API документация").setVersion("1.0").build();
   const document = SwaggerModule.createDocument(app, config);
 
-  // fs.writeFileSync("./swagger-spec.json", JSON.stringify(document));
+  fs.writeFileSync("./swagger-spec.json", JSON.stringify(document));
 
-  SwaggerModule.setup("docs", app, document);
+  // SwaggerModule.setup("docs", app, document);
 
   app.useGlobalPipes(
     new ValidationPipe({
