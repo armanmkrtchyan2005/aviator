@@ -1,8 +1,8 @@
-import mongoose, { HydratedDocument } from "mongoose";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { ApiProperty } from "@nestjs/swagger";
-import * as autoIncrement from "mongoose-plugin-autoinc";
 import { Exclude } from "class-transformer";
+import { HydratedDocument } from "mongoose";
+import * as autoIncrement from "mongoose-plugin-autoinc";
 import { IAmount } from "./bet.schema";
 
 export type GameDocument = HydratedDocument<Game>;
@@ -17,14 +17,15 @@ export class Game {
   uid: number;
 
   @ApiProperty()
-  @Prop()
+  @Prop({ index: 1 })
   game_coeff: number;
 
   @ApiProperty()
+  @Prop({ index: -1 })
   createdAt: Date;
 
   @ApiProperty()
-  @Prop()
+  @Prop({ index: 1 })
   endedAt: Date;
 
   @ApiProperty()

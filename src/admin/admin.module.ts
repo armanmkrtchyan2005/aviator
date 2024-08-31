@@ -1,18 +1,19 @@
 import { Module } from "@nestjs/common";
+import { MongooseModule } from "@nestjs/mongoose";
+import { ConvertModule } from "src/convert/convert.module";
+import { Replenishment, ReplenishmentSchema } from "src/replenishment/schemas/replenishment.schema";
+import { SocketModule } from "src/socket/socket.module";
+import { Bonus, BonusSchema } from "src/user/schemas/bonus.schema";
+import { User, UserSchema } from "src/user/schemas/user.schema";
+import { UserPromo, UserPromoSchema } from "src/user/schemas/userPromo.schema";
+import { Withdrawal, WithdrawalSchema } from "src/withdrawal/schemas/withdrawal.schema";
 import { AdminController } from "./admin.controller";
 import { AdminService } from "./admin.service";
-import { MongooseModule } from "@nestjs/mongoose";
-import { Admin, AdminSchema } from "./schemas/admin.schema";
-import { User, UserSchema } from "src/user/schemas/user.schema";
-import { Requisite, RequisiteSchema } from "./schemas/requisite.schema";
-import { Replenishment, ReplenishmentSchema } from "src/replenishment/schemas/replenishment.schema";
-import { ConvertModule } from "src/convert/convert.module";
-import { Withdrawal, WithdrawalSchema } from "src/withdrawal/schemas/withdrawal.schema";
-import { Account, AccountSchema } from "./schemas/account.schema";
 import { AccountRequisite, AccountRequisiteSchema } from "./schemas/account-requisite.schema";
-import { SocketModule } from "src/socket/socket.module";
-import { UserPromo, UserPromoSchema } from "src/user/schemas/userPromo.schema";
-import { Bonus, BonusSchema } from "src/user/schemas/bonus.schema";
+import { AccountSession, AccountSessionSchema } from "./schemas/account-session.schema";
+import { Account, AccountSchema } from "./schemas/account.schema";
+import { Admin, AdminSchema } from "./schemas/admin.schema";
+import { Requisite, RequisiteSchema } from "./schemas/requisite.schema";
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { Bonus, BonusSchema } from "src/user/schemas/bonus.schema";
       { name: Withdrawal.name, schema: WithdrawalSchema },
       { name: Bonus.name, schema: BonusSchema },
       { name: UserPromo.name, schema: UserPromoSchema },
+      { name: AccountSession.name, schema: AccountSessionSchema },
     ]),
     ConvertModule,
     SocketModule,

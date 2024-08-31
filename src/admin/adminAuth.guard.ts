@@ -1,11 +1,9 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from "@nestjs/common";
-import { JwtService } from "@nestjs/jwt";
-import { JwtPayload } from "jsonwebtoken";
-import { Request } from "express";
 import { InjectModel } from "@nestjs/mongoose";
-import { Admin } from "./schemas/admin.schema";
+import { Request } from "express";
+import { JwtPayload } from "jsonwebtoken";
 import { Model } from "mongoose";
-import { Account } from "./schemas/account.schema";
+import { AccountSession } from "./schemas/account-session.schema";
 
 interface IAdminAuthPayload extends JwtPayload {
   id: number;
@@ -13,7 +11,7 @@ interface IAdminAuthPayload extends JwtPayload {
 
 @Injectable()
 export class AdminAuthGuard implements CanActivate {
-  constructor(@InjectModel(Account.name) private accountModel: Model<Account>, private jwtService: JwtService) {}
+  constructor(@InjectModel(AccountSession.name) private accountSession: Model<AccountSession>) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
@@ -23,17 +21,9 @@ export class AdminAuthGuard implements CanActivate {
       throw new UnauthorizedException();
     }
     try {
-      const payload = await this.jwtService.verifyAsync<IAdminAuthPayload>(token, {
-        secret: process.env.JWT_SECRET,
-      });
+      const { account } = await this.accountSession.findOne({ token }).populate("account", { password: false });
 
-      const admin = await this.accountModel.findById(payload.id, { password: false });
-
-      if (!admin) {
-        throw new UnauthorizedException();
-      }
-
-      request["admin"] = admin;
+      request["admin"] = account;
     } catch {
       throw new UnauthorizedException();
     }

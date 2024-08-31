@@ -63,6 +63,11 @@ export class BetsService {
             },
           },
         },
+        {
+          $sort: {
+            "win.USD": -1,
+          },
+        },
         { $lookup: { from: "users", localField: "playerId", foreignField: "_id", as: "player" } },
         { $unwind: { path: "$player", preserveNullAndEmptyArrays: true } },
         { $lookup: { from: "games", localField: "game", foreignField: "_id", as: "game" } },
@@ -127,15 +132,11 @@ export class BetsService {
 
     // ----------------------------GREL-----------------
 
-    const game = await this.gameModel.findOne({}).sort({ createdAt: -1 });
-
     const lastGame = await this.gameModel.findOne({ endedAt: { $exists: true } }).sort({ createdAt: -1 });
 
     const lastBets = await this.betModel.aggregate([
       { $match: { game: lastGame._id } },
       { $sort: { createdAt: -1 } },
-      { $lookup: { from: "games", localField: "game", foreignField: "_id", as: "game" } },
-      { $unwind: "$game" },
       {
         $group: {
           _id: null,

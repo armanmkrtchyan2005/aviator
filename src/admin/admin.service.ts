@@ -16,6 +16,7 @@ import { CancelReplenishmentDto } from "./dto/cancelReplenishment.dto";
 import { CreateRequisiteDto } from "./dto/createRequisite.dto";
 import { LimitQueryDto } from "./dto/limit-query.dto";
 import { AccountRequisite } from "./schemas/account-requisite.schema";
+import { AccountSession } from "./schemas/account-session.schema";
 import { Account, AccountDocument, ReplenishmentHistory } from "./schemas/account.schema";
 import { Admin } from "./schemas/admin.schema";
 import { Requisite } from "./schemas/requisite.schema";
@@ -53,6 +54,7 @@ export class AdminService {
     @InjectModel(Withdrawal.name) private withdrawalModel: Model<Withdrawal>,
     @InjectModel(Bonus.name) private bonusModel: Model<Bonus>,
     @InjectModel(UserPromo.name) private userPromoModel: Model<UserPromo>,
+    @InjectModel(AccountSession.name) private accountSession: Model<AccountSession>,
     private jwtService: JwtService,
     private convertService: ConvertService,
     private socketGateway: SocketGateway,
@@ -67,6 +69,8 @@ export class AdminService {
   async login(dto: AdminLoginDto) {
     const account = await this.accountModel.findOne({ login: dto.login });
 
+    console.log(account);
+
     if (!account) {
       throw new BadRequestException("Неправильный логин или пароль");
     }
@@ -78,6 +82,8 @@ export class AdminService {
     }
 
     const token = this.jwtService.sign({ id: account._id });
+
+    await this.accountSession.create({ token, account: account._id });
 
     return { token };
   }

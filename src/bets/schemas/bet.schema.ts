@@ -1,10 +1,10 @@
-import mongoose, { HydratedDocument, Types } from "mongoose";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { User } from "../../user/schemas/user.schema";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import mongoose, { HydratedDocument } from "mongoose";
 import { Promo } from "src/user/schemas/promo.schema";
-import { Game } from "./game.schema";
 import { UserPromo, UserPromoDocument } from "src/user/schemas/userPromo.schema";
+import { User } from "../../user/schemas/user.schema";
+import { Game } from "./game.schema";
 
 export type BetDocument = HydratedDocument<Bet>;
 
@@ -36,8 +36,11 @@ export class Bet {
   bet: IAmount;
 
   @ApiProperty()
-  @Prop({ required: true })
+  @Prop({ required: true, index: -1 })
   time: Date;
+
+  @Prop({ index: -1 })
+  createdAt: Date;
 
   @ApiProperty()
   @Prop()
@@ -52,6 +55,7 @@ export class Bet {
     required: true,
     type: mongoose.Schema.Types.ObjectId,
     ref: User.name,
+    index: 1,
   })
   playerId: User;
 
@@ -69,7 +73,7 @@ export class Bet {
   user_balance: number;
 
   @ApiProperty()
-  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: Game.name })
+  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: Game.name, index: 1 })
   game: Game;
 
   @Prop({ default: false })
@@ -77,3 +81,4 @@ export class Bet {
 }
 
 export const BetSchema = SchemaFactory.createForClass(Bet);
+BetSchema.index({ "win.USD": -1 });

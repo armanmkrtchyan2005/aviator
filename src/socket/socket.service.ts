@@ -495,8 +495,6 @@ export class SocketService {
   async handleCashOut(userPayload: IAuthPayload, dto: CashOutDto) {
     const x = dto.winX ? dto.winX : this.x;
 
-    console.log("x ---------", x);
-
     const user = await this.userModel.findById(userPayload.id);
     const admin = await this.adminModel.findOne({}, ["algorithms", "currencies", "our_balance", "gameLimits"]);
 
@@ -587,7 +585,6 @@ export class SocketService {
           admin.algorithms[0].used_count++;
           await admin.updateOne({ $set: { algorithms: admin.algorithms } });
           this.loading();
-          return { message: "Вы выиграли", success: true, winX: x };
         }
         break;
 
@@ -601,14 +598,13 @@ export class SocketService {
           admin.algorithms[1].used_count++;
           await admin.updateOne({ $set: { algorithms: admin.algorithms } });
           this.loading();
-          return { message: "Вы выиграли", success: true, winX: x };
         }
 
         break;
 
       case 4:
         if (!this.threePlayers.length) {
-          return { message: "Вы выиграли", success: true, winX: x };
+          break;
         }
         this.threePlayers = this.threePlayers.filter(u => u._id !== bet._id.toString());
         console.log(
@@ -621,7 +617,7 @@ export class SocketService {
           admin.algorithms[0].used_count++;
           await admin.updateOne({ $set: { algorithms: admin.algorithms } });
           this.loading();
-          return { message: "Вы выиграли", success: true, winX: x };
+          break;
         }
         break;
       // 7. Bet counts algorithm
@@ -635,7 +631,7 @@ export class SocketService {
           admin.algorithms[6].used_count++;
           await admin.updateOne({ $set: { algorithms: admin.algorithms } });
           this.loading();
-          return { message: "Вы выиграли", success: true, winX: x };
+          break;
         }
         break;
 
@@ -647,7 +643,7 @@ export class SocketService {
           admin.algorithms[7].used_count++;
           await admin.updateOne({ $set: { algorithms: admin.algorithms } });
           this.loading();
-          return { message: "Вы выиграли", success: true, winX: x };
+          break;
         }
         break;
 
@@ -665,7 +661,7 @@ export class SocketService {
               admin.algorithms[9].used_count++;
               await admin.updateOne({ $set: { algorithms: admin.algorithms } });
               this.loading();
-              return { message: "Вы выиграли", success: true, winX: x };
+              break;
             }
           }
         } catch (error) {
@@ -677,6 +673,8 @@ export class SocketService {
       default:
         break;
     }
+
+    console.log("cash-out");
 
     return { message: "Вы выиграли", success: true, winX: x };
   }
@@ -818,7 +816,7 @@ export class SocketService {
     this.isBlockDisconnectReturnBalance = false;
     this.npcLength = _.random(admin.bots.count.min, admin.bots.count.max);
     for (let i = 0; i < this.npcLength && admin.bots.active; i++) {
-      setTimeout(async () => {
+      const timeoutId = setTimeout(async () => {
         const bet: IAmount = {};
         const r = _.random(admin.bots.betAmount.min, admin.bots.betAmount.max);
         for (const currency of admin.currencies) {
@@ -876,12 +874,22 @@ export class SocketService {
         try {
           this.schedulerRegistry.addInterval(`bot-${i}`, intervalId);
         } catch (error) {}
-      }, 50 * i);
+      }, 40 * i);
+
+      try {
+        this.schedulerRegistry.addTimeout(`bot-${i}`, timeoutId);
+      } catch (error) {}
     }
 
     await sleep(LOADING_MS);
     this.drainLock = false;
     this.isBetWait = true;
+
+    for (let i = 0; i < this.npcLength; i++) {
+      try {
+        this.schedulerRegistry.deleteTimeout(`bot-${i}`);
+      } catch (error) {}
+    }
 
     if (this.betGame.game_coeff) {
       console.log("x =>", this.betGame.game_coeff);
