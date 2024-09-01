@@ -8,7 +8,7 @@ import { join } from "path";
 import * as requestIp from "request-ip";
 import { AppModule } from "./app.module";
 
-const origin = ["http://localhost:5173", "https://avibet.io"];
+const origin = ["http://localhost:5173", "https://avibet.io", "https://tesko.vip"];
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);

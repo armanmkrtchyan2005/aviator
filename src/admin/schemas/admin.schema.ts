@@ -1,6 +1,6 @@
-import mongoose, { HydratedDocument } from "mongoose";
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { ApiProperty } from "@nestjs/swagger";
+import mongoose, { HydratedDocument } from "mongoose";
 import { IAmount } from "src/bets/schemas/bet.schema";
 
 export type AdminDocument = HydratedDocument<Admin>;
@@ -79,13 +79,16 @@ export class Admin {
   @Prop({})
   chat: string;
 
-  @Prop({ required: true, default: ["USD", "UZS", "KZT", "RUB", "USDT"] })
+  @Prop({ required: true, default: ["USD", "UZS", "KZT", "RUB", "USDT", "UAH"] })
   currencies: string[];
 
   @Prop({ default: 0 })
   our_balance: number;
 
-  @Prop({ required: true, type: Object })
+  @Prop({
+    required: true,
+    type: Object,
+  })
   bots: IBots;
 
   @Prop({ default: true })
