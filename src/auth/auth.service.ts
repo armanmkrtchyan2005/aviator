@@ -105,7 +105,7 @@ export class AuthService {
     }
 
     for (let newUsersBonus of newUsersBonuses) {
-      const randomAmount = _.random(newUsersBonus.coef_params.amount_first, newUsersBonus.coef_params.amount_second);
+      const randomAmount = _.random(newUsersBonus.coef_params.amount_first, newUsersBonus.coef_params.amount_second, true);
       const amount = await this.convertService.convert("USD", dto.currency, randomAmount);
       await this.userPromoModel.create({ active: false, user: newUser._id, bonus: newUsersBonus._id, amount });
     }

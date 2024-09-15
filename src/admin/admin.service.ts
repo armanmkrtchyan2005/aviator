@@ -324,7 +324,7 @@ export class AdminService {
   async getWithdrawals(account: Account, dto: LimitQueryDto) {
     const withdrawals = await this.withdrawalModel
       .aggregate([
-        { $match: { createdAt: { $gte: dto.startDate, $lte: dto.endDate } } },
+        { $match: { requisite: account.requisite, createdAt: { $gte: dto.startDate, $lte: dto.endDate } } },
         { $lookup: { from: "requisites", localField: "requisite", foreignField: "_id", as: "requisite" } },
         {
           $unwind: "$requisite",
@@ -353,7 +353,7 @@ export class AdminService {
   }
 
   async activateWithdrawal(account: AccountDocument, id: string) {
-    const withdrawal = await this.withdrawalModel.findById(id);
+    const withdrawal = await this.withdrawalModel.findOne({ _id: id, requisite: account.requisite });
 
     if (withdrawal.status === WithdrawalStatusEnum.CANCELED || withdrawal.status === WithdrawalStatusEnum.COMPLETED) {
       throw new BadRequestException("Вы не можете активировать подтверждённую или отменённую заявку");

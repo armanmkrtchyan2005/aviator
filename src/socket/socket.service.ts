@@ -571,6 +571,13 @@ export class SocketService {
     // this.socket.to(user._id.toString()).emit("user-current-bets", userCurrentBets);
     this.socket.to(user._id.toString()).emit("user-balance", user.balance);
 
+    const selectedAlgorithmIndex = admin.algorithms.findIndex(alg => alg.id === this.selectedAlgorithmId);
+
+    if (selectedAlgorithmIndex !== -1) {
+      admin.algorithms[selectedAlgorithmIndex].all_withdrawal_amount += win["USD"];
+      await admin.updateOne({ $set: { algorithms: admin.algorithms } });
+    }
+
     switch (this.selectedAlgorithmId) {
       //1. 3 player algorithm in Cash Out
       case 1:
@@ -581,9 +588,6 @@ export class SocketService {
         );
 
         if (!this.threePlayers.length) {
-          admin.algorithms[0].all_withdrawal_amount += win["USD"];
-          admin.algorithms[0].used_count++;
-          await admin.updateOne({ $set: { algorithms: admin.algorithms } });
           this.loading();
         }
         break;
@@ -594,9 +598,6 @@ export class SocketService {
         console.log("TotalWinAmount:", this.totalWinAmount);
 
         if (this.totalWinAmount >= this.maxWinAmount) {
-          admin.algorithms[1].all_withdrawal_amount += win["USD"];
-          admin.algorithms[1].used_count++;
-          await admin.updateOne({ $set: { algorithms: admin.algorithms } });
           this.loading();
         }
 
@@ -613,9 +614,6 @@ export class SocketService {
         );
 
         if (!this.threePlayers.length) {
-          admin.algorithms[0].all_withdrawal_amount += win["USD"];
-          admin.algorithms[0].used_count++;
-          await admin.updateOne({ $set: { algorithms: admin.algorithms } });
           this.loading();
           break;
         }
@@ -627,9 +625,6 @@ export class SocketService {
         console.log("winsCount:", this.winsCount);
 
         if (this.winsCount >= this.totalWinsCount) {
-          admin.algorithms[6].all_withdrawal_amount += win["USD"];
-          admin.algorithms[6].used_count++;
-          await admin.updateOne({ $set: { algorithms: admin.algorithms } });
           this.loading();
           break;
         }
@@ -639,9 +634,6 @@ export class SocketService {
       case 8:
         this.total8Amount += win["USD"];
         if (this.total8Amount >= this.maxWinAmount) {
-          admin.algorithms[7].all_withdrawal_amount += win["USD"];
-          admin.algorithms[7].used_count++;
-          await admin.updateOne({ $set: { algorithms: admin.algorithms } });
           this.loading();
           break;
         }
@@ -657,9 +649,6 @@ export class SocketService {
             console.log("totalWinAmount:", this.totalWinAmount);
 
             if (this.totalWinAmount >= this.partOfProfit) {
-              admin.algorithms[9].all_withdrawal_amount += win["USD"];
-              admin.algorithms[9].used_count++;
-              await admin.updateOne({ $set: { algorithms: admin.algorithms } });
               this.loading();
               break;
             }
@@ -939,6 +928,12 @@ export class SocketService {
       this.socket.emit("game", { x: this.x });
       return this.loading();
     }
+
+    const selectedAlgorithmIndex = admin.algorithms.findIndex(alg => alg.id === this.selectedAlgorithmId);
+
+    admin.algorithms[selectedAlgorithmIndex].used_count++;
+
+    await admin.updateOne({ $set: { algorithms: admin.algorithms } });
 
     try {
       await this.betGame.save();
