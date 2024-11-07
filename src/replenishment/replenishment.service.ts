@@ -205,7 +205,7 @@ export class ReplenishmentService {
       }
     }
 
-    //-------------- Freekassa CODE -----------------
+    //-------------- Freekassa CODE ----------------
 
     if (requisite.donatePay) {
       if (amount[requisite.currency] >= requisite.donatePaylimit.min && amount[requisite.currency] <= requisite.donatePaylimit.max) {
@@ -213,6 +213,8 @@ export class ReplenishmentService {
         return await this.paymentService.createDonatePayPayment({ user, amount, requisite, bonusAmount });
       }
     }
+
+    //-------------- Profile CODE ------------------
 
     if (!requisite.profile) {
       throw new NotFoundException("Реквизит не найден");
@@ -340,8 +342,10 @@ export class ReplenishmentService {
     await this.accountRequisiteModel.findByIdAndUpdate(replenishment.requisite._id, { $set: { turnover: replenishment.requisite.turnover } });
 
     try {
-      this.schedulerRegistry.deleteCronJob(dto.id);
-    } catch (error) {}
+      this.schedulerRegistry.deleteTimeout(dto.id);
+    } catch (error) {
+      console.log(error);
+    }
 
     return { message: "Заявка на пополнение отменена" };
   }
@@ -372,7 +376,7 @@ export class ReplenishmentService {
     await replenishment.save();
 
     try {
-      this.schedulerRegistry.deleteCronJob(id);
+      this.schedulerRegistry.deleteTimeout(id);
     } catch (error) {}
 
     return { message: "Оплата подтверждена" };
